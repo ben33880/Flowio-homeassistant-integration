@@ -43,7 +43,7 @@
   "issues": {
     "missing_entities": {
       "title": "Flow.io : entités attendues introuvables",
-      "description": "{count} entité(s) attendue(s) pour le préfixe « {prefix} » sont absentes : {entities}. Vérifiez le préfixe, les slots des pompes et la découverte MQTT du firmware."
+      "description": "{count} entité(s) attendue(s) pour le préfixe « {prefix} » sont absentes : {entities}. Vérifiez le préfixe, les slots des pompes et la découverte MQTT du firmware. Les valeurs des cuves et les data_* ne sont publiées dans Home Assistant que si elles sont activées dans le firmware. Les entités séparées par | sont des alternatives : une seule suffit."
     },
     "notify_service_missing": {
       "title": "Flow.io : service de notification introuvable",

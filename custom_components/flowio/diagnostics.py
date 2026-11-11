@@ -24,5 +24,5 @@ async def async_get_config_entry_diagnostics(hass, entry):
         },
         "restarts": [t.isoformat() for t in rt.restarts],
         "expected_entities": states,
-        "missing_entities": [e for e, v in states.items() if v is None],
+        "missing_entities": rt.health.missing_entities(),
     }

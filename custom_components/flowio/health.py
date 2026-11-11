@@ -13,13 +13,17 @@ RESTART_WINDOW = timedelta(hours=24)
 RESTART_LIMIT = 3
 MAX_LISTED = 10
 
-# Entités lues par l'intégration en plus de celles des alertes.
+# Entités lues en plus de celles des alertes (vérifiées dans le firmware Flow.io-Waveshare).
 EXTRA_ENTITIES = [
-    "sensor.{p}_data_{ph_rt}",
-    "sensor.{p}_data_{dis_rt}",
     "number.{p}_pd1_flow",
     "number.{p}_pd2_flow",
     "sensor.{p}_sys_upt_mn",
+]
+
+# Groupes de repli : une seule entité du groupe suffit (compteur métier firmware 3.5.1, sinon data_*).
+RUNTIME_GROUPS = [
+    ["sensor.{p}_pd_ph_pmp_upt", "sensor.{p}_data_{ph_rt}"],
+    ["sensor.{p}_pd_chl_pmp_upt", "sensor.{p}_data_{dis_rt}"],
 ]
 
 
@@ -35,14 +39,24 @@ class HealthMonitor:
             for key in ("missing_entities", "notify_service_missing", "frequent_restarts")
         }
 
+    def required_groups(self) -> list[list[str]]:
+        rt = self._rt
+        singles = [a.source for a in ALERTS] + [a.require_on for a in ALERTS if a.require_on]
+        singles += EXTRA_ENTITIES
+        groups = {(rt.resolve(t),) for t in singles}
+        groups |= {tuple(rt.resolve(t) for t in g) for g in RUNTIME_GROUPS}
+        return [list(g) for g in sorted(groups)]
+
     def expected_entities(self) -> list[str]:
-        templates = [a.source for a in ALERTS]
-        templates += [a.require_on for a in ALERTS if a.require_on]
-        templates += EXTRA_ENTITIES
-        return sorted({self._rt.resolve(t) for t in templates})
+        return sorted({e for group in self.required_groups() for e in group})
 
     def missing_entities(self) -> list[str]:
-        return [e for e in self.expected_entities() if self._rt.hass.states.get(e) is None]
+        states = self._rt.hass.states
+        return [
+            " | ".join(group)
+            for group in self.required_groups()
+            if all(states.get(e) is None for e in group)
+        ]
 
     def recent_restarts(self) -> list:
         now = dt_util.utcnow()

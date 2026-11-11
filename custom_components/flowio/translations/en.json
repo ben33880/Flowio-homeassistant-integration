@@ -43,7 +43,7 @@
   "issues": {
     "missing_entities": {
       "title": "Flow.io: expected entities not found",
-      "description": "{count} entities expected for prefix \"{prefix}\" are missing: {entities}. Check the prefix, the pump slots and the firmware's MQTT discovery."
+      "description": "{count} entities expected for prefix \"{prefix}\" are missing: {entities}. Check the prefix, the pump slots and the firmware's MQTT discovery. Tank and data_* values are only published to Home Assistant when enabled in the firmware. Entities separated by | are alternatives: one of them is enough."
     },
     "notify_service_missing": {
       "title": "Flow.io: notification service not found",

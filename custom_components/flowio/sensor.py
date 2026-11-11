@@ -9,7 +9,8 @@ from homeassistant.util import dt as dt_util
 from .const import DOMAIN, HISTORY_DAYS
 from .quality import BAD, GOOD, MEDIUM, as_float, grade, worst
 
-_TIME = {"s": 1, "sec": 1, "min": 60, "h": 3600}
+# Unités publiées par le firmware : s, mn (compteurs métier pd_flt_upt_mn), min, h.
+_TIME = {"s": 1, "sec": 1, "min": 60, "mn": 60, "h": 3600}
 _FLOW = {"l/h": 1.0, "ml/h": 0.001}
 MAX_RESTARTS_KEPT = 20
 
@@ -28,9 +29,11 @@ async def async_setup_entry(hass, entry, async_add_entities):
             QualitySensor(rt, "orp_quality", "Qualité ORP", "mdi:flash", [orp]),
             QualitySensor(rt, "water_quality", "Qualité de l'eau", "mdi:pool", [ph, orp]),
             InjectedSensor(rt, "ph_injected", "pH injecté (estimé)", "ph",
-                           "sensor.{p}_data_{ph_rt}", "number.{p}_pd1_flow"),
+                           ["sensor.{p}_pd_ph_pmp_upt", "sensor.{p}_data_{ph_rt}"],
+                           "number.{p}_pd1_flow"),
             InjectedSensor(rt, "dis_injected", "Désinfectant injecté (estimé)", "dis",
-                           "sensor.{p}_data_{dis_rt}", "number.{p}_pd2_flow"),
+                           ["sensor.{p}_pd_chl_pmp_upt", "sensor.{p}_data_{dis_rt}"],
+                           "number.{p}_pd2_flow"),
             AutonomySensor(rt, "ph_autonomy", "Autonomie cuve pH", "ph", "sensor.{p}_data_{ph_vol}"),
             AutonomySensor(rt, "dis_autonomy", "Autonomie cuve désinfectant", "dis",
                            "sensor.{p}_data_{dis_vol}"),
@@ -104,10 +107,11 @@ class InjectedSensor(RestoreEntity, _Base):
     _attr_native_unit_of_measurement = "mL"
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(self, rt, key, name, pump, rt_src, flow_src):
+    def __init__(self, rt, key, name, pump, rt_srcs, flow_src):
         self._model = rt.pumps[pump]
-        self._rt_src, self._flow_src = rt.resolve(rt_src), rt.resolve(flow_src)
-        super().__init__(rt, key, name, "mdi:beaker-outline", [self._rt_src, self._flow_src])
+        self._rt_srcs = [rt.resolve(s) for s in rt_srcs]
+        self._flow_src = rt.resolve(flow_src)
+        super().__init__(rt, key, name, "mdi:beaker-outline", [*self._rt_srcs, self._flow_src])
 
     async def async_added_to_hass(self):
         last = await self.async_get_last_state()
@@ -119,8 +123,16 @@ class InjectedSensor(RestoreEntity, _Base):
         await super().async_added_to_hass()
         async_dispatcher_send(self.hass, self._rt.signal_pumps)
 
+    def _runtime_state(self):
+        """Première source du compteur de marche qui a une valeur exploitable."""
+        for entity_id in self._rt_srcs:
+            state = self.hass.states.get(entity_id)
+            if state is not None and as_float(state) is not None:
+                return entity_id, state
+        return self._rt_srcs[0], self.hass.states.get(self._rt_srcs[0])
+
     def _compute(self):
-        rt_state = self.hass.states.get(self._rt_src)
+        source, rt_state = self._runtime_state()
         flow_state = self.hass.states.get(self._flow_src)
         secs = lph = None
         value = as_float(rt_state)
@@ -144,6 +156,7 @@ class InjectedSensor(RestoreEntity, _Base):
             self._attr_native_value = ml
         self._attr_extra_state_attributes = {
             "history_ml": list(m.history),
+            "runtime_source": source,
             "runtime_s": secs,
             "flow_l_h": lph,
         }
@@ -186,7 +199,7 @@ class AutonomySensor(_Base):
 
 
 class RestartSensor(RestoreEntity, _Base):
-    """Compte les redémarrages du contrôleur détectés par une baisse du temps de fonctionnement."""
+    """Compte les redémarrages du contrôleur détectés par une baisse du temps de fonctionnement (minutes)."""
 
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
