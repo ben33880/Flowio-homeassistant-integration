@@ -14,27 +14,39 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+
+      - name: Vérifier que le tag correspond à la version du manifest
+        run: |
+          v=$(jq -r .version custom_components/flowio/manifest.json)
+          test "v$v" = "${GITHUB_REF_NAME}"
+
+      - name: Vérifier la présence du sous-module des cartes
+        run: test -f cards/package.json
+
       - uses: actions/setup-node@v4
         with:
           node-version-file: cards/.nvmrc
           cache: npm
           cache-dependency-path: cards/package-lock.json
-      - name: Build des cartes
+
+      - name: Tests, build et mentions de licences des cartes
         working-directory: cards
         run: |
           npm ci
           npm test
-          npm run build
-      - name: Copier le bundle
+          export RELEASE_VERSION=$(jq -r .version package.json)
+          export RELEASE_SOURCE_SHA=$(git rev-parse HEAD)
+          npm run release:prepare
+
+      - name: Copier le bundle dans l'intégration
         run: |
           mkdir -p custom_components/flowio/frontend
-          cp cards/dist/flowio-home-assistant-cards.js custom_components/flowio/frontend/
-      - name: Vérifier la version
-        run: |
-          v=$(python3 -c "import json;print(json.load(open('custom_components/flowio/manifest.json'))['version'])")
-          test "v$v" = "${GITHUB_REF_NAME}"
-      - name: Zip
+          cp cards/dist/flowio-home-assistant-cards.js cards/dist/THIRD_PARTY_NOTICES.txt custom_components/flowio/frontend/
+
+      - name: Créer l'archive
         run: cd custom_components/flowio && zip -r ../../flowio.zip .
+
       - uses: softprops/action-gh-release@v2
         with:
+          draft: true
           files: flowio.zip
