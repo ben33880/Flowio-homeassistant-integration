@@ -2,7 +2,7 @@
 
 Intégration personnalisée (version 0.1.0) pour le firmware Flow.io-Waveshare. Elle ajoute :
 
-- les cartes Lovelace Flow.io (sous-module `cards/`, bundle servi automatiquement) ;
+- les cartes Lovelace Flow.io (dépôt `christophebelmont/flowio-home-assistant-cards`, version épinglée dans le workflow de release, bundle servi automatiquement) ;
 - des plages de qualité réglables (entités `number`) ;
 - des capteurs de qualité, de volumes injectés estimés et d'autonomie des cuves ;
 - des alertes (entités `binary_sensor`, classe problème) avec notifications et boutons d'action ;
@@ -104,10 +104,6 @@ Le capteur de diagnostic `Redémarrages du contrôleur` compte les baisses de `s
 
 Pour dépanner, utilisez Appareils et services → Flow.io → Télécharger les diagnostics : le fichier contient la configuration (service de notification masqué), les seuils, les états et unités lus, l'historique des pompes et les entités manquantes.
 
-## Développement
+## Release
 
-```sh
-git clone --recurse-submodules https://github.com/ben33880/Flowio-homeassistant-integration
-```
-
-Le workflow de release compile les cartes (`cards/`) et publie `flowio.zip`.
+Un tag `vX.Y.Z` (identique à la version de `custom_components/flowio/manifest.json`) lance `.github/workflows/release.yml`. Il récupère les cartes au commit épinglé par `CARDS_REF`, lance leurs tests et leur `release:prepare` (notices de licences incluses), copie le bundle dans l'intégration, crée `flowio.zip` et ouvre une release en brouillon, à vérifier puis publier à la main. Pour changer la version des cartes, modifier `CARDS_REF` dans ce fichier.

@@ -7,20 +7,30 @@ on:
 permissions:
   contents: write
 
+env:
+  # Cartes embarquées : dépôt et commit épinglés. Pour changer de version, modifier CARDS_REF.
+  CARDS_REPO: christophebelmont/flowio-home-assistant-cards
+  CARDS_REF: 38efb56bb4c51951b85cc02e8e0d963ac81cc282
+
 jobs:
   release:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - name: Vérifier que le tag correspond à la version du manifest
         run: |
           v=$(jq -r .version custom_components/flowio/manifest.json)
           test "v$v" = "${GITHUB_REF_NAME}"
 
-      - name: Vérifier la présence du sous-module des cartes
+      - name: Récupérer les cartes (version épinglée)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.CARDS_REPO }}
+          ref: ${{ env.CARDS_REF }}
+          path: cards
+
+      - name: Vérifier la présence des cartes
         run: test -f cards/package.json
 
       - uses: actions/setup-node@v4
