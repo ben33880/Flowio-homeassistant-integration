@@ -6,6 +6,7 @@ from homeassistant.components.http import StaticPathConfig
 from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN, JS_FILE, PLATFORMS, URL_BASE
+from .notification_actions import async_setup_actions
 from .runtime import FlowioRuntime
 from .services import async_register_services
 
@@ -39,6 +40,7 @@ async def async_setup_entry(hass: HomeAssistant, entry) -> bool:
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     rt.health.start()
     entry.async_on_unload(rt.health.stop)
+    entry.async_on_unload(async_setup_actions(rt))
     entry.async_on_unload(entry.add_update_listener(_reload))
     return True
 

@@ -52,6 +52,7 @@ class AlertSensor(BinarySensorEntity):
             attrs["medium_range"] = [v[f"{a.threshold}_mid_min"], v[f"{a.threshold}_mid_max"]]
         else:
             attrs["threshold"] = v.get(a.threshold)
+        attrs["snoozed"] = self._rt.is_snoozed(a.key)
         return attrs
 
     def _limit_text(self) -> str:
@@ -123,4 +124,4 @@ class AlertSensor(BinarySensorEntity):
             title, msg = f"⚠️ {a.name}", f"{self._detail} ({self._limit_text()})"
         else:
             title, msg = f"✅ {a.name} : résolu", "Retour à la normale."
-        self.hass.async_create_task(self._rt.async_notify(title, msg, a.key))
+        self.hass.async_create_task(self._rt.async_notify(title, msg, a.key, alert_on=on))

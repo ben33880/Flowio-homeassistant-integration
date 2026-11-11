@@ -5,7 +5,7 @@ Intégration personnalisée (version 0.1.0) pour le firmware Flow.io-Waveshare. 
 - les cartes Lovelace Flow.io (sous-module `cards/`, bundle servi automatiquement) ;
 - des plages de qualité réglables (entités `number`) ;
 - des capteurs de qualité, de volumes injectés estimés et d'autonomie des cuves ;
-- des alertes (entités `binary_sensor`, classe problème) avec notifications ;
+- des alertes (entités `binary_sensor`, classe problème) avec notifications et boutons d'action ;
 - un diagnostic et des réparations Home Assistant ;
 - des services pour le forçage temporaire et les actions de maintenance.
 
@@ -57,6 +57,15 @@ Capteurs : `Qualité pH`, `Qualité ORP`, `Qualité de l'eau` (le pire des deux)
 ## Alertes
 
 pH et ORP mauvais (délai 30 / 60 min), pH et ORP à surveiller (notifiés seulement avec l'option), gel, eau trop chaude, cuves basses, contrôleur hors ligne.
+
+## Boutons dans les notifications
+
+Avec un service `notify.mobile_app_*` (application Android), chaque alerte qui se déclenche propose :
+
+- **Reporter 24 h** : supprime les notifications de cette alerte pendant 24 h (le capteur reste exact, son attribut `snoozed` l'indique). Le report est gardé en mémoire et disparaît au redémarrage de Home Assistant.
+- **Cuve remplie** (alertes de cuve basse seulement) : appelle `flowio.refill_tank`. Le bouton n'agit que si le niveau est encore sous le seuil, pour qu'un appui accidentel ne réinitialise pas une cuve pleine.
+
+Chaque appui reçoit une réponse qui remplace la notification. Les notifications de retour à la normale n'ont pas de bouton. Les actions dynamiques ne sont pas supportées sur iOS, où elles doivent être définies par catégories dans l'application ; l'intégration n'en ajoute donc que pour un service `notify.mobile_app_*`. Il n'y a volontairement aucun bouton de forçage.
 
 ## Services
 
