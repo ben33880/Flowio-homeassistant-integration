@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from datetime import datetime
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -15,6 +16,7 @@ from .const import (
     SIGNAL_UPDATE,
     THRESHOLDS,
 )
+from .health import HealthMonitor
 
 
 @dataclass
@@ -32,8 +34,10 @@ class FlowioRuntime:
         self.dis_slot = int(self.conf.get(CONF_DIS_SLOT, DEFAULT_DIS_SLOT))
         self.values = {t.key: t.default for t in THRESHOLDS}
         self.pumps = {"ph": PumpModel(), "dis": PumpModel()}
+        self.restarts: list[datetime] = []
         self.signal = SIGNAL_UPDATE.format(entry_id=entry.entry_id)
         self.signal_pumps = SIGNAL_PUMPS.format(entry_id=entry.entry_id)
+        self.health = HealthMonitor(self)
 
     @property
     def device_info(self) -> DeviceInfo:

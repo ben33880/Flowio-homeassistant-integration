@@ -32,8 +32,11 @@ async def async_setup(hass: HomeAssistant, config) -> bool:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry) -> bool:
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = FlowioRuntime(hass, entry)
+    rt = FlowioRuntime(hass, entry)
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = rt
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    rt.health.start()
+    entry.async_on_unload(rt.health.stop)
     entry.async_on_unload(entry.add_update_listener(_reload))
     return True
 

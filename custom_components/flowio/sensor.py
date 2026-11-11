@@ -1,15 +1,17 @@
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
-from homeassistant.const import UnitOfTime
+from homeassistant.const import EntityCategory, UnitOfTime
 from homeassistant.core import callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect, async_dispatcher_send
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, HISTORY_DAYS
 from .quality import BAD, GOOD, MEDIUM, as_float, grade, worst
 
 _TIME = {"s": 1, "sec": 1, "min": 60, "h": 3600}
 _FLOW = {"l/h": 1.0, "ml/h": 0.001}
+MAX_RESTARTS_KEPT = 20
 
 
 def _unit(state, default: str) -> str:
@@ -32,6 +34,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
             AutonomySensor(rt, "ph_autonomy", "Autonomie cuve pH", "ph", "sensor.{p}_data_{ph_vol}"),
             AutonomySensor(rt, "dis_autonomy", "Autonomie cuve désinfectant", "dis",
                            "sensor.{p}_data_{dis_vol}"),
+            RestartSensor(rt),
         ]
     )
 
@@ -179,4 +182,44 @@ class AutonomySensor(_Base):
             "tank_l": litres,
             "average_daily_ml": round(avg),
             "days_observed": len(hist),
+        }
+
+
+class RestartSensor(RestoreEntity, _Base):
+    """Compte les redémarrages du contrôleur détectés par une baisse du temps de fonctionnement."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+
+    def __init__(self, rt):
+        self._src = rt.resolve("sensor.{p}_sys_upt_mn")
+        self._last_uptime = None
+        self._count = 0
+        super().__init__(rt, "restarts", "Redémarrages du contrôleur", "mdi:restart-alert", [self._src])
+
+    async def async_added_to_hass(self):
+        last = await self.async_get_last_state()
+        if last:
+            try:
+                self._count = int(float(last.state))
+            except (TypeError, ValueError):
+                pass
+            raw = last.attributes.get("restart_times") or []
+            parsed = [dt_util.parse_datetime(x) for x in raw if isinstance(x, str)]
+            self._rt.restarts = [t for t in parsed if t][-MAX_RESTARTS_KEPT:]
+        await super().async_added_to_hass()
+
+    def _compute(self):
+        value = as_float(self.hass.states.get(self._src))
+        if value is not None:
+            if self._last_uptime is not None and value < self._last_uptime - 1:
+                self._count += 1
+                self._rt.restarts = (self._rt.restarts + [dt_util.utcnow()])[-MAX_RESTARTS_KEPT:]
+                self._rt.health.evaluate()
+            self._last_uptime = value
+        self._attr_native_value = self._count
+        self._attr_extra_state_attributes = {
+            "restart_times": [t.isoformat() for t in self._rt.restarts],
+            "restarts_24h": len(self._rt.health.recent_restarts()),
+            "uptime_min": self._last_uptime,
         }

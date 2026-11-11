@@ -39,5 +39,32 @@
         }
       }
     }
+  },
+  "issues": {
+    "missing_entities": {
+      "title": "Flow.io : entités attendues introuvables",
+      "description": "{count} entité(s) attendue(s) pour le préfixe « {prefix} » sont absentes : {entities}. Vérifiez le préfixe, les slots des pompes et la découverte MQTT du firmware."
+    },
+    "notify_service_missing": {
+      "title": "Flow.io : service de notification introuvable",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Service de notification",
+            "description": "Le service {service} n'existe pas. Saisissez un service notify existant (par exemple notify.mobile_app_xxx).",
+            "data": {
+              "notify_service": "Service de notification"
+            }
+          }
+        },
+        "error": {
+          "service_not_found": "Ce service n'existe pas."
+        }
+      }
+    },
+    "frequent_restarts": {
+      "title": "Flow.io : le contrôleur redémarre souvent",
+      "description": "Le contrôleur a redémarré {count} fois ces {hours} dernières heures. Vérifiez l'alimentation, le signal Wi-Fi et la mémoire libre."
+    }
   }
 }

@@ -39,5 +39,32 @@
         }
       }
     }
+  },
+  "issues": {
+    "missing_entities": {
+      "title": "Flow.io: expected entities not found",
+      "description": "{count} entities expected for prefix \"{prefix}\" are missing: {entities}. Check the prefix, the pump slots and the firmware's MQTT discovery."
+    },
+    "notify_service_missing": {
+      "title": "Flow.io: notification service not found",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Notification service",
+            "description": "The service {service} does not exist. Enter an existing notify service (for example notify.mobile_app_xxx).",
+            "data": {
+              "notify_service": "Notification service"
+            }
+          }
+        },
+        "error": {
+          "service_not_found": "This service does not exist."
+        }
+      }
+    },
+    "frequent_restarts": {
+      "title": "Flow.io: controller restarting often",
+      "description": "The controller restarted {count} times in the last {hours} hours. Check the power supply, the Wi-Fi signal and the free memory."
+    }
   }
 }

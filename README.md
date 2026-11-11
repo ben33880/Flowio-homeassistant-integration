@@ -5,7 +5,8 @@ Intégration personnalisée (version 0.1.0) pour le firmware Flow.io-Waveshare. 
 - les cartes Lovelace Flow.io (sous-module `cards/`, bundle servi automatiquement) ;
 - des plages de qualité réglables (entités `number`) ;
 - des capteurs de qualité, de volumes injectés estimés et d'autonomie des cuves ;
-- des alertes (entités `binary_sensor`, classe problème) avec notifications.
+- des alertes (entités `binary_sensor`, classe problème) avec notifications ;
+- un diagnostic et des réparations Home Assistant.
 
 Les entités du firmware (pH, ORP, températures, équipements…) restent créées par la découverte MQTT du firmware. L'intégration les lit et ne les remplace pas. Elle ne commande aucun équipement.
 
@@ -43,6 +44,18 @@ Capteurs : `Qualité pH`, `Qualité ORP`, `Qualité de l'eau` (le pire des deux)
 ## Alertes
 
 pH et ORP mauvais (délai 30 / 60 min), pH et ORP à surveiller (notifiés seulement avec l'option), gel, eau trop chaude, cuves basses, contrôleur hors ligne.
+
+## Diagnostic et réparations
+
+Deux minutes après le démarrage, puis toutes les 15 minutes, l'intégration vérifie l'installation et publie des réparations dans Paramètres → Système → Réparations :
+
+- entités attendues introuvables (préfixe ou slots erronés, découverte MQTT absente), avec la liste ;
+- service de notification inexistant, avec une réparation guidée pour en saisir un valide ;
+- contrôleur redémarré au moins 3 fois en 24 h.
+
+Le capteur de diagnostic `Redémarrages du contrôleur` compte les baisses de `sensor.<préfixe>_sys_upt_mn` (temps de fonctionnement supposé en minutes) et conserve les horodatages après un redémarrage de Home Assistant. Le premier relevé sert de référence : un redémarrage pendant que Home Assistant est arrêté n'est pas compté.
+
+Pour dépanner, utilisez Appareils et services → Flow.io → Télécharger les diagnostics : le fichier contient la configuration (service de notification masqué), les seuils, les états et unités lus, l'historique des pompes et les entités manquantes.
 
 ## Développement
 
