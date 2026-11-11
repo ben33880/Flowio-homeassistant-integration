@@ -1,0 +1,85 @@
+force_equipment:
+  fields:
+    prefix:
+      required: false
+      example: fio
+      selector:
+        text:
+    target:
+      required: true
+      example: pd1
+      selector:
+        text:
+    state:
+      required: true
+      selector:
+        select:
+          options:
+            - "on"
+            - "off"
+    minutes:
+      required: true
+      default: 15
+      selector:
+        number:
+          min: 1
+          max: 120
+          unit_of_measurement: min
+          mode: box
+
+release_override:
+  fields:
+    prefix:
+      required: false
+      example: fio
+      selector:
+        text:
+    target:
+      required: false
+      example: pd1
+      selector:
+        text:
+
+refill_tank:
+  fields:
+    prefix:
+      required: false
+      example: fio
+      selector:
+        text:
+    tank:
+      required: true
+      selector:
+        select:
+          options:
+            - ph
+            - disinfection
+    confirm:
+      required: true
+      default: false
+      selector:
+        boolean:
+
+reset_uptime:
+  fields:
+    prefix:
+      required: false
+      example: fio
+      selector:
+        text:
+    device:
+      required: true
+      selector:
+        select:
+          options:
+            - filtration
+            - ph
+            - disinfection
+            - fill
+            - chlorine_generator
+            - all
+    confirm:
+      required: true
+      default: false
+      selector:
+        boolean:

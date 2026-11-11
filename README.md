@@ -6,9 +6,10 @@ Intégration personnalisée (version 0.1.0) pour le firmware Flow.io-Waveshare. 
 - des plages de qualité réglables (entités `number`) ;
 - des capteurs de qualité, de volumes injectés estimés et d'autonomie des cuves ;
 - des alertes (entités `binary_sensor`, classe problème) avec notifications ;
-- un diagnostic et des réparations Home Assistant.
+- un diagnostic et des réparations Home Assistant ;
+- des services pour le forçage temporaire et les actions de maintenance.
 
-Les entités du firmware (pH, ORP, températures, équipements…) restent créées par la découverte MQTT du firmware. L'intégration les lit et ne les remplace pas. Elle ne commande aucun équipement.
+Les entités du firmware (pH, ORP, températures, équipements…) restent créées par la découverte MQTT du firmware. L'intégration les lit et ne les remplace pas. Elle ne pilote jamais le dosage : les services déclenchent seulement des commandes que le firmware expose déjà sous forme d'entités.
 
 ## Installation (HACS)
 
@@ -56,6 +57,31 @@ Capteurs : `Qualité pH`, `Qualité ORP`, `Qualité de l'eau` (le pire des deux)
 ## Alertes
 
 pH et ORP mauvais (délai 30 / 60 min), pH et ORP à surveiller (notifiés seulement avec l'option), gel, eau trop chaude, cuves basses, contrôleur hors ligne.
+
+## Services
+
+Les services utilisent les entités du firmware (`select`, `number`, `button`) et donc ses validations. Le champ optionnel `prefix` n'est utile qu'avec plusieurs installations.
+
+| Service | Rôle | Garde-fous |
+|---|---|---|
+| `flowio.force_equipment` | Force un équipement `on` ou `off` pendant N minutes (`pdm_ovr_*`) | Durée limitée à 120 min et au maximum du firmware ; l'équipement doit figurer dans les choix du firmware ; la sélection et la durée doivent être confirmées par le firmware avant la commande, sinon rien n'est envoyé ; contrôleur hors ligne refusé |
+| `flowio.release_override` | Termine le forçage | Option `target` pour sélectionner l'équipement d'abord |
+| `flowio.refill_tank` | Signale qu'une cuve (`ph` ou `disinfection`) a été remplie | `confirm: true` obligatoire |
+| `flowio.reset_uptime` | Remet un compteur de marche à zéro (`filtration`, `ph`, `disinfection`, `fill`, `chlorine_generator`, `all`) | `confirm: true` obligatoire ; la référence des volumes injectés est réinitialisée pour ne pas fausser l'autonomie |
+
+La sélection de l'équipement forcé est globale dans le firmware et partagée entre tous les utilisateurs. Un service qui sélectionne un équipement modifie donc cette sélection pour tout le monde. Un appel accepté n'atteste pas que l'équipement tourne physiquement, et les protections et règles de durée restent dans le firmware.
+
+Exemple :
+
+```yaml
+action: flowio.force_equipment
+data:
+  target: pd0
+  state: "on"
+  minutes: 15
+```
+
+Les valeurs possibles de `target` sont celles du sélecteur `select.<préfixe>_pdm_ovr_target` ; une erreur les liste si la valeur est inconnue.
 
 ## Diagnostic et réparations
 

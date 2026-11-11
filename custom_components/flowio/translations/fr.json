@@ -66,5 +66,43 @@
       "title": "Flow.io : le contrôleur redémarre souvent",
       "description": "Le contrôleur a redémarré {count} fois ces {hours} dernières heures. Vérifiez l'alimentation, le signal Wi-Fi et la mémoire libre."
     }
+  },
+  "services": {
+    "force_equipment": {
+      "name": "Forcer un équipement",
+      "description": "Force temporairement un équipement en marche ou à l'arrêt via le forçage du firmware. Le firmware garde ses propres sécurités.",
+      "fields": {
+        "prefix": {"name": "Préfixe", "description": "Préfixe des entités, utile seulement avec plusieurs installations Flow.io."},
+        "target": {"name": "Équipement", "description": "Option publiée par le firmware dans le sélecteur de forçage."},
+        "state": {"name": "État", "description": "on ou off."},
+        "minutes": {"name": "Durée", "description": "Durée en minutes (limitée à 120 et au maximum du firmware)."}
+      }
+    },
+    "release_override": {
+      "name": "Libérer le forçage",
+      "description": "Termine le forçage temporaire de l'équipement sélectionné.",
+      "fields": {
+        "prefix": {"name": "Préfixe", "description": "Préfixe des entités, utile seulement avec plusieurs installations Flow.io."},
+        "target": {"name": "Équipement", "description": "Équipement à sélectionner d'abord. Vide : sélection courante."}
+      }
+    },
+    "refill_tank": {
+      "name": "Cuve remplie",
+      "description": "Indique au firmware qu'une cuve a été physiquement remplie. Réinitialise son niveau estimé.",
+      "fields": {
+        "prefix": {"name": "Préfixe", "description": "Préfixe des entités, utile seulement avec plusieurs installations Flow.io."},
+        "tank": {"name": "Cuve", "description": "Cuve de pH ou de désinfectant."},
+        "confirm": {"name": "Confirmer", "description": "Doit être vrai : la cuve a réellement été remplie."}
+      }
+    },
+    "reset_uptime": {
+      "name": "Remettre un compteur de marche à zéro",
+      "description": "Remet à zéro le compteur de marche journalier d'un équipement dans le firmware.",
+      "fields": {
+        "prefix": {"name": "Préfixe", "description": "Préfixe des entités, utile seulement avec plusieurs installations Flow.io."},
+        "device": {"name": "Équipement", "description": "Compteur à remettre à zéro."},
+        "confirm": {"name": "Confirmer", "description": "Doit être vrai."}
+      }
+    }
   }
 }

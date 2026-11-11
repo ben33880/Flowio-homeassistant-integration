@@ -7,6 +7,7 @@ from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN, JS_FILE, PLATFORMS, URL_BASE
 from .runtime import FlowioRuntime
+from .services import async_register_services
 
 HERE = Path(__file__).parent
 
@@ -21,6 +22,7 @@ def _frontend_info():
 
 async def async_setup(hass: HomeAssistant, config) -> bool:
     hass.data.setdefault(DOMAIN, {})
+    async_register_services(hass)
     version = await hass.async_add_executor_job(_frontend_info)
     if version is None:
         return True

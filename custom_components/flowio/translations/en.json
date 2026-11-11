@@ -66,5 +66,43 @@
       "title": "Flow.io: controller restarting often",
       "description": "The controller restarted {count} times in the last {hours} hours. Check the power supply, the Wi-Fi signal and the free memory."
     }
+  },
+  "services": {
+    "force_equipment": {
+      "name": "Force equipment",
+      "description": "Temporarily forces an equipment on or off through the firmware's override. The firmware keeps its own safety rules.",
+      "fields": {
+        "prefix": {"name": "Prefix", "description": "Entity prefix, only needed with several Flow.io installations."},
+        "target": {"name": "Equipment", "description": "Option published by the firmware in the override selector."},
+        "state": {"name": "State", "description": "on or off."},
+        "minutes": {"name": "Duration", "description": "Duration in minutes (limited to 120 and to the firmware maximum)."}
+      }
+    },
+    "release_override": {
+      "name": "Release override",
+      "description": "Ends the temporary override of the selected equipment.",
+      "fields": {
+        "prefix": {"name": "Prefix", "description": "Entity prefix, only needed with several Flow.io installations."},
+        "target": {"name": "Equipment", "description": "Equipment to select first. Leave empty to use the current selection."}
+      }
+    },
+    "refill_tank": {
+      "name": "Tank refilled",
+      "description": "Tells the firmware that a tank has been physically refilled. Resets its estimated level.",
+      "fields": {
+        "prefix": {"name": "Prefix", "description": "Entity prefix, only needed with several Flow.io installations."},
+        "tank": {"name": "Tank", "description": "pH or disinfectant tank."},
+        "confirm": {"name": "Confirm", "description": "Must be true: the tank has really been refilled."}
+      }
+    },
+    "reset_uptime": {
+      "name": "Reset run-time counter",
+      "description": "Resets the firmware's daily run-time counter of a device.",
+      "fields": {
+        "prefix": {"name": "Prefix", "description": "Entity prefix, only needed with several Flow.io installations."},
+        "device": {"name": "Device", "description": "Counter to reset."},
+        "confirm": {"name": "Confirm", "description": "Must be true."}
+      }
+    }
   }
 }
