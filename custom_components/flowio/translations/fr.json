@@ -5,9 +5,10 @@
         "title": "Flow.io",
         "data": {
           "entity_prefix": "Préfixe des entités",
-          "notify_service": "Service de notification",
-          "ph_tank_entity": "Entité niveau cuve pH (optionnel)",
-          "disinfection_tank_entity": "Entité niveau cuve désinfectant (optionnel)"
+          "notify_service": "Service de notification (ex. notify.mobile_app_xxx)",
+          "ph_slot": "Slot de la pompe pH",
+          "disinfection_slot": "Slot de la pompe désinfectant",
+          "notify_medium": "Notifier aussi les niveaux « à surveiller »"
         }
       }
     },
@@ -20,14 +21,23 @@
       "init": {
         "data": {
           "entity_prefix": "Préfixe des entités",
-          "notify_service": "Service de notification",
-          "ph_tank_entity": "Entité niveau cuve pH (optionnel)",
-          "disinfection_tank_entity": "Entité niveau cuve désinfectant (optionnel)"
+          "notify_service": "Service de notification (ex. notify.mobile_app_xxx)",
+          "ph_slot": "Slot de la pompe pH",
+          "disinfection_slot": "Slot de la pompe désinfectant",
+          "notify_medium": "Notifier aussi les niveaux « à surveiller »"
         }
       }
-    },
-    "abort": {
-      "already_configured": "Ce préfixe est déjà configuré."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "quality": {
+        "state": {
+          "good": "Bon",
+          "medium": "Moyen",
+          "bad": "Mauvais"
+        }
+      }
     }
   }
 }

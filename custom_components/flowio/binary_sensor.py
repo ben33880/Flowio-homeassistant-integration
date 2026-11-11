@@ -5,12 +5,13 @@ from homeassistant.core import callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.event import async_call_later, async_track_state_change_event
 
-from .const import ALERTS, DOMAIN
+from .const import ALERTS, CONF_NOTIFY_MEDIUM, DOMAIN
+from .quality import BAD, MEDIUM, as_float, grade
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
     rt = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(AlertSensor(rt, a) for a in ALERTS if rt.resolve(a.source))
+    async_add_entities(AlertSensor(rt, a) for a in ALERTS)
 
 
 class AlertSensor(BinarySensorEntity):
@@ -44,27 +45,43 @@ class AlertSensor(BinarySensorEntity):
 
     @property
     def extra_state_attributes(self):
-        return {
-            "detail": self._detail,
-            "source": self._source,
-            "threshold": self._rt.values.get(self._a.threshold),
-        }
+        a, v = self._a, self._rt.values
+        attrs = {"detail": self._detail, "source": self._source}
+        if a.op.startswith("q_"):
+            attrs["good_range"] = [v[f"{a.threshold}_good_min"], v[f"{a.threshold}_good_max"]]
+            attrs["medium_range"] = [v[f"{a.threshold}_mid_min"], v[f"{a.threshold}_mid_max"]]
+        else:
+            attrs["threshold"] = v.get(a.threshold)
+        return attrs
+
+    def _limit_text(self) -> str:
+        a, v = self._a, self._rt.values
+        if a.op.startswith("q_"):
+            return f"cible {v[a.threshold + '_good_min']:g}–{v[a.threshold + '_good_max']:g}"
+        if a.op == "unavailable":
+            return f"délai {float(v[a.threshold]):g} min"
+        return f"seuil {float(v[a.threshold]):g}"
 
     def _condition(self) -> bool:
+        a = self._a
         s = self.hass.states.get(self._source)
-        a, thr = self._a, float(self._rt.values[self._a.threshold])
         if a.op == "unavailable":
+            self._detail = "Données indisponibles"
             return s is None or s.state == "unavailable"
         if self._require:
             r = self.hass.states.get(self._require)
             if r is None or r.state != "on":
                 return False
-        try:
-            v = float(s.state)
-        except (ValueError, AttributeError, TypeError):
+        value = as_float(s)
+        if value is None:
             return False
-        self._detail = f"{v:g} {a.unit}".strip()
-        return v < thr if a.op == "<" else v > thr
+        self._detail = f"{value:g} {a.unit}".strip()
+        if a.op == "q_bad":
+            return grade(self._rt.values, a.threshold, value) == BAD
+        if a.op == "q_medium":
+            return grade(self._rt.values, a.threshold, value) == MEDIUM
+        thr = float(self._rt.values[a.threshold])
+        return value < thr if a.op == "<" else value > thr
 
     def _delay(self) -> float:
         a = self._a
@@ -100,9 +117,10 @@ class AlertSensor(BinarySensorEntity):
         self._attr_is_on = on
         self.async_write_ha_state()
         a = self._a
+        if a.soft and not self._rt.conf.get(CONF_NOTIFY_MEDIUM):
+            return
         if on:
-            title = f"⚠️ {a.name}"
-            msg = f"{self._detail} (seuil {float(self._rt.values[a.threshold]):g})".strip()
+            title, msg = f"⚠️ {a.name}", f"{self._detail} ({self._limit_text()})"
         else:
             title, msg = f"✅ {a.name} : résolu", "Retour à la normale."
         self.hass.async_create_task(self._rt.async_notify(title, msg, a.key))

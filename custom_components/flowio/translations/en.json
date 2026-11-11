@@ -1,0 +1,43 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Flow.io",
+        "data": {
+          "entity_prefix": "Entity prefix",
+          "notify_service": "Notification service (e.g. notify.mobile_app_xxx)",
+          "ph_slot": "pH pump slot",
+          "disinfection_slot": "Disinfectant pump slot",
+          "notify_medium": "Also notify for 'to watch' levels"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This prefix is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "entity_prefix": "Entity prefix",
+          "notify_service": "Notification service (e.g. notify.mobile_app_xxx)",
+          "ph_slot": "pH pump slot",
+          "disinfection_slot": "Disinfectant pump slot",
+          "notify_medium": "Also notify for 'to watch' levels"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "quality": {
+        "state": {
+          "good": "Good",
+          "medium": "Medium",
+          "bad": "Bad"
+        }
+      }
+    }
+  }
+}

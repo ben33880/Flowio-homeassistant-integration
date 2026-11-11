@@ -3,7 +3,18 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 
-from .const import CONF_DIS_TANK, CONF_NOTIFY, CONF_PH_TANK, CONF_PREFIX, DOMAIN
+from .const import (
+    CONF_DIS_SLOT,
+    CONF_NOTIFY,
+    CONF_NOTIFY_MEDIUM,
+    CONF_PH_SLOT,
+    CONF_PREFIX,
+    DEFAULT_DIS_SLOT,
+    DEFAULT_PH_SLOT,
+    DOMAIN,
+)
+
+_SLOT = vol.All(vol.Coerce(int), vol.Range(min=0, max=15))
 
 
 def _schema(d: dict) -> vol.Schema:
@@ -11,8 +22,9 @@ def _schema(d: dict) -> vol.Schema:
         {
             vol.Required(CONF_PREFIX, default=d.get(CONF_PREFIX, "fio")): str,
             vol.Required(CONF_NOTIFY, default=d.get(CONF_NOTIFY, "notify.notify")): str,
-            vol.Optional(CONF_PH_TANK, default=d.get(CONF_PH_TANK, "")): str,
-            vol.Optional(CONF_DIS_TANK, default=d.get(CONF_DIS_TANK, "")): str,
+            vol.Required(CONF_PH_SLOT, default=d.get(CONF_PH_SLOT, DEFAULT_PH_SLOT)): _SLOT,
+            vol.Required(CONF_DIS_SLOT, default=d.get(CONF_DIS_SLOT, DEFAULT_DIS_SLOT)): _SLOT,
+            vol.Required(CONF_NOTIFY_MEDIUM, default=d.get(CONF_NOTIFY_MEDIUM, False)): bool,
         }
     )
 
