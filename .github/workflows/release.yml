@@ -1,0 +1,40 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: cards/.nvmrc
+          cache: npm
+          cache-dependency-path: cards/package-lock.json
+      - name: Build des cartes
+        working-directory: cards
+        run: |
+          npm ci
+          npm test
+          npm run build
+      - name: Copier le bundle
+        run: |
+          mkdir -p custom_components/flowio/frontend
+          cp cards/dist/flowio-home-assistant-cards.js custom_components/flowio/frontend/
+      - name: Vérifier la version
+        run: |
+          v=$(python3 -c "import json;print(json.load(open('custom_components/flowio/manifest.json'))['version'])")
+          test "v$v" = "${GITHUB_REF_NAME}"
+      - name: Zip
+        run: cd custom_components/flowio && zip -r ../../flowio.zip .
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: flowio.zip

@@ -1,0 +1,30 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Flow.io",
+        "data": {
+          "entity_prefix": "Préfixe des entités",
+          "notify_service": "Service de notification",
+          "ph_tank_entity": "Entité niveau cuve pH (optionnel)",
+          "disinfection_tank_entity": "Entité niveau cuve désinfectant (optionnel)"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Ce préfixe est déjà configuré."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "entity_prefix": "Préfixe des entités",
+          "notify_service": "Service de notification",
+          "ph_tank_entity": "Entité niveau cuve pH (optionnel)",
+          "disinfection_tank_entity": "Entité niveau cuve désinfectant (optionnel)"
+        }
+      }
+    }
+  }
+}
