@@ -17,6 +17,7 @@
       }
     },
     "error": {
+      "invalid_prefix": "Préfixe invalide : minuscules, chiffres et underscores uniquement, non vide (ex. fio).",
       "invalid_mqtt_root": "Racine MQTT invalide : ni joker (+ #), ni espace, ni segment vide."
     },
     "abort": {
@@ -40,6 +41,7 @@
       }
     },
     "error": {
+      "invalid_prefix": "Préfixe invalide : minuscules, chiffres et underscores uniquement, non vide (ex. fio).",
       "invalid_mqtt_root": "Racine MQTT invalide : ni joker (+ #), ni espace, ni segment vide."
     }
   },

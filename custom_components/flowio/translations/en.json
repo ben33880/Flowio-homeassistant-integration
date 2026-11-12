@@ -17,6 +17,7 @@
       }
     },
     "error": {
+      "invalid_prefix": "Invalid prefix: lowercase letters, digits and underscores only, not empty (e.g. fio).",
       "invalid_mqtt_root": "Invalid MQTT root: no wildcards (+ #), spaces or empty segments."
     },
     "abort": {
@@ -40,6 +41,7 @@
       }
     },
     "error": {
+      "invalid_prefix": "Invalid prefix: lowercase letters, digits and underscores only, not empty (e.g. fio).",
       "invalid_mqtt_root": "Invalid MQTT root: no wildcards (+ #), spaces or empty segments."
     }
   },

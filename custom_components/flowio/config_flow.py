@@ -1,3 +1,5 @@
+import re
+
 import voluptuous as vol
 
 from homeassistant import config_entries
@@ -21,6 +23,9 @@ _SLOT = selector.NumberSelector(
     selector.NumberSelectorConfig(min=0, max=15, step=1, mode=selector.NumberSelectorMode.BOX)
 )
 
+# Même règle que les cartes : minuscules, chiffres et underscores, non vide.
+_PREFIX_RE = re.compile(r"^[a-z0-9]+(?:_[a-z0-9]+)*$")
+
 
 def _schema(d: dict) -> vol.Schema:
     return vol.Schema(
@@ -36,8 +41,9 @@ def _schema(d: dict) -> vol.Schema:
 
 
 def _clean(user_input: dict) -> dict:
-    """Slots enregistrés en entiers (le sélecteur renvoie des décimaux) ; racine MQTT sans barres de bord."""
+    """Préfixe en minuscules sans espace ni underscore final ; slots en entiers ; racine MQTT sans barres de bord."""
     data = dict(user_input)
+    data[CONF_PREFIX] = (data.get(CONF_PREFIX) or "").strip().lower().rstrip("_")
     for key in (CONF_PH_SLOT, CONF_DIS_SLOT):
         data[key] = int(data[key])
     data[CONF_MQTT_ROOT] = (data.get(CONF_MQTT_ROOT) or "").strip().strip("/")
@@ -49,6 +55,15 @@ def _root_ok(root: str) -> bool:
     return not root or not (any(c in root for c in "+# \t\n") or "//" in root)
 
 
+def _validate(data: dict) -> dict:
+    errors = {}
+    if not _PREFIX_RE.match(data[CONF_PREFIX]):
+        errors[CONF_PREFIX] = "invalid_prefix"
+    if not _root_ok(data[CONF_MQTT_ROOT]):
+        errors["base"] = "invalid_mqtt_root"
+    return errors
+
+
 class FlowioConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
@@ -56,11 +71,11 @@ class FlowioConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
         if user_input is not None:
             data = _clean(user_input)
-            if _root_ok(data[CONF_MQTT_ROOT]):
+            errors = _validate(data)
+            if not errors:
                 await self.async_set_unique_id(data[CONF_PREFIX])
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(title=f"Flow.io ({data[CONF_PREFIX]})", data=data)
-            errors["base"] = "invalid_mqtt_root"
         return self.async_show_form(
             step_id="user", data_schema=_schema(user_input or {}), errors=errors
         )
@@ -76,8 +91,8 @@ class FlowioOptionsFlow(config_entries.OptionsFlow):
         errors = {}
         if user_input is not None:
             data = _clean(user_input)
-            if _root_ok(data[CONF_MQTT_ROOT]):
+            errors = _validate(data)
+            if not errors:
                 return self.async_create_entry(data=data)
-            errors["base"] = "invalid_mqtt_root"
         current = user_input or {**self.config_entry.data, **self.config_entry.options}
         return self.async_show_form(step_id="init", data_schema=_schema(current), errors=errors)

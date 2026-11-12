@@ -93,7 +93,8 @@ class FlowioRuntime:
         if not service or "." not in service:
             return
         domain, name = service.split(".", 1)
-        data = {"tag": f"flowio_{tag}"}
+        # Le préfixe dans le tag évite que deux installations se remplacent mutuellement.
+        data = {"tag": f"flowio_{self.prefix}_{tag}"}
         if actions:
             data["actions"] = actions
         await self.hass.services.async_call(
