@@ -44,9 +44,11 @@ Plages par défaut, inclusives et réglables dans les entités de configuration 
 | pH | 7,0 à 7,4 | 6,8 à 7,6 | hors plage moyenne |
 | ORP (mV) | 650 à 750 | 600 à 800 (choix par défaut) | hors plage moyenne |
 
-Les valeurs du pH et la cible ORP reprennent `docs/CHEMISTRY.md` des cartes. Les bornes « moyen » de l'ORP sont un choix par défaut à adapter. L'ORP n'est évalué que filtration en marche.
+Les valeurs du pH et la cible ORP reprennent `docs/CHEMISTRY.md` des cartes. Les bornes « moyen » de l'ORP sont un choix par défaut à adapter.
 
-Capteurs : `Qualité pH`, `Qualité ORP`, `Qualité de l'eau` (le pire des deux).
+Capteurs : `Qualité pH`, `Qualité ORP`, `Qualité de l'eau` (le pire des deux). Ils sont évalués en permanence, filtration en marche ou non.
+
+> **Mesures peu fiables pompe arrêtée.** Quand la filtration est arrêtée, l'eau stagne autour des sondes : le pH et l'ORP peuvent être erronés. Les capteurs de qualité portent alors un attribut `warning`, et le capteur « Mesures pH/ORP peu fiables (filtration arrêtée) » est activé. Cette information n'envoie aucune notification.
 
 ## Volumes injectés et autonomie
 
@@ -56,7 +58,8 @@ Capteurs : `Qualité pH`, `Qualité ORP`, `Qualité de l'eau` (le pire des deux)
 
 ## Alertes
 
-pH et ORP mauvais (délai 30 / 60 min), pH et ORP à surveiller (notifiés seulement avec l'option), gel, eau trop chaude, cuves basses, contrôleur hors ligne.
+- **pH et ORP** (mauvais : délai 30 / 60 min ; à surveiller : notifié seulement avec l'option) : déclenchées **uniquement filtration en marche**. Quand la filtration s'arrête, l'alerte est mise en pause (attribut `paused`) : son état est conservé, aucune notification n'est envoyée et le compte à rebours est annulé.
+- **Gel, eau trop chaude, cuves basses, contrôleur hors ligne** : actives en permanence, filtration en marche ou non.
 
 ## Boutons dans les notifications
 

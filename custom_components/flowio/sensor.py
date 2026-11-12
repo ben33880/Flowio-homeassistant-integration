@@ -9,6 +9,11 @@ from homeassistant.util import dt as dt_util
 from .const import DOMAIN, HISTORY_DAYS
 from .quality import BAD, GOOD, MEDIUM, as_float, grade, worst
 
+FILTRATION = "switch.{p}_io_flt_pmp"
+UNRELIABLE_WARNING = (
+    "Filtration arrêtée : l'eau stagne autour des sondes, le pH et l'ORP peuvent être erronés."
+)
+
 # Unités publiées par le firmware : s, mn (compteurs métier pd_flt_upt_mn), min, h.
 _TIME = {"s": 1, "sec": 1, "min": 60, "mn": 60, "h": 3600}
 _FLOW = {"l/h": 1.0, "ml/h": 0.001}
@@ -21,8 +26,8 @@ def _unit(state, default: str) -> str:
 
 async def async_setup_entry(hass, entry, async_add_entities):
     rt = hass.data[DOMAIN][entry.entry_id]
-    ph = ("ph", "sensor.{p}_io_ph", None)
-    orp = ("orp", "sensor.{p}_io_orp", "switch.{p}_io_flt_pmp")
+    ph = ("ph", "sensor.{p}_io_ph")
+    orp = ("orp", "sensor.{p}_io_orp")
     async_add_entities(
         [
             QualitySensor(rt, "ph_quality", "Qualité pH", "mdi:ph", [ph]),
@@ -74,29 +79,31 @@ class _Base(SensorEntity):
 
 
 class QualitySensor(_Base):
-    """Qualité bon/moyen/mauvais ; l'ORP n'est évalué que filtration en marche."""
+    """Qualité bon/moyen/mauvais, toujours évaluée ; l'attribut warning signale une filtration arrêtée."""
 
     _attr_device_class = SensorDeviceClass.ENUM
     _attr_translation_key = "quality"
     _attr_options = [GOOD, MEDIUM, BAD]
 
     def __init__(self, rt, key, name, icon, measures):
-        self._m = [(p, rt.resolve(s), rt.resolve(r) if r else None) for p, s, r in measures]
-        super().__init__(rt, key, name, icon, [e for _, s, r in self._m for e in (s, r) if e])
+        self._m = [(p, rt.resolve(s)) for p, s in measures]
+        self._flt = rt.resolve(FILTRATION)
+        super().__init__(rt, key, name, icon, [s for _, s in self._m] + [self._flt])
 
     def _compute(self):
         grades, attrs = [], {}
-        for prefix, src, req in self._m:
-            if req:
-                r = self.hass.states.get(req)
-                if r is None or r.state != "on":
-                    continue
+        for prefix, src in self._m:
             value = as_float(self.hass.states.get(src))
             if value is None:
                 continue
             g = grade(self._rt.values, prefix, value)
             grades.append(g)
             attrs[f"{prefix}_value"], attrs[f"{prefix}_grade"] = value, g
+        flt = self.hass.states.get(self._flt)
+        running = None if flt is None or flt.state not in ("on", "off") else flt.state == "on"
+        attrs["filtration_running"] = running
+        if running is False:
+            attrs["warning"] = UNRELIABLE_WARNING
         self._attr_native_value = worst(grades)
         self._attr_extra_state_attributes = attrs
 

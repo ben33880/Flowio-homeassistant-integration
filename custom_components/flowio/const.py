@@ -40,8 +40,8 @@ THRESHOLDS = [
     Threshold("orp_good_max", "ORP bon – maximum", 750, 300, 1000, 10, "mV", "mdi:flash"),
     Threshold("orp_mid_min", "ORP moyen – minimum", 600, 300, 1000, 10, "mV", "mdi:flash"),
     Threshold("orp_mid_max", "ORP moyen – maximum", 800, 300, 1000, 10, "mV", "mdi:flash"),
-    Threshold("temp_min", "Température gel", 4, -5, 15, 0.5, "°C", "mdi:snowflake-alert"),
-    Threshold("temp_max", "Température eau maximum", 32, 20, 40, 0.5, "°C", "mdi:thermometer-high"),
+    Threshold("temp_min", "Gel – seuil", 4, -5, 15, 0.5, "°C", "mdi:snowflake-alert"),
+    Threshold("temp_max", "Eau chaude – seuil", 32, 20, 40, 0.5, "°C", "mdi:thermometer-high"),
     Threshold("tank_min", "Niveau cuve minimum", 15, 0, 50, 1, "%", "mdi:cup-water"),
     Threshold("offline_min", "Délai hors ligne", 10, 1, 120, 1, "min", "mdi:timer-alert"),
 ]
@@ -57,13 +57,17 @@ class Alert:
     threshold: str  # clé de THRESHOLDS, ou préfixe de bande (ph/orp) pour q_*
     delay_min: float  # -1 : délai pris dans le seuil (offline_min)
     unit: str = ""
-    require_on: str | None = None
+    require_on: str | None = None  # alerte en pause tant que cette entité n'est pas « on »
     soft: bool = False  # notifié seulement si l'option « notify_medium » est active
 
 
+# pH et ORP : mesures peu fiables pompe arrêtée, donc alertes seulement filtration en marche.
+# Gel, eau chaude, cuves et contrôleur hors ligne restent actifs en permanence.
 ALERTS = [
-    Alert("ph_bad", "pH mauvais", "mdi:ph", "sensor.{p}_io_ph", "q_bad", "ph", 30),
-    Alert("ph_medium", "pH à surveiller", "mdi:ph", "sensor.{p}_io_ph", "q_medium", "ph", 60, soft=True),
+    Alert("ph_bad", "pH mauvais", "mdi:ph", "sensor.{p}_io_ph", "q_bad", "ph", 30,
+          require_on="switch.{p}_io_flt_pmp"),
+    Alert("ph_medium", "pH à surveiller", "mdi:ph", "sensor.{p}_io_ph", "q_medium", "ph", 60,
+          require_on="switch.{p}_io_flt_pmp", soft=True),
     Alert("orp_bad", "ORP mauvais", "mdi:flash-alert", "sensor.{p}_io_orp", "q_bad", "orp", 60, "mV",
           require_on="switch.{p}_io_flt_pmp"),
     Alert("orp_medium", "ORP à surveiller", "mdi:flash", "sensor.{p}_io_orp", "q_medium", "orp", 120, "mV",

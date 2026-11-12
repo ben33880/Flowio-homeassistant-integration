@@ -8,10 +8,48 @@ from homeassistant.helpers.event import async_call_later, async_track_state_chan
 from .const import ALERTS, CONF_NOTIFY_MEDIUM, DOMAIN
 from .quality import BAD, MEDIUM, as_float, grade
 
+UNRELIABLE_NOTE = (
+    "Quand la pompe est arrêtée, l'eau stagne autour des sondes : le pH et l'ORP peuvent être erronés. "
+    "Les alertes pH/ORP ne partent que filtration en marche."
+)
+
 
 async def async_setup_entry(hass, entry, async_add_entities):
     rt = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(AlertSensor(rt, a) for a in ALERTS)
+    async_add_entities([*(AlertSensor(rt, a) for a in ALERTS), ReliabilitySensor(rt)])
+
+
+class ReliabilitySensor(BinarySensorEntity):
+    """« Activé » = filtration arrêtée, donc mesures pH/ORP peu fiables. Pas de notification."""
+
+    _attr_has_entity_name = True
+    _attr_should_poll = False
+
+    def __init__(self, rt):
+        self._rt = rt
+        self._flt = rt.resolve("switch.{p}_io_flt_pmp")
+        self._attr_unique_id = f"{rt.prefix}_measures_unreliable"
+        self._attr_name = "Mesures pH/ORP peu fiables (filtration arrêtée)"
+        self._attr_icon = "mdi:alert-circle-outline"
+        self._attr_device_info = rt.device_info
+        self._attr_extra_state_attributes = {"note": UNRELIABLE_NOTE}
+
+    async def async_added_to_hass(self):
+        self.async_on_remove(async_track_state_change_event(self.hass, [self._flt], self._changed))
+        self._update()
+
+    @callback
+    def _update(self):
+        state = self.hass.states.get(self._flt)
+        if state is None or state.state not in ("on", "off"):
+            self._attr_is_on = None
+        else:
+            self._attr_is_on = state.state == "off"
+
+    @callback
+    def _changed(self, _event):
+        self._update()
+        self.async_write_ha_state()
 
 
 class AlertSensor(BinarySensorEntity):
@@ -29,6 +67,7 @@ class AlertSensor(BinarySensorEntity):
         self._attr_is_on = False
         self._cancel = None
         self._detail = ""
+        self._paused = False
 
     async def async_added_to_hass(self):
         ids = [self._source] + ([self._require] if self._require else [])
@@ -53,6 +92,7 @@ class AlertSensor(BinarySensorEntity):
         else:
             attrs["threshold"] = v.get(a.threshold)
         attrs["snoozed"] = self._rt.is_snoozed(a.key)
+        attrs["paused"] = self._paused
         return attrs
 
     def _limit_text(self) -> str:
@@ -63,8 +103,10 @@ class AlertSensor(BinarySensorEntity):
             return f"délai {float(v[a.threshold]):g} min"
         return f"seuil {float(v[a.threshold]):g}"
 
-    def _condition(self) -> bool:
+    def _condition(self) -> bool | None:
+        """True/False = condition d'alerte ; None = alerte en pause (filtration arrêtée)."""
         a = self._a
+        self._paused = False
         s = self.hass.states.get(self._source)
         if a.op == "unavailable":
             self._detail = "Données indisponibles"
@@ -72,7 +114,8 @@ class AlertSensor(BinarySensorEntity):
         if self._require:
             r = self.hass.states.get(self._require)
             if r is None or r.state != "on":
-                return False
+                self._paused = True
+                return None
         value = as_float(s)
         if value is None:
             return False
@@ -94,10 +137,18 @@ class AlertSensor(BinarySensorEntity):
 
     @callback
     def _reevaluate(self, *_):
-        if not self._condition():
+        cond = self._condition()
+        if cond is None:
+            # Pause : pas de nouveau déclenchement, l'état actuel est conservé et rien n'est notifié.
+            self._cancel_timer()
+            self.async_write_ha_state()
+            return
+        if not cond:
             self._cancel_timer()
             if self._attr_is_on:
                 self._set(False)
+            else:
+                self.async_write_ha_state()
             return
         if self._attr_is_on or self._cancel:
             return
