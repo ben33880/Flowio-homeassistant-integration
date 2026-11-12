@@ -2,6 +2,7 @@ import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.core import callback
+from homeassistant.helpers import selector
 
 from .const import (
     CONF_DIS_SLOT,
@@ -14,7 +15,10 @@ from .const import (
     DOMAIN,
 )
 
-_SLOT = vol.All(vol.Coerce(int), vol.Range(min=0, max=15))
+# Zone de saisie (et non un curseur) pour les slots 0 à 15.
+_SLOT = selector.NumberSelector(
+    selector.NumberSelectorConfig(min=0, max=15, step=1, mode=selector.NumberSelectorMode.BOX)
+)
 
 
 def _schema(d: dict) -> vol.Schema:
@@ -29,14 +33,23 @@ def _schema(d: dict) -> vol.Schema:
     )
 
 
+def _clean(user_input: dict) -> dict:
+    """Le sélecteur numérique renvoie des décimaux : les slots sont enregistrés en entiers."""
+    data = dict(user_input)
+    for key in (CONF_PH_SLOT, CONF_DIS_SLOT):
+        data[key] = int(data[key])
+    return data
+
+
 class FlowioConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     async def async_step_user(self, user_input=None):
         if user_input is not None:
-            await self.async_set_unique_id(user_input[CONF_PREFIX])
+            data = _clean(user_input)
+            await self.async_set_unique_id(data[CONF_PREFIX])
             self._abort_if_unique_id_configured()
-            return self.async_create_entry(title=f"Flow.io ({user_input[CONF_PREFIX]})", data=user_input)
+            return self.async_create_entry(title=f"Flow.io ({data[CONF_PREFIX]})", data=data)
         return self.async_show_form(step_id="user", data_schema=_schema({}))
 
     @staticmethod
@@ -48,6 +61,6 @@ class FlowioConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class FlowioOptionsFlow(config_entries.OptionsFlow):
     async def async_step_init(self, user_input=None):
         if user_input is not None:
-            return self.async_create_entry(data=user_input)
+            return self.async_create_entry(data=_clean(user_input))
         current = {**self.config_entry.data, **self.config_entry.options}
         return self.async_show_form(step_id="init", data_schema=_schema(current))
