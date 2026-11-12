@@ -6,7 +6,7 @@
         "data": {
           "entity_prefix": "Préfixe des entités",
           "notify_service": "Service de notification (ex. notify.mobile_app_xxx)",
-          "mqtt_root": "Racine MQTT du contrôleur (optionnel, ex. flowio/abcd)",
+          "mqtt_root": "Racine MQTT du contrôleur (optionnel, ex. flowio/ESP32-XXXXXX)",
           "ph_slot": "Slot de la pompe pH",
           "disinfection_slot": "Slot de la pompe désinfectant",
           "notify_medium": "Notifier aussi les niveaux « à surveiller »"
@@ -30,7 +30,7 @@
         "data": {
           "entity_prefix": "Préfixe des entités",
           "notify_service": "Service de notification (ex. notify.mobile_app_xxx)",
-          "mqtt_root": "Racine MQTT du contrôleur (optionnel, ex. flowio/abcd)",
+          "mqtt_root": "Racine MQTT du contrôleur (optionnel, ex. flowio/ESP32-XXXXXX)",
           "ph_slot": "Slot de la pompe pH",
           "disinfection_slot": "Slot de la pompe désinfectant",
           "notify_medium": "Notifier aussi les niveaux « à surveiller »"

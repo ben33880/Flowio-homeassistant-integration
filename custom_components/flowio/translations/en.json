@@ -6,7 +6,7 @@
         "data": {
           "entity_prefix": "Entity prefix",
           "notify_service": "Notification service (e.g. notify.mobile_app_xxx)",
-          "mqtt_root": "Controller MQTT root (optional, e.g. flowio/abcd)",
+          "mqtt_root": "Controller MQTT root (optional, e.g. flowio/ESP32-XXXXXX)",
           "ph_slot": "pH pump slot",
           "disinfection_slot": "Disinfectant pump slot",
           "notify_medium": "Also notify for 'to watch' levels"
@@ -30,7 +30,7 @@
         "data": {
           "entity_prefix": "Entity prefix",
           "notify_service": "Notification service (e.g. notify.mobile_app_xxx)",
-          "mqtt_root": "Controller MQTT root (optional, e.g. flowio/abcd)",
+          "mqtt_root": "Controller MQTT root (optional, e.g. flowio/ESP32-XXXXXX)",
           "ph_slot": "pH pump slot",
           "disinfection_slot": "Disinfectant pump slot",
           "notify_medium": "Also notify for 'to watch' levels"
