@@ -12,6 +12,7 @@ CONF_NOTIFY = "notify_service"
 CONF_PH_SLOT = "ph_slot"
 CONF_DIS_SLOT = "disinfection_slot"
 CONF_NOTIFY_MEDIUM = "notify_medium"
+CONF_NOTIFY_DEVICES = "notify_devices"  # liste d'entités switch dont on notifie les changements d'état
 CONF_MQTT_ROOT = "mqtt_root"  # racine MQTT du contrôleur (baseTopic/deviceId), optionnelle
 DEFAULT_PH_SLOT = 1
 DEFAULT_DIS_SLOT = 2

@@ -10,6 +10,7 @@ from .const import (
     CONF_DIS_SLOT,
     CONF_MQTT_ROOT,
     CONF_NOTIFY,
+    CONF_NOTIFY_DEVICES,
     CONF_NOTIFY_MEDIUM,
     CONF_PH_SLOT,
     CONF_PREFIX,
@@ -27,17 +28,27 @@ _SLOT = selector.NumberSelector(
 _PREFIX_RE = re.compile(r"^[a-z0-9]+(?:_[a-z0-9]+)*$")
 
 
-def _schema(d: dict) -> vol.Schema:
-    return vol.Schema(
-        {
-            vol.Required(CONF_PREFIX, default=d.get(CONF_PREFIX, "fio")): str,
-            vol.Required(CONF_NOTIFY, default=d.get(CONF_NOTIFY, "notify.notify")): str,
-            vol.Optional(CONF_MQTT_ROOT, default=d.get(CONF_MQTT_ROOT, "")): str,
-            vol.Required(CONF_PH_SLOT, default=d.get(CONF_PH_SLOT, DEFAULT_PH_SLOT)): _SLOT,
-            vol.Required(CONF_DIS_SLOT, default=d.get(CONF_DIS_SLOT, DEFAULT_DIS_SLOT)): _SLOT,
-            vol.Required(CONF_NOTIFY_MEDIUM, default=d.get(CONF_NOTIFY_MEDIUM, False)): bool,
-        }
-    )
+def _schema(d: dict, equipment: list[dict] | None = None) -> vol.Schema:
+    fields = {
+        vol.Required(CONF_PREFIX, default=d.get(CONF_PREFIX, "fio")): str,
+        vol.Required(CONF_NOTIFY, default=d.get(CONF_NOTIFY, "notify.notify")): str,
+        vol.Optional(CONF_MQTT_ROOT, default=d.get(CONF_MQTT_ROOT, "")): str,
+        vol.Required(CONF_PH_SLOT, default=d.get(CONF_PH_SLOT, DEFAULT_PH_SLOT)): _SLOT,
+        vol.Required(CONF_DIS_SLOT, default=d.get(CONF_DIS_SLOT, DEFAULT_DIS_SLOT)): _SLOT,
+        vol.Required(CONF_NOTIFY_MEDIUM, default=d.get(CONF_NOTIFY_MEDIUM, False)): bool,
+    }
+    if equipment is not None:
+        # Liste des équipements du contrôleur (switch), cases à cocher ; aucune cochée = aucune notification.
+        fields[vol.Optional(CONF_NOTIFY_DEVICES, default=list(d.get(CONF_NOTIFY_DEVICES) or []))] = (
+            selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=equipment,
+                    multiple=True,
+                    mode=selector.SelectSelectorMode.LIST,
+                )
+            )
+        )
+    return vol.Schema(fields)
 
 
 def _clean(user_input: dict) -> dict:
@@ -47,6 +58,8 @@ def _clean(user_input: dict) -> dict:
     for key in (CONF_PH_SLOT, CONF_DIS_SLOT):
         data[key] = int(data[key])
     data[CONF_MQTT_ROOT] = (data.get(CONF_MQTT_ROOT) or "").strip().strip("/")
+    if CONF_NOTIFY_DEVICES in data:
+        data[CONF_NOTIFY_DEVICES] = list(data[CONF_NOTIFY_DEVICES] or [])
     return data
 
 
@@ -87,6 +100,22 @@ class FlowioConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class FlowioOptionsFlow(config_entries.OptionsFlow):
+    def _equipment(self, selected: list[str]) -> list[dict]:
+        """Interrupteurs (switch) du contrôleur déjà connus de Home Assistant, plus ceux déjà choisis."""
+        conf = {**self.config_entry.data, **self.config_entry.options}
+        head = f"switch.{conf.get(CONF_PREFIX, 'fio')}_"
+        items = {
+            st.entity_id: st.attributes.get("friendly_name") or st.entity_id
+            for st in self.hass.states.async_all("switch")
+            if st.entity_id.startswith(head)
+        }
+        for entity_id in selected:
+            items.setdefault(entity_id, entity_id)
+        return [
+            {"value": entity_id, "label": label}
+            for entity_id, label in sorted(items.items(), key=lambda kv: kv[1].lower())
+        ]
+
     async def async_step_init(self, user_input=None):
         errors = {}
         if user_input is not None:
@@ -95,4 +124,7 @@ class FlowioOptionsFlow(config_entries.OptionsFlow):
             if not errors:
                 return self.async_create_entry(data=data)
         current = user_input or {**self.config_entry.data, **self.config_entry.options}
-        return self.async_show_form(step_id="init", data_schema=_schema(current), errors=errors)
+        equipment = self._equipment(list(current.get(CONF_NOTIFY_DEVICES) or []))
+        return self.async_show_form(
+            step_id="init", data_schema=_schema(current, equipment), errors=errors
+        )

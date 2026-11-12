@@ -33,10 +33,12 @@
           "mqtt_root": "Racine MQTT du contrôleur (optionnel, ex. flowio/ESP32-XXXXXX)",
           "ph_slot": "Slot de la pompe pH",
           "disinfection_slot": "Slot de la pompe désinfectant",
-          "notify_medium": "Notifier aussi les niveaux « à surveiller »"
+          "notify_medium": "Notifier aussi les niveaux « à surveiller »",
+          "notify_devices": "Équipements à notifier au démarrage et à l'arrêt"
         },
         "data_description": {
-          "mqtt_root": "Permet de lire le volume réellement injecté, mesuré par le firmware. Laisser vide pour garder l'estimation (temps de marche x débit configuré)."
+          "mqtt_root": "Permet de lire le volume réellement injecté, mesuré par le firmware. Laisser vide pour garder l'estimation (temps de marche x débit configuré).",
+          "notify_devices": "Cochez les équipements (pompes, relais...) publiés par le contrôleur. Aucune case cochée : aucune notification de marche ou d'arrêt. Seuls les équipements déjà connus de Home Assistant sont listés."
         }
       }
     },
