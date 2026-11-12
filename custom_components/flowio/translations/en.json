@@ -6,11 +6,18 @@
         "data": {
           "entity_prefix": "Entity prefix",
           "notify_service": "Notification service (e.g. notify.mobile_app_xxx)",
+          "mqtt_root": "Controller MQTT root (optional, e.g. flowio/abcd)",
           "ph_slot": "pH pump slot",
           "disinfection_slot": "Disinfectant pump slot",
           "notify_medium": "Also notify for 'to watch' levels"
+        },
+        "data_description": {
+          "mqtt_root": "Lets the integration read the volume actually injected, measured by the firmware. Leave empty to keep the estimate (run time x configured flow)."
         }
       }
+    },
+    "error": {
+      "invalid_mqtt_root": "Invalid MQTT root: no wildcards (+ #), spaces or empty segments."
     },
     "abort": {
       "already_configured": "This prefix is already configured."
@@ -22,11 +29,18 @@
         "data": {
           "entity_prefix": "Entity prefix",
           "notify_service": "Notification service (e.g. notify.mobile_app_xxx)",
+          "mqtt_root": "Controller MQTT root (optional, e.g. flowio/abcd)",
           "ph_slot": "pH pump slot",
           "disinfection_slot": "Disinfectant pump slot",
           "notify_medium": "Also notify for 'to watch' levels"
+        },
+        "data_description": {
+          "mqtt_root": "Lets the integration read the volume actually injected, measured by the firmware. Leave empty to keep the estimate (run time x configured flow)."
         }
       }
+    },
+    "error": {
+      "invalid_mqtt_root": "Invalid MQTT root: no wildcards (+ #), spaces or empty segments."
     }
   },
   "entity": {

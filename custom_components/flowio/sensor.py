@@ -1,13 +1,21 @@
+import json
+import logging
+import math
+
+from homeassistant.components import mqtt
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.const import EntityCategory, UnitOfTime
 from homeassistant.core import callback
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.dispatcher import async_dispatcher_connect, async_dispatcher_send
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN, HISTORY_DAYS
+from .const import CONF_MQTT_ROOT, DOMAIN, HISTORY_DAYS
 from .quality import BAD, GOOD, MEDIUM, as_float, grade, worst
+
+_LOGGER = logging.getLogger(__name__)
 
 FILTRATION = "switch.{p}_io_flt_pmp"
 UNRELIABLE_WARNING = (
@@ -33,10 +41,10 @@ async def async_setup_entry(hass, entry, async_add_entities):
             QualitySensor(rt, "ph_quality", "Qualité pH", "mdi:ph", [ph]),
             QualitySensor(rt, "orp_quality", "Qualité ORP", "mdi:flash", [orp]),
             QualitySensor(rt, "water_quality", "Qualité de l'eau", "mdi:pool", [ph, orp]),
-            InjectedSensor(rt, "ph_injected", "pH injecté (estimé)", "ph",
+            InjectedSensor(rt, "ph_injected", "pH injecté", "ph",
                            ["sensor.{p}_pd_ph_pmp_upt", "sensor.{p}_data_{ph_rt}"],
                            "number.{p}_pd1_flow"),
-            InjectedSensor(rt, "dis_injected", "Désinfectant injecté (estimé)", "dis",
+            InjectedSensor(rt, "dis_injected", "Désinfectant injecté", "dis",
                            ["sensor.{p}_pd_chl_pmp_upt", "sensor.{p}_data_{dis_rt}"],
                            "number.{p}_pd2_flow"),
             AutonomySensor(rt, "ph_autonomy", "Autonomie cuve pH", "ph", "sensor.{p}_data_{ph_vol}"),
@@ -109,13 +117,21 @@ class QualitySensor(_Base):
 
 
 class InjectedSensor(RestoreEntity, _Base):
-    """Volume injecté estimé du jour : temps de marche (s) / 3600 x débit configuré (L/h) x 1000."""
+    """Volume injecté du jour.
+
+    Source 1 (si la racine MQTT est configurée) : injected.day_ml mesuré par le firmware sur
+    <racine>/rt/pdm/metrics/pd<slot>, retenu s'il date du jour courant.
+    Source 2 (repli) : estimation = temps de marche (s) / 3600 x débit configuré (L/h) x 1000.
+    """
 
     _attr_native_unit_of_measurement = "mL"
     _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(self, rt, key, name, pump, rt_srcs, flow_src):
         self._model = rt.pumps[pump]
+        self._slot = rt.ph_slot if pump == "ph" else rt.dis_slot
+        self._fw_ml = None
+        self._fw_day = None
         self._rt_srcs = [rt.resolve(s) for s in rt_srcs]
         self._flow_src = rt.resolve(flow_src)
         super().__init__(rt, key, name, "mdi:beaker-outline", [*self._rt_srcs, self._flow_src])
@@ -128,7 +144,33 @@ class InjectedSensor(RestoreEntity, _Base):
             except (TypeError, ValueError):
                 pass
         await super().async_added_to_hass()
+        await self._subscribe_firmware()
         async_dispatcher_send(self.hass, self._rt.signal_pumps)
+
+    async def _subscribe_firmware(self):
+        root = (self._rt.conf.get(CONF_MQTT_ROOT) or "").strip().strip("/")
+        if not root:
+            return
+        topic = f"{root}/rt/pdm/metrics/pd{self._slot}"
+        try:
+            unsubscribe = await mqtt.async_subscribe(self.hass, topic, self._on_metrics, 0)
+        except HomeAssistantError as err:
+            _LOGGER.warning("Abonnement MQTT impossible (%s) : estimation utilisée (%s)", topic, err)
+            return
+        self.async_on_remove(unsubscribe)
+
+    @callback
+    def _on_metrics(self, msg) -> None:
+        try:
+            data = json.loads(msg.payload)
+            value = float(data["injected"]["day_ml"])
+        except (TypeError, ValueError, KeyError):
+            return
+        if not math.isfinite(value) or value < 0:
+            return
+        self._fw_ml = value
+        self._fw_day = dt_util.now().date()
+        self._refresh()
 
     def _runtime_state(self):
         """Première source du compteur de marche qui a une valeur exploitable."""
@@ -150,11 +192,20 @@ class InjectedSensor(RestoreEntity, _Base):
         if value is not None and value >= 0:
             factor = _FLOW.get(_unit(flow_state, "l/h"))
             lph = value * factor if factor else None
+        estimate = round(secs / 3600 * lph * 1000) if secs is not None and lph is not None else None
+
+        firmware = self._fw_ml if self._fw_day == dt_util.now().date() else None
+        if firmware is not None:
+            ml, origin = round(firmware), "firmware"
+        elif estimate is not None:
+            ml, origin = estimate, "estimation"
+        else:
+            ml, origin = None, None
+
         m = self._model
-        if secs is None or lph is None:
+        if ml is None:
             self._attr_native_value = None
         else:
-            ml = round(secs / 3600 * lph * 1000)
             # Remise à zéro du compteur du jour : le dernier total devient un jour complet.
             if m.last_ml and ml < 0.5 * m.last_ml:
                 m.history = (m.history + [m.last_ml])[-HISTORY_DAYS:]
@@ -162,6 +213,9 @@ class InjectedSensor(RestoreEntity, _Base):
             m.last_ml = ml
             self._attr_native_value = ml
         self._attr_extra_state_attributes = {
+            "value_source": origin,
+            "firmware_day_ml": self._fw_ml,
+            "estimated_ml": estimate,
             "history_ml": list(m.history),
             "runtime_source": source,
             "runtime_s": secs,

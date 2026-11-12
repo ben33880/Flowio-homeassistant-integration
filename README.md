@@ -4,7 +4,7 @@ Intégration personnalisée (version 0.1.0) pour le firmware Flow.io-Waveshare. 
 
 - les cartes Lovelace Flow.io (dépôt `christophebelmont/flowio-home-assistant-cards`, version épinglée dans le workflow de release, bundle servi automatiquement) ;
 - des plages de qualité réglables (entités `number`) ;
-- des capteurs de qualité, de volumes injectés estimés et d'autonomie des cuves ;
+- des capteurs de qualité, de volumes injectés et d'autonomie des cuves ;
 - des alertes (entités `binary_sensor`, classe problème) avec notifications et boutons d'action ;
 - un diagnostic et des réparations Home Assistant ;
 - des services pour le forçage temporaire et les actions de maintenance.
@@ -19,7 +19,8 @@ Ajouter ce dépôt comme dépôt personnalisé HACS (catégorie Intégration), i
 
 - Préfixe des entités (`fio` par défaut).
 - Service de notification (ex. `notify.mobile_app_xxx`).
-- Slots des pompes pH et désinfectant (1 et 2 par défaut), utilisés pour les cuves (`data_(112+2×slot)` volume en L, `data_(113+2×slot)` remplissage en %) et, en repli, pour les compteurs de marche (`data_(144+slot)`).
+- Racine MQTT du contrôleur (optionnelle, de la forme `baseTopic/deviceId`) : permet de lire le volume réellement injecté mesuré par le firmware. Vide, l'estimation est utilisée.
+- Slots des pompes pH et désinfectant (1 et 2 par défaut), utilisés pour les cuves (`data_(112+2×slot)` volume en L, `data_(113+2×slot)` remplissage en %), pour le topic des volumes injectés (`pd<slot>`) et, en repli, pour les compteurs de marche (`data_(144+slot)`).
 - Option : notifier aussi les niveaux « à surveiller ».
 
 ## Entités lues (vérifiées dans le firmware)
@@ -32,6 +33,7 @@ Ajouter ce dépôt comme dépôt personnalisé HACS (catégorie Intégration), i
 | Marche du jour | `sensor.<préfixe>_pd_ph_pmp_upt` / `pd_chl_pmp_upt`, sinon `data_(144+slot)` |
 | Cuves | `sensor.<préfixe>_data_(112+2×slot)` (L) et `data_(113+2×slot)` (%) |
 | Temps de fonctionnement du contrôleur (minutes) | `sensor.<préfixe>_sys_upt_mn` |
+| Volume injecté mesuré (optionnel) | topic MQTT `<racine>/rt/pdm/metrics/pd<slot>`, champ `injected.day_ml` |
 
 Dans le catalogue du firmware, les valeurs `data_*` (cuves, compteurs) ne sont publiées dans Home Assistant que si elles sont activées côté firmware. Les unités de temps `s`, `min`, `mn` et `h` sont reconnues.
 
@@ -52,9 +54,14 @@ Capteurs : `Qualité pH`, `Qualité ORP`, `Qualité de l'eau` (le pire des deux)
 
 ## Volumes injectés et autonomie
 
-- Volume injecté estimé du jour = temps de marche (s) / 3600 × débit configuré (L/h) × 1000. C'est une estimation, pas une mesure.
-- Autonomie de la cuve = volume restant / moyenne des totaux journaliers (7 derniers jours). Elle apparaît après au moins un jour complet observé.
-- Changer le débit réestime tout le compteur du jour, ce qui peut fausser le total d'une journée.
+Les capteurs `pH injecté` et `Désinfectant injecté` donnent le volume du jour en mL. Leur attribut `value_source` indique l'origine :
+
+- `firmware` : volume réellement injecté (`injected.day_ml`), lu sur `<racine>/rt/pdm/metrics/pd<slot>` quand la racine MQTT est configurée. Il n'est retenu que s'il a été reçu le jour courant (le firmware remet ses compteurs à zéro à minuit) ;
+- `estimation` : repli quand la racine est vide, que le topic n'est pas publié, que le message est invalide ou que la valeur date d'hier. Estimation = temps de marche (s) / 3600 × débit configuré (L/h) × 1000.
+
+Les attributs `firmware_day_ml` et `estimated_ml` permettent de comparer les deux. Avec l'estimation, changer le débit réestime tout le compteur du jour.
+
+Autonomie de la cuve = volume restant / moyenne des totaux journaliers (7 derniers jours), calculés avec la source disponible. Elle apparaît après au moins un jour complet observé.
 
 ## Alertes
 
