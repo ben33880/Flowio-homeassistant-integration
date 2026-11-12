@@ -18,9 +18,36 @@ from .const import (
     THRESHOLDS,
 )
 from .health import HealthMonitor
+from .quality import as_float
 
 # Alertes de cuve basse -> cuve concernée par le bouton « Cuve remplie ».
 REFILL_ALERTS = {"ph_tank_low": "ph", "dis_tank_low": "disinfection"}
+
+# Couleurs de l'application Android (ignorées ailleurs).
+COLOR_ALERT = "#F44336"
+COLOR_OK = "#4CAF50"
+COLOR_OFF = "#607D8B"
+
+ALERT_CHANNEL = "Flow.io alertes"
+
+
+def fmt(value: float, decimals: int) -> str:
+    """Nombre à la française (virgule décimale)."""
+    return f"{value:.{decimals}f}".replace(".", ",")
+
+
+def format_duration(delta: timedelta) -> str:
+    seconds = max(int(delta.total_seconds()), 0)
+    if seconds < 60:
+        return f"{seconds} s"
+    minutes = seconds // 60
+    if minutes < 60:
+        return f"{minutes} min"
+    hours, minutes = divmod(minutes, 60)
+    if hours < 24:
+        return f"{hours} h {minutes:02d}"
+    days, hours = divmod(hours, 24)
+    return f"{days} j {hours} h"
 
 
 @dataclass
@@ -72,9 +99,13 @@ class FlowioRuntime:
         until = self.snoozed.get(key)
         return until is not None and dt_util.utcnow() < until
 
+    @property
+    def is_mobile(self) -> bool:
+        return (self.conf.get(CONF_NOTIFY) or "").startswith("notify.mobile_app_")
+
     def _actions(self, key: str) -> list[dict] | None:
         # Actions dynamiques : application Android uniquement (service notify.mobile_app_*).
-        if not (self.conf.get(CONF_NOTIFY) or "").startswith("notify.mobile_app_"):
+        if not self.is_mobile:
             return None
         head = f"flowio_{self.prefix}_"
         actions = [{"action": f"{head}snooze_{key}", "title": "Reporter 24 h"}]
@@ -82,19 +113,72 @@ class FlowioRuntime:
             actions.insert(0, {"action": f"{head}refill_{key}", "title": "Cuve remplie"})
         return actions
 
+    def context_line(self, about: str | None = None) -> str:
+        """Ligne de contexte : température de l'eau, pH, ORP, puis état de la filtration."""
+        states = self.hass.states
+        parts = []
+        temp = as_float(states.get(self.resolve("sensor.{p}_io_wat_tmp")))
+        if temp is not None:
+            parts.append(f"🌡️ {fmt(temp, 1)} °C")
+        ph = as_float(states.get(self.resolve("sensor.{p}_io_ph")))
+        if ph is not None:
+            parts.append(f"pH {fmt(ph, 2)}")
+        orp = as_float(states.get(self.resolve("sensor.{p}_io_orp")))
+        if orp is not None:
+            parts.append(f"ORP {fmt(orp, 0)} mV")
+        line = " · ".join(parts)
+        flt_id = self.resolve("switch.{p}_io_flt_pmp")
+        flt = states.get(flt_id)
+        if flt is not None and flt.state in ("on", "off") and about != flt_id:
+            note = "💧 Filtration en marche" if flt.state == "on" else "💤 Filtration arrêtée"
+            line = f"{line}\n{note}" if line else note
+        return line
+
     async def async_notify(self, title: str, message: str, tag: str, alert_on: bool | None = None) -> None:
         """Notification d'alerte : supprimée si l'alerte est reportée ; boutons seulement au déclenchement."""
         if self.is_snoozed(tag):
             return
-        await self.async_send(title, message, tag, self._actions(tag) if alert_on else None)
+        if alert_on is True:
+            style = {
+                "color": COLOR_ALERT,
+                "notification_icon": "mdi:alert-circle",
+                "channel": ALERT_CHANNEL,
+                "importance": "high",
+                "priority": "high",
+                "ttl": 0,
+            }
+        elif alert_on is False:
+            style = {"color": COLOR_OK, "notification_icon": "mdi:check-circle", "channel": ALERT_CHANNEL}
+        else:
+            style = None
+        await self.async_send(
+            title, message, tag, self._actions(tag) if alert_on else None, style=style, context=True
+        )
 
-    async def async_send(self, title: str, message: str, tag: str, actions: list[dict] | None = None) -> None:
+    async def async_send(
+        self,
+        title: str,
+        message: str,
+        tag: str,
+        actions: list[dict] | None = None,
+        style: dict | None = None,
+        context: bool = False,
+        about: str | None = None,
+    ) -> None:
         service = self.conf.get(CONF_NOTIFY)
         if not service or "." not in service:
             return
         domain, name = service.split(".", 1)
+        if context:
+            extra = self.context_line(about)
+            if extra:
+                message = f"{message}\n{extra}"
         # Le préfixe dans le tag évite que deux installations se remplacent mutuellement.
         data = {"tag": f"flowio_{self.prefix}_{tag}"}
+        if self.is_mobile:
+            data["group"] = f"flowio_{self.prefix}"
+            if style:
+                data.update(style)
         if actions:
             data["actions"] = actions
         await self.hass.services.async_call(
