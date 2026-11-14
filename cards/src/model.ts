@@ -62,7 +62,6 @@ export interface PoolConfig {
   display: DisplayConfig;
   tank_slots: TankSlots;
   runtime_slots: RuntimeSlots;
-  device_slot: number;
   visuals: Visuals;
 }
 
@@ -102,7 +101,7 @@ export function normalizeConfig(input: unknown): PoolConfig {
   }
 
   const title = raw.title ?? 'Supervision';
-  if (typeof title !== 'string') throw new Error('Titre invalide');
+  if (typeof title !== 'string' || !title.trim()) throw new Error('Titre invalide');
   const grid_options = raw.grid_options === undefined ? undefined : configObject(raw.grid_options);
   const d = raw.display === undefined ? {} : configObject(raw.display);
   for (const key of Object.keys(d)) {
@@ -139,11 +138,6 @@ export function normalizeConfig(input: unknown): PoolConfig {
     tank_slots[key] = n;
   }
 
-  const device_slot = raw.device_slot ?? 0;
-  if (typeof device_slot !== 'number' || !Number.isInteger(device_slot) || device_slot < 0 || device_slot > 15) {
-    throw new Error('Slot équipement attendu entre 0 et 15');
-  }
-
   return {
     type: 'custom:flowio-pool-card',
     title,
@@ -151,7 +145,6 @@ export function normalizeConfig(input: unknown): PoolConfig {
     display,
     tank_slots,
     runtime_slots: normalizeRuntimeSlots(raw.runtime_slots),
-    device_slot,
     visuals: normalizeVisuals(raw.visuals)
   };
 }
@@ -216,7 +209,7 @@ export function expectedRoles(c: PoolConfig, prefix: string, treatment?: Treatme
   ])];
 }
 
-export function expectedBindings(c: PoolConfig, hass: Hass | undefined, prefix: string) {
+export function expectedBindings(c: PoolConfig, hass: Hass | undefined, prefix: string, filtrationSlot = 0) {
   const treatment = treatmentFromFirmware(hass, prefix);
   const all = [
     ...expectedRoles(c, prefix, treatment).map(role => ({ id: idFor(c, role, prefix), label: roleLabel(role) })),
@@ -227,7 +220,7 @@ export function expectedBindings(c: PoolConfig, hass: Hass | undefined, prefix: 
     ...visibleModes(c.display.modes, c.display.equipment, treatment).map(mode => ({ id: modeId(prefix, mode), label: MODES[mode].label })),
     ...c.display.timing.flatMap(item => timingBindings(prefix, c.runtime_slots, item)),
     ...(c.display.values_telemetry ? calculatedBindings(prefix, c.display.calculated_values) : []),
-    ...(c.display.values_telemetry ? deviceMetricBindings(prefix, c.device_slot, c.display.device_metrics) : []),
+    ...(c.display.values_telemetry ? deviceMetricBindings(prefix, filtrationSlot, c.display.device_metrics) : []),
     ...operationBindings(prefix, configuredOperations(c, treatment)),
     ...systemBindings(prefix, c.display.information),
     ...(c.display.information.includes('system') ? powerBindings(prefix) : [])
