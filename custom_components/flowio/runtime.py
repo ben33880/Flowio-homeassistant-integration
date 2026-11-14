@@ -39,6 +39,11 @@ COLOR_OK = "#4CAF50"
 COLOR_OFF = "#607D8B"
 COLOR_WARN = "#FF9800"
 
+# iPhone : la couleur n'est visible que sur une notification de communication, qui exige une icône.
+# Icône de secours quand l'équipement n'en a pas ; glyphe blanc pour rester lisible sur le fond coloré.
+DEFAULT_ICON = "mdi:pool"
+IOS_GLYPH_COLOR = "#FFFFFF"
+
 # Qualité d'une valeur : couleur du texte (Android) et pastille (Android et iPhone).
 GRADE_COLORS = {GOOD: "#4CAF50", MEDIUM: COLOR_WARN, BAD: "#F44336"}
 GRADE_DOTS = {GOOD: "🟢", MEDIUM: "🟠", BAD: "🔴"}
@@ -178,7 +183,7 @@ class FlowioRuntime:
         if not html:
             return f"{label} {text}{dot}"
         color = GRADE_COLORS.get(level)
-        shown = f'<font color="{color}">{escape(text)}</font>' if color else escape(text)
+        shown = f'<span style="color: {color}">{escape(text)}</span>' if color else escape(text)
         return f"<b>{label}</b> {shown}{dot}"
 
     def context_line(self, html: bool = False) -> str:
@@ -213,7 +218,7 @@ class FlowioRuntime:
         flt = self.hass.states.get(self.resolve("switch.{p}_io_flt_pmp"))
         if flt is not None and flt.state == "off":
             note = "⚠️ Filtration arrêtée : pH et ORP peu fiables"
-            lines.append(f'<i><font color="{COLOR_WARN}">{note}</font></i>' if html else note)
+            lines.append(f'<i><span style="color: {COLOR_WARN}">{note}</span></i>' if html else note)
         return ("<br>" if html else "\n").join(lines)
 
     async def async_notify(self, title: str, message: str, tag: str, alert_on: bool | None = None) -> None:
@@ -265,7 +270,7 @@ class FlowioRuntime:
         """Envoie la notification à chaque appareil choisi, avec le format de sa plateforme.
 
         Android : HTML (gras, couleurs), canal, priorité, clickAction. iPhone : texte natif, url, niveau
-        d'interruption. Un échec sur un appareil n'empêche pas les autres.
+        d'interruption, couleur du fond de l'icône. Un échec sur un appareil n'empêche pas les autres.
         """
         targets, _missing = self.resolve_targets()
         if not targets:
@@ -278,12 +283,12 @@ class FlowioRuntime:
             data: dict = {"tag": f"flowio_{self.prefix}_{tag}", "group": f"flowio_{self.prefix}"}
             if color:
                 data["color"] = color
-            if icon:
-                data["notification_icon"] = icon
+            if icon or color:
+                data["notification_icon"] = icon or DEFAULT_ICON
             if target.android:
                 body, extra, sep = escape(message), rich, "<br>"
                 if body and color:
-                    body = f'<b><font color="{color}">{body}</font></b>'
+                    body = f'<b><span style="color: {color}">{body}</span></b>'
                 if channel:
                     data["channel"] = channel
                 if urgent:
@@ -292,6 +297,8 @@ class FlowioRuntime:
                     data["clickAction"] = url
             else:
                 body, extra, sep = message, plain, "\n"
+                if color:
+                    data["notification_icon_color"] = IOS_GLYPH_COLOR
                 if url:
                     data["url"] = url
                 if level:
@@ -334,8 +341,7 @@ class FlowioRuntime:
             if color:
                 data["color"] = color
                 data["notification_icon_color"] = color
-            if icon:
-                data["notification_icon"] = icon
+            data["notification_icon"] = icon or DEFAULT_ICON
             if url:
                 data["url"] = url
             await self._deliver(target, title, message or "En marche", data)
