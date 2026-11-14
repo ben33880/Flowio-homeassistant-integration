@@ -5,7 +5,6 @@ import { scheduleWindow, plannedDuration } from './filtration-schedule';
 import { normalizeFiltrationConfig, type FiltrationConfig } from './filtration-model';
 import { loadInstallations, selectInstallation, type ConfigConnection, type Installation } from './integration-config';
 
-const SLOTS: RuntimeSlots = { filtration: 0, ph: 1, disinfection: 2 };
 const TICKS = ['00:00', '06:00', '12:00', '18:00', '24:00'];
 type ConnectedHass = Hass & Partial<ConfigConnection> & { connection?: unknown };
 
@@ -86,7 +85,12 @@ class FlowioFiltrationCard extends LitElement {
     if (!config || !hass) return html`<ha-card><div class=body>En attente de Home Assistant…</div></ha-card>`;
     if (this.configError) return html`<ha-card><div class=body><p role=alert>${this.configError}</p></div></ha-card>`;
     if (!this.installation) return html`<ha-card><div class=body>Chargement des réglages de l’intégration Flow.io…</div></ha-card>`;
-    const [startBinding, stopBinding] = timingBindings(this.installation.prefix, SLOTS, 'filtration_schedule');
+    const slots: RuntimeSlots = {
+      filtration: this.installation.filtration_slot,
+      ph: this.installation.ph_slot,
+      disinfection: this.installation.disinfection_slot
+    };
+    const [startBinding, stopBinding] = timingBindings(this.installation.prefix, slots, 'filtration_schedule');
     const start = hass.states[startBinding.id], stop = hass.states[stopBinding.id];
     const window = scheduleWindow(available(start) ? start.state : undefined, available(stop) ? stop.state : undefined);
     const clock = this.clock();
