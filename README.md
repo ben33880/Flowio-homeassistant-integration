@@ -127,8 +127,9 @@ Au démarrage, la première ligne est par exemple « Filtration : démarrage à 
 
 - La première ligne (le titre) donne l'équipement, l'action, l'heure, l'auteur et, à l'arrêt seulement, la durée de fonctionnement. Le récapitulatif suit en dessous.
 - L'icône de la notification est celle de l'entité (celle publiée par le firmware, ou celle que tu as choisie dans Home Assistant).
+- Toucher la notification ouvre la fiche de l'équipement dans Home Assistant.
 - L'auteur vient d'une commande Home Assistant passée dans les 2 minutes qui précèdent le changement : le nom de l'utilisateur, « une automatisation ou un script », ou « Home Assistant ». Sans commande de ce genre, le changement vient du contrôleur (programmation ou commande locale) et la ligne indique « par le contrôleur ».
-- Chaque équipement a sa propre notification, qui remplace la précédente.
+- Chaque équipement a sa propre notification, qui remplace la précédente sans sonner une seconde fois.
 - Les passages par `unavailable` ou `unknown` (redémarrage, perte de lien) ne notifient pas.
 
 La durée se base sur le dernier changement d'état connu de Home Assistant. Juste après un redémarrage de Home Assistant, la première durée affichée est donc plus courte que la réalité.
@@ -136,6 +137,8 @@ La durée se base sur le dernier changement d'état connu de Home Assistant. Jus
 ### Récapitulatif
 
 Sous chaque notification d'alerte ou d'équipement : pH et ORP, température de l'eau et de l'air, pression. Une ligne est omise si ses mesures sont indisponibles. Les unités sont celles publiées par le firmware.
+
+Sur Android, les libellés sont en gras et les valeurs de pH et d'ORP sont colorées selon la qualité : vert (bon), orange (moyen), rouge (mauvais), d'après les plages de la section Qualité de l'eau. Ce rendu n'est utilisé que si le service `notify.mobile_app_*` correspond à un appareil Android connu de Home Assistant. Sinon (iPhone, autre service), le récapitulatif est en texte simple. Les couleurs peuvent mal s'afficher en mode sombre.
 
 ### Boutons (Android)
 
@@ -190,6 +193,7 @@ Pour dépanner, utilise Appareils et services → Flow.io → Télécharger les 
 | Aucune notification | Vérifie le service de notification (réparation dédiée) et le canal Android du téléphone |
 | Pas de notification d'équipement | Vérifie que l'équipement est coché dans **Configurer** et active le niveau debug pour voir les changements d'état reçus |
 | Pas de couleur ni de boutons | Le service n'est pas de la forme `notify.mobile_app_*` |
+| Récapitulatif en texte simple sur Android | Le service ne correspond pas à un appareil Android enregistré dans Home Assistant ; vérifie le nom `notify.mobile_app_<appareil>` |
 | Aucun équipement dans la liste à cocher | Le contrôleur n'a pas encore publié ses `switch` dans Home Assistant, ou le préfixe est faux |
 
 ## Documentation du projet et release
