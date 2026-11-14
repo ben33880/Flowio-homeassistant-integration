@@ -56,6 +56,13 @@ def fmt(value: float, decimals: int) -> str:
     return f"{value:.{decimals}f}".replace(".", ",")
 
 
+def fmt_hour(hours: float) -> str:
+    """Heure décimale du firmware : 9 -> 9h, 9.5 -> 9h30."""
+    whole = int(hours)
+    minutes = int(round((hours - whole) * 60))
+    return f"{whole}h{minutes:02d}" if minutes else f"{whole}h"
+
+
 def format_duration(delta: timedelta) -> str:
     seconds = max(int(delta.total_seconds()), 0)
     if seconds < 60:
@@ -186,12 +193,32 @@ class FlowioRuntime:
         shown = f'<span style="color: {color}">{escape(text)}</span>' if color else escape(text)
         return f"<b>{label}</b> {shown}{dot}"
 
+    def _tank(self, label: str, volume: str, percent: str, html: bool = False) -> str | None:
+        """Cuve : volume restant et pourcentage ; pastille rouge sous le seuil d'alerte, orange sous le double."""
+        vol_state = self.hass.states.get(self.resolve(volume))
+        vol, pct = as_float(vol_state), as_float(self.hass.states.get(self.resolve(percent)))
+        if vol is None and pct is None:
+            return None
+        parts = []
+        if vol is not None:
+            unit = vol_state.attributes.get("unit_of_measurement") or "L"
+            parts.append(f"{fmt(vol, 1)} {unit}")
+        if pct is not None:
+            text = f"{fmt(pct, 0)} %"
+            parts.append(f"({text})" if vol is not None else text)
+        dot = ""
+        if pct is not None:
+            minimum = self.values["tank_min"]
+            dot = " " + (GRADE_DOTS[BAD] if pct < minimum else GRADE_DOTS[MEDIUM] if pct < 2 * minimum else GRADE_DOTS[GOOD])
+        value = " ".join(parts)
+        return f"<b>{label}</b> {escape(value)}{dot}" if html else f"{label} {value}{dot}"
+
     def context_line(self, html: bool = False) -> str:
         """Récapitulatif : une ligne par groupe, chacune avec son emoji.
 
-        🧪 pH et ORP (pastille de qualité), 🌡️ eau et air, 📊 pression. Filtration arrêtée : une ligne
-        ⚠️ prévient que le pH et l'ORP sont peu fiables. En HTML (Android) : libellés en gras, valeurs
-        de pH et d'ORP colorées selon la qualité, avertissement en italique orange.
+        🧪 pH et ORP (pastille de qualité), 🌡️ eau et air, 📊 pression, 🧴 cuves (litres et pourcentage).
+        Filtration arrêtée : une ligne ⚠️ prévient que le pH et l'ORP sont peu fiables. En HTML (Android) :
+        libellés en gras, valeurs de pH et d'ORP colorées selon la qualité, avertissement en italique orange.
         """
         groups = [
             (
@@ -209,6 +236,13 @@ class FlowioRuntime:
                 ],
             ),
             ("📊", [self._reading("sensor.{p}_io_psi", "Pression", 1, html=html)]),
+            (
+                "🧴",
+                [
+                    self._tank("Cuve pH", "sensor.{p}_data_{ph_vol}", "sensor.{p}_data_{ph_pct}", html),
+                    self._tank("Cuve désinf.", "sensor.{p}_data_{dis_vol}", "sensor.{p}_data_{dis_pct}", html),
+                ],
+            ),
         ]
         lines = []
         for icon, items in groups:
@@ -220,6 +254,42 @@ class FlowioRuntime:
             note = "⚠️ Filtration arrêtée : pH et ORP peu fiables"
             lines.append(f'<i><span style="color: {COLOR_WARN}">{note}</span></i>' if html else note)
         return ("<br>" if html else "\n").join(lines)
+
+    def filtration_window(self) -> tuple[float, float, datetime, datetime] | None:
+        """Plage de filtration publiée par le firmware : (début h, fin h, début, fin) ou None si continue/inconnue."""
+        start_state = self.hass.states.get(self.resolve("sensor.{p}_pl_flt_start"))
+        start = as_float(start_state)
+        stop = as_float(self.hass.states.get(self.resolve("sensor.{p}_pl_flt_stop")))
+        if start is None or stop is None or start == stop:
+            return None
+        scheduled = start_state.attributes.get("scheduled_minutes")
+        try:
+            if scheduled is not None and float(scheduled) >= 1440:
+                return None  # filtration continue
+        except (TypeError, ValueError):
+            pass
+        now = dt_util.now()
+        midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        begin, end = midnight + timedelta(hours=start), midnight + timedelta(hours=stop)
+        if end <= begin:  # la plage franchit minuit
+            if now < end:
+                begin -= timedelta(days=1)
+            else:
+                end += timedelta(days=1)
+        return start, stop, begin, end
+
+    def filtration_progress(self) -> tuple[int, str] | None:
+        """Avancement de la plage de filtration : (pourcentage, texte) ou None."""
+        window = self.filtration_window()
+        if window is None:
+            return None
+        start, stop, begin, end = window
+        now = dt_util.now()
+        percent = int(min(max((now - begin) / (end - begin), 0), 1) * 100)
+        span = f"Plage {fmt_hour(start)}–{fmt_hour(stop)}"
+        if now >= end:
+            return percent, f"⏳ {span} terminée"
+        return percent, f"⏳ {span} · reste {format_duration(end - now)}"
 
     async def async_notify(self, title: str, message: str, tag: str, alert_on: bool | None = None) -> None:
         """Notification d'alerte : supprimée si l'alerte est reportée ; boutons seulement au déclenchement."""
@@ -321,30 +391,43 @@ class FlowioRuntime:
         color: str | None = None,
         icon: str | None = None,
         url: str | None = None,
+        progress: tuple[int, str] | None = None,
+        update: bool = False,
     ) -> None:
-        """Suivi en direct : Live Activity (iPhone) / Live Update (Android), avec chronomètre depuis le démarrage.
+        """Suivi en direct : Live Activity (iPhone) / Live Update (Android).
 
-        Le titre est figé à la création ; le chronomètre tourne sur le téléphone sans autre envoi.
+        Sans progression : chronomètre depuis le démarrage, qui tourne sur le téléphone sans autre envoi.
+        Avec progression (pourcentage, texte) : barre figée à la position envoyée, à rafraîchir ; le
+        chronomètre est alors abandonné, car ils ne se combinent pas. Le titre est figé à la création.
         Un téléphone qui ne gère pas la fonction affiche une notification normale.
         """
         targets, _missing = self.resolve_targets()
-        message = self.context_line(html=False) if self.conf.get(CONF_NOTIFY_RECAP, True) else ""
+        recap = self.context_line(html=False) if self.conf.get(CONF_NOTIFY_RECAP, True) else ""
+        data: dict = {"tag": self._live_tag(tag), "live_update": True}
+        if progress is not None:
+            percent, text = progress
+            data.update({"progress": percent, "progress_max": 100, "critical_text": f"{percent} %"})
+            if update:
+                data["alert_once"] = True
+            message = "\n".join(part for part in (text, recap) if part)
+        else:
+            data.update(
+                {
+                    "chronometer": True,
+                    "when": int(started.timestamp()),
+                    "when_relative": False,
+                    "critical_text": "En marche",
+                }
+            )
+            message = recap or "En marche"
+        if color:
+            data["color"] = color
+            data["notification_icon_color"] = color
+        data["notification_icon"] = icon or DEFAULT_ICON
+        if url:
+            data["url"] = url
         for target in targets:
-            data: dict = {
-                "tag": self._live_tag(tag),
-                "live_update": True,
-                "chronometer": True,
-                "when": int(started.timestamp()),
-                "when_relative": False,
-                "critical_text": "En marche",
-            }
-            if color:
-                data["color"] = color
-                data["notification_icon_color"] = color
-            data["notification_icon"] = icon or DEFAULT_ICON
-            if url:
-                data["url"] = url
-            await self._deliver(target, title, message or "En marche", data)
+            await self._deliver(target, title, message, dict(data))
 
     async def async_clear_live(self, tag: str) -> None:
         """Termine le suivi en direct et retire la notification correspondante."""

@@ -1,11 +1,16 @@
 import logging
 from collections import deque
+from datetime import timedelta
 from time import monotonic
 
 from homeassistant.const import EVENT_CALL_SERVICE
 from homeassistant.core import callback
 from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.event import async_call_later, async_track_state_change_event
+from homeassistant.helpers.event import (
+    async_call_later,
+    async_track_state_change_event,
+    async_track_time_interval,
+)
 from homeassistant.util import dt as dt_util
 
 from .const import (
@@ -25,6 +30,8 @@ RELIABLE_AFTER = 120  # secondes : une durée n'est fiable que si le démarrage 
 # Suivi en direct : la carte n'est créée qu'après ce délai de marche. iOS limite les démarrages d'activités
 # par notification ; les marches très courtes (pompes doseuses) épuiseraient ce quota pour rien.
 LIVE_START_DELAY = 60
+# Barre de progression de la filtration : rafraîchie rarement, Apple et Google limitent les envois.
+LIVE_REFRESH = timedelta(minutes=15)
 # Services de l'intégration qui pilotent un équipement (refill_tank et reset_uptime n'en pilotent aucun).
 EQUIPMENT_SERVICES = {"force_equipment", "release_override"}
 
@@ -58,13 +65,21 @@ def async_setup_device_notifications(rt):
     hass = rt.hass
     watched = set(entities)
     live_on = bool(rt.conf.get(CONF_NOTIFY_LIVE, False))
+    filtration = rt.resolve("switch.{p}_io_flt_pmp")
     pending: dict = {}  # entité -> annulation du démarrage différé du suivi en direct
+    refreshing: dict = {}  # entité -> annulation du rafraîchissement de la barre de progression
     # Commandes du forçage du firmware : elles agissent sur n'importe quel équipement.
     generic = tuple(f"{d}.{rt.prefix}_" for d in ("select", "number", "button"))
     commands: deque = deque(maxlen=20)
 
     def _tag(entity_id: str) -> str:
         return f"device_{entity_id.split('.', 1)[1]}"
+
+    def _cancel(entity_id: str) -> None:
+        for registry in (pending, refreshing):
+            cancel = registry.pop(entity_id, None)
+            if cancel:
+                cancel()
 
     def _clear_live(entity_id: str) -> None:
         if live_on:
@@ -95,15 +110,45 @@ def async_setup_device_notifications(rt):
         return fallback
 
     def _schedule_live(new, title: str, tag: str, icon, url: str) -> None:
-        """Crée la carte en direct si l'équipement tourne toujours après LIVE_START_DELAY."""
+        """Crée la carte en direct si l'équipement tourne toujours après LIVE_START_DELAY.
+
+        Filtration avec une plage horaire connue : barre de progression rafraîchie toutes les 15 minutes.
+        Sinon : chronomètre depuis le démarrage.
+        """
         entity_id = new.entity_id
+
+        def _still_running() -> bool:
+            current = hass.states.get(entity_id)
+            return current is not None and current.state == "on" and current.last_changed == new.last_changed
+
+        async def _send(progress, update: bool) -> None:
+            await rt.async_send_live(
+                title,
+                tag,
+                started=new.last_changed,
+                color=COLOR_OK,
+                icon=icon,
+                url=url,
+                progress=progress,
+                update=update,
+            )
+
+        async def _tick(_now) -> None:
+            if not _still_running():
+                _cancel(entity_id)
+                return
+            progress = rt.filtration_progress()
+            if progress is not None:
+                await _send(progress, True)
 
         async def _fire(_now) -> None:
             pending.pop(entity_id, None)
-            current = hass.states.get(entity_id)
-            if current is None or current.state != "on" or current.last_changed != new.last_changed:
+            if not _still_running():
                 return
-            await rt.async_send_live(title, tag, started=new.last_changed, color=COLOR_OK, icon=icon, url=url)
+            progress = rt.filtration_progress() if entity_id == filtration else None
+            await _send(progress, False)
+            if progress is not None:
+                refreshing[entity_id] = async_track_time_interval(hass, _tick, LIVE_REFRESH)
 
         pending[entity_id] = async_call_later(hass, LIVE_START_DELAY, _fire)
 
@@ -148,10 +193,8 @@ def async_setup_device_notifications(rt):
         old, new = event.data.get("old_state"), event.data.get("new_state")
         if old is None or new is None or old.state == new.state:
             return
-        # Un changement d'état annule un démarrage de suivi en direct encore en attente.
-        cancel = pending.pop(new.entity_id, None)
-        if cancel:
-            cancel()
+        # Un changement d'état annule le démarrage en attente et le rafraîchissement du suivi en direct.
+        _cancel(new.entity_id)
         # Perte de lien : la carte en direct ne refléterait plus la réalité, on la retire.
         if new.state not in ("on", "off"):
             if old.state == "on":
@@ -180,8 +223,7 @@ def async_setup_device_notifications(rt):
     def _unsub() -> None:
         for unsub in unsubs:
             unsub()
-        for cancel in pending.values():
-            cancel()
-        pending.clear()
+        for entity_id in {*pending, *refreshing}:
+            _cancel(entity_id)
 
     return _unsub
