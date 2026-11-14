@@ -2,6 +2,55 @@
 
 Les versions antérieures sont dans l'historique Git. Dates au format JJ/MM/AAAA.
 
+Les tags `v0.3.0` et `v0.3.4` ont été créés par le propriétaire. Les versions 0.3.1, 0.3.2, 0.3.3, 0.3.5 et 0.3.6 n'ont pas de tag à la date du 14/11/2026.
+
+## 0.3.6 — 14/11/2026
+
+- Suivi en direct limité à la filtration. L'éclairage et les autres équipements reçoivent leur notification de démarrage tout de suite, sans le délai de 60 secondes. La filtration doit être cochée dans les équipements à notifier.
+- Libellé et description de l'option « Suivre la filtration en direct » mis à jour (en, fr, strings).
+
+## 0.3.5 — 14/11/2026
+
+- « Durée inconnue » : le repère est le démarrage de Home Assistant (`PROCESS_START`, instant d'import du module) et non plus le chargement de l'intégration. Enregistrer les options recharge l'intégration : une durée devenait « inconnue » si l'équipement démarrait dans les 2 minutes qui suivaient.
+
+## 0.3.4 — 14/11/2026
+
+- Suivi en direct de la filtration : barre de progression de la plage prévue (`sensor.<préfixe>_pl_flt_start` et `pl_flt_stop`, heures décimales, attribut `scheduled_minutes`), avec le temps restant, rafraîchie toutes les 15 minutes. Le chronomètre est abandonné dans ce cas, car il ne se combine pas avec une barre figée. Pas de barre pour une filtration continue ; la plage peut franchir minuit.
+- Récapitulatif : ligne 🧴 des cuves, volume restant et pourcentage, avec pastille selon le seuil d'alerte de cuve.
+
+## 0.3.3 — 14/11/2026
+
+- Suivi en direct : la carte n'est créée que si l'équipement tourne encore après 60 secondes (iOS limite les démarrages d'activités par notification).
+- La carte est retirée quand l'équipement devient indisponible, et quand il revient arrêté après une indisponibilité (redémarrage de Home Assistant).
+
+## 0.3.2 — 14/11/2026
+
+- iPhone : icône de secours `mdi:pool` quand l'équipement n'en a pas, pour que la couleur (fond de l'icône d'une notification de communication) reste visible ; glyphe blanc envoyé explicitement.
+- Android : retour à `<span style="color: …">`, la balise de l'exemple de la documentation officielle, à la place de `<font color>`.
+
+## 0.3.1 — 14/11/2026
+
+- Récapitulatif avec emojis : 🧪 pH et ORP avec pastille 🟢🟠🔴, 🌡️ eau et air, 📊 pression, ⚠️ avertissement quand la filtration est arrêtée. Le titre reste sans emoji.
+- Alertes : message précédé de 🚨 au déclenchement et de ✅ au retour à la normale, en gras et coloré sur Android.
+- Nouvelle option « Suivre en direct » (Live Activities iPhone et Live Updates Android), désactivée par défaut, avec chronomètre depuis le démarrage. Restreinte à la filtration en 0.3.6.
+
+## 0.3.0 — 14/11/2026
+
+### Changement de configuration
+
+- Le champ « Service de notification » (`notify_service`) est supprimé, sans repli. Il est remplacé par une liste de téléphones (appareils de l'application mobile Home Assistant). Les groupes `notify` ne sont plus utilisés. La version de l'entrée de configuration passe à 2 : la migration supprime `notify_service` ; aucun téléphone n'est choisi après la migration, il faut les cocher dans Configurer.
+- La réparation « service de notification introuvable » et son flux de correction sont remplacés par « téléphone injoignable », sans correction guidée. L'ancienne réparation est supprimée au démarrage.
+- Diagnostic : les téléphones sont masqués ; le nombre de téléphones choisis et joignables est indiqué.
+
+### Notifications par plateforme
+
+- Chaque téléphone reçoit sa propre notification, avec le format de sa plateforme. Un échec sur un téléphone n'empêche pas les autres.
+- Android : HTML (gras, couleurs selon la qualité), canal, priorité haute pour les alertes, `clickAction`.
+- iPhone : texte simple, `url`, niveau d'interruption, couleur du fond de l'icône.
+- Nouvelles options : notifier les démarrages, notifier les arrêts, ajouter le récapitulatif, niveau d'interruption iPhone des alertes (discret, normal, urgent).
+- Durée à l'arrêt : « durée inconnue » quand le démarrage n'a pas pu être observé de façon fiable (démarré dans les 2 minutes qui suivent le démarrage de Home Assistant), au lieu d'une durée trompeuse.
+- Récapitulatif : ligne d'avertissement quand la filtration est arrêtée (pH et ORP peu fiables).
+
 ## 0.2.5 — 14/11/2026
 
 - Notifications d'équipement : l'option `alert_once` est retirée. Comme un démarrage et un arrêt d'un même équipement partagent le même tag, un démarrage qui remplace la notification d'arrêt restait silencieux. Chaque changement se signale de nouveau.
