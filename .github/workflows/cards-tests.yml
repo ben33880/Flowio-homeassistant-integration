@@ -2,13 +2,10 @@ name: Tests des cartes
 
 on:
   push:
-    paths:
-      - "cards/**"
-      - ".github/workflows/cards-tests.yml"
+    branches:
+      - main
+      - config-unifiee
   pull_request:
-    paths:
-      - "cards/**"
-      - ".github/workflows/cards-tests.yml"
   workflow_dispatch:
 
 jobs:
