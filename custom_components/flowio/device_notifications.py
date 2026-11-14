@@ -90,7 +90,6 @@ def async_setup_device_notifications(rt):
             "channel": DEVICE_CHANNEL,
             "clickAction": target,
             "url": target,
-            "alert_once": True,
         }
         icon = _icon(hass, new)
         if icon:

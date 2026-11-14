@@ -2,6 +2,15 @@
 
 Les versions antérieures sont dans l'historique Git. Dates au format JJ/MM/AAAA.
 
+## 0.2.5 — 14/11/2026
+
+- Notifications d'équipement : l'option `alert_once` est retirée. Comme un démarrage et un arrêt d'un même équipement partagent le même tag, un démarrage qui remplace la notification d'arrêt restait silencieux. Chaque changement se signale de nouveau.
+- Icône et logo Flow.io pour Home Assistant : dossier `custom_components/flowio/brand/` (`icon.png`, `icon@2x.png`, `logo.png`, `logo@2x.png`), pris en compte par Home Assistant 2026.3 ou plus récent.
+
+## 0.2.3 et 0.2.4 — 14/11/2026
+
+Ajustements du workflow de release et du manifest faits à la main par le propriétaire. Voir l'historique Git.
+
 ## 0.2.2 — 14/11/2026
 
 ### Notifications plus lisibles
@@ -18,7 +27,7 @@ Les versions antérieures sont dans l'historique Git. Dates au format JJ/MM/AAAA
 
 - Dans le récapitulatif, les libellés sont en gras et les valeurs de pH et d'ORP sont colorées selon la qualité : vert (bon), orange (moyen), rouge (mauvais). Utilisé seulement si le service `notify.mobile_app_*` correspond à un appareil Android connu ; sinon texte simple.
 - Toucher une notification d'équipement ouvre la fiche de l'équipement.
-- Les notifications d'équipement ne sonnent qu'une fois quand elles en remplacent une autre (`alert_once`).
+- Les notifications d'équipement ne sonnent qu'une fois quand elles en remplacent une autre (`alert_once`). Retiré en 0.2.5.
 
 ## 0.2.1 — 13/11/2026
 

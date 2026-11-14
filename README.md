@@ -23,6 +23,8 @@ Prérequis : l'intégration MQTT de Home Assistant, et le contrôleur Flow.io qu
 
 Mise à jour : HACS propose chaque version publiée. Après une mise à jour, redémarre Home Assistant.
 
+L'icône et le logo Flow.io viennent du dossier `custom_components/flowio/brand/`, pris en compte par Home Assistant 2026.3 ou plus récent.
+
 ## Configuration
 
 Les réglages se font à l'ajout, puis dans Appareils et services → Flow.io → **Configurer**.
@@ -129,7 +131,7 @@ Au démarrage, la première ligne est par exemple « Filtration : démarrage à 
 - L'icône de la notification est celle de l'entité (celle publiée par le firmware, ou celle que tu as choisie dans Home Assistant).
 - Toucher la notification ouvre la fiche de l'équipement dans Home Assistant.
 - L'auteur vient d'une commande Home Assistant passée dans les 2 minutes qui précèdent le changement : le nom de l'utilisateur, « une automatisation ou un script », ou « Home Assistant ». Sans commande de ce genre, le changement vient du contrôleur (programmation ou commande locale) et la ligne indique « par le contrôleur ».
-- Chaque équipement a sa propre notification, qui remplace la précédente sans sonner une seconde fois.
+- Chaque équipement a sa propre notification, qui remplace la précédente et se signale à chaque changement.
 - Les passages par `unavailable` ou `unknown` (redémarrage, perte de lien) ne notifient pas.
 
 La durée se base sur le dernier changement d'état connu de Home Assistant. Juste après un redémarrage de Home Assistant, la première durée affichée est donc plus courte que la réalité.
@@ -199,4 +201,4 @@ Pour dépanner, utilise Appareils et services → Flow.io → Télécharger les 
 ## Documentation du projet et release
 
 - [CLAUDE.md](CLAUDE.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/DECISIONS.md](docs/DECISIONS.md) et [CHANGELOG.md](CHANGELOG.md) décrivent le code, les choix faits et l'historique.
-- Un tag `vX.Y.Z`, identique à la version de `custom_components/flowio/manifest.json`, lance `.github/workflows/release.yml`. Il récupère les cartes au commit épinglé par `CARDS_REF`, lance leurs tests et leur `release:prepare` (notices de licences incluses), copie le bundle dans l'intégration, crée `flowio.zip` et publie la release. Pour changer la version des cartes, modifie `CARDS_REF` dans ce fichier.
+- Un tag `vX.Y.Z`, identique à la version de `custom_components/flowio/manifest.json`, lance `.github/workflows/release.yml`. Il récupère les cartes au commit épinglé par `CARDS_REF`, lance leurs tests et leur `release:prepare` (notices de licences incluses), copie le bundle dans l'intégration, crée `flowio.zip` et ouvre une release en brouillon, à publier à la main. Pour changer la version des cartes, modifie `CARDS_REF` dans ce fichier.
