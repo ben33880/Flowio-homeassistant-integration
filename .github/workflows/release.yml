@@ -10,7 +10,7 @@ permissions:
 env:
   # Cartes embarquées : dépôt et commit épinglés. Pour changer de version, modifier CARDS_REF.
   CARDS_REPO: christophebelmont/flowio-home-assistant-cards
-  CARDS_REF: 1c3f2bd0f5fb424f9bb2b603887eff0f647bf929
+  CARDS_REF: 9977463e00e550703907d3ce7c8a380fcea31ad8
 
 jobs:
   release:
