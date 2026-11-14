@@ -1,18 +1,17 @@
 import { MEASUREMENTS,type Measurement } from './entities';
-export type VisualType='tile'|'arc'|'needle';export interface Scale{type:VisualType;min:number;max:number;}export type Visuals=Record<Measurement,Scale>;
-const DEFAULTS:Visuals={water_temperature:{type:'tile',min:0,max:40},air_temperature:{type:'tile',min:-10,max:50},ph:{type:'arc',min:6,max:8.4},orp:{type:'arc',min:400,max:1000},pressure:{type:'needle',min:0.15,max:1.8}};
-const LEGACY_MAX:Partial<Record<Measurement,number[]>>={ph:[14],orp:[1000],pressure:[3,19]};
+export type VisualType='tile'|'arc'|'needle';
+export interface Scale{type:VisualType;}
+export type Visuals=Record<Measurement,Scale>;
+const DEFAULT_TYPES:Record<Measurement,VisualType>={water_temperature:'tile',air_temperature:'tile',ph:'arc',orp:'arc',pressure:'needle'};
 export function normalizeVisuals(input:unknown):Visuals{
 if(input!==undefined&&(!input||typeof input!=='object'||Array.isArray(input)))throw new Error('visuals doit être un objet');
 const raw=(input??{}) as Record<string,unknown>,result={} as Visuals;
 for(const key of Object.keys(raw))if(!(MEASUREMENTS as readonly string[]).includes(key))throw new Error('Mesure visuelle inconnue');
 for(const role of MEASUREMENTS){
-const value=raw[role];if(value!==undefined&&(!value||typeof value!=='object'||Array.isArray(value)))throw new Error('Échelle invalide');
-const v=(value??{}) as Record<string,unknown>,d=DEFAULTS[role],type=v.type??d.type,min=v.min??d.min,max=v.max??d.max;
-if(typeof type!=='string'||!['tile','arc','needle'].includes(type)||typeof min!=='number'||typeof max!=='number'||![min,max,max-min].every(Number.isFinite)||max<=min)throw new Error('Échelle finie attendue avec max supérieur à min');
-const scale:Scale={type:type as VisualType,min,max};
-if(scale.min===0&&LEGACY_MAX[role]?.includes(scale.max)){scale.min=d.min;scale.max=d.max;}
-result[role]=scale;
+const value=raw[role];if(value!==undefined&&(!value||typeof value!=='object'||Array.isArray(value)))throw new Error('Présentation invalide');
+const v=(value??{}) as Record<string,unknown>,type=v.type??DEFAULT_TYPES[role];
+if(typeof type!=='string'||!['tile','arc','needle'].includes(type))throw new Error('Présentation attendue : tile, arc ou needle');
+result[role]={type:type as VisualType};
 }return result;
 }
 export function numericValue(value:unknown):number|undefined{if(typeof value!=='number'&&typeof value!=='string')return undefined;if(typeof value==='string'&&!value.trim())return undefined;const n=Number(value);return Number.isFinite(n)?n:undefined;}

@@ -3,14 +3,14 @@ import { normalizeProbeConfig, probeLabel, probeMode, probeNamePrefix, probeScal
 
 const state = (value: string, attributes: Record<string, unknown> = {}) => ({ state: value, attributes });
 
-it('configure la carte sonde unique', () => {
+it('configure la carte sonde unique sans extrémités locales', () => {
   const config = normalizeProbeConfig({});
   expect(config.entity).toBe('');
   expect(config.item).toEqual({});
   const custom = normalizeProbeConfig({ entity: 'sensor.fio_io_orp', name_prefix: 'Flow.io ', item: { name: 'Redox', mode: 'gauge', color: '#8e24aa', min: 400, max: 1000 } });
   expect(custom.entity).toBe('sensor.fio_io_orp');
-  expect(custom.item).toEqual({ name: 'Redox', mode: 'gauge', color: '#8e24aa', min: 400, max: 1000 });
-  for (const input of [{ entity: 3 }, { name_prefix: 3 }, { item: { mode: 'pie' } }, { item: { min: 10, max: 5 } }, { item: { name: 3 } }, { grid_options: [] }, { entity_prefix: 'fio' }, { entity_prefix: '' }]) {
+  expect(custom.item).toEqual({ name: 'Redox', mode: 'gauge', color: '#8e24aa' });
+  for (const input of [{ entity: 3 }, { name_prefix: 3 }, { item: { mode: 'pie' } }, { item: { name: 3 } }, { grid_options: [] }, { entity_prefix: 'fio' }, { entity_prefix: '' }]) {
     expect(() => normalizeProbeConfig(input)).toThrow();
   }
 });
@@ -29,11 +29,11 @@ it('détecte automatiquement le préfixe à retirer sur une entité unique', () 
   expect(probeLabel(forced, states['sensor.fio_io_ph'], 'Flow.io ')).toBe('Waveshare pH');
 });
 
-it('lit nom, mode, échelle et couleur de la sonde unique', () => {
+it('lit nom, mode, échelle firmware et couleur de la sonde unique', () => {
   const config = normalizeProbeConfig({ entity: 'sensor.fio_io_ph', item: { name: 'pH', mode: 'gauge', color: '#8e24aa', min: 6, max: 8 } });
   expect(probeLabel(config, state('7.2', { friendly_name: 'Flow.io Waveshare pH' }), 'Flow.io Waveshare ')).toBe('pH');
   expect(probeMode(config)).toBe('gauge');
-  expect(probeScale(config, state('7.2', { min: '6.5', max: 8.2 }))).toEqual({ min: 6, max: 8 });
+  expect(probeScale(config, state('7.2', { min: '6.5', max: 8.2 }))).toEqual({ min: 6.5, max: 8.2 });
   expect(resolveProbeColor(config, state('7.2', {}))).toEqual({ tone: 'ph', custom: '#8e24aa' });
   const auto = normalizeProbeConfig({ entity: 'sensor.fio_io_ph' });
   expect(probeLabel(auto, state('7.2', { friendly_name: 'Flow.io Waveshare pH' }), 'Flow.io Waveshare ')).toBe('pH');

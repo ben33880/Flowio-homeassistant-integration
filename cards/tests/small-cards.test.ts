@@ -55,7 +55,7 @@ it('configure la carte sondes', () => {
   expect(normalizeProbesConfig({ title: undefined }).title).toBe('');
   expect(normalizeProbesConfig({}).title).toBe('Sondes');
   expect(() => normalizeProbesConfig({ title: 3 })).toThrow();
-  expect(() => normalizeProbesConfig({ scales: { 'sensor.x': { min: 5, max: 5 } } })).toThrow();
+  expect(normalizeProbesConfig({ scales: { 'sensor.x': { min: 5, max: 5 } } }).items).toEqual({});
 });
 
 it('liste les sondes sélectionnées', () => {
@@ -63,16 +63,17 @@ it('liste les sondes sélectionnées', () => {
   expect(probeIds(config)).toEqual(['sensor.fio_io_ph', 'sensor.fio_data_112']);
 });
 
-it('configure colonnes et personnalisations par sonde', () => {
+it('configure colonnes et personnalisations sans échelle locale par sonde', () => {
   const config = normalizeProbesConfig({ columns: 3, items: { 'sensor.a': { name: 'Eau', min: 0, max: 40, mode: 'gauge', color: '#123456' } } });
   expect(config.columns).toBe(3);
-  expect(config.items['sensor.a']).toEqual({ name: 'Eau', min: 0, max: 40, mode: 'gauge', color: '#123456' });
+  expect(config.items['sensor.a']).toEqual({ name: 'Eau', mode: 'gauge', color: '#123456' });
   expect(probeLabel(config, 'sensor.a', undefined, '')).toBe('Eau');
   expect(probeMode(config, 'sensor.a')).toBe('gauge');
   expect(probeMode(config, 'sensor.b')).toBe('line');
-  expect(probeScale(config, 'sensor.a')).toEqual({ min: 0, max: 40 });
+  expect(probeScale(config, 'sensor.a')).toBeUndefined();
   expect(normalizeProbesConfig({}).columns).toBe(2);
-  for (const input of [{ columns: 0 }, { columns: 7 }, { items: { 'sensor.a': { mode: 'pie' } } }, { items: { 'sensor.a': { min: 10, max: 5 } } }, { items: { 'sensor.a': { name: 3 } } }]) {
+  expect(normalizeProbesConfig({ items: { 'sensor.a': { min: 10, max: 5 } } }).items['sensor.a']).toEqual({});
+  for (const input of [{ columns: 0 }, { columns: 7 }, { items: { 'sensor.a': { mode: 'pie' } } }, { items: { 'sensor.a': { name: 3 } } }]) {
     expect(() => normalizeProbesConfig(input)).toThrow();
   }
 });
@@ -96,9 +97,10 @@ it('retire le préfixe d’équipement et choisit une couleur par sonde', () => 
   expect(() => normalizeProbesConfig({ colors: { 'sensor.x': 3 } })).toThrow();
 });
 
-it('calcule les échelles et valeurs des sondes', () => {
+it('calcule les échelles firmware et valeurs des sondes', () => {
   const config = normalizeProbesConfig({ scales: { 'sensor.fio_data_112': { min: 0, max: 50 } } });
-  expect(probeScale(config, 'sensor.fio_data_112', state('12', {}))).toEqual({ min: 0, max: 50 });
+  expect(probeScale(config, 'sensor.fio_data_112', state('12', {}))).toBeUndefined();
+  expect(probeScale(config, 'sensor.fio_data_112', state('12', { min: 5, max: 20 }))).toEqual({ min: 5, max: 20 });
   expect(probeScale(config, 'sensor.fio_data_130', state('82', { unit_of_measurement: '%' }))).toBeUndefined();
   expect(probeScale(config, 'sensor.fio_io_ph', state('7.2', {}))).toBeUndefined();
   expect(probeScale(config, 'sensor.fio_io_psi', state('0.9', { unit_of_measurement: 'bar' }))).toBeUndefined();

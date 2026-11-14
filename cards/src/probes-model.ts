@@ -9,7 +9,15 @@ export const PROBE_TONES = ['water', 'air', 'ph', 'orp', 'pressure'] as const;
 export type ProbeTone = typeof PROBE_TONES[number];
 export const PROBE_MODES = ['line', 'gauge'] as const;
 export type ProbeMode = typeof PROBE_MODES[number];
-export interface ProbeOverride { name?: string; color?: string; min?: number; max?: number; mode?: ProbeMode; }
+export interface ProbeOverride {
+  name?: string;
+  color?: string;
+  mode?: ProbeMode;
+  /** @deprecated Migration uniquement : jamais conservé par la normalisation. */
+  min?: number;
+  /** @deprecated Migration uniquement : jamais conservé par la normalisation. */
+  max?: number;
+}
 export interface ProbesConfig {
   type: string;
   title: string;
@@ -22,12 +30,6 @@ export interface ProbesConfig {
 function objectValue(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Configuration objet attendue');
   return value as Record<string, unknown>;
-}
-function scaleValue(value: unknown): ProbeScale {
-  const raw = objectValue(value);
-  const { min, max } = raw;
-  if (typeof min !== 'number' || typeof max !== 'number' || !Number.isFinite(min) || !Number.isFinite(max) || max <= min) throw new Error('Échelle attendue avec max supérieur à min');
-  return { min, max };
 }
 export function probeOverride(value: unknown): ProbeOverride {
   const raw = objectValue(value);
@@ -44,15 +46,6 @@ export function probeOverride(value: unknown): ProbeOverride {
     if (raw.mode !== 'line' && raw.mode !== 'gauge') throw new Error('Mode attendu : line ou gauge');
     result.mode = raw.mode;
   }
-  if (raw.min !== undefined) {
-    if (typeof raw.min !== 'number' || !Number.isFinite(raw.min)) throw new Error('Minimum invalide');
-    result.min = raw.min;
-  }
-  if (raw.max !== undefined) {
-    if (typeof raw.max !== 'number' || !Number.isFinite(raw.max)) throw new Error('Maximum invalide');
-    result.max = raw.max;
-  }
-  if (result.min !== undefined && result.max !== undefined && result.max <= result.min) throw new Error('Le maximum doit être supérieur au minimum');
   return result;
 }
 export function normalizeProbesConfig(input: unknown): ProbesConfig {
@@ -79,12 +72,8 @@ export function normalizeProbesConfig(input: unknown): ProbesConfig {
       if (value) items[id] = { ...items[id], color: value };
     }
   }
-  if (raw.scales !== undefined) {
-    for (const [id, value] of Object.entries(objectValue(raw.scales))) {
-      const scale = scaleValue(value);
-      items[id] = { ...items[id], min: scale.min, max: scale.max };
-    }
-  }
+  // Anciennes échelles locales abandonnées : les attributs firmware font autorité.
+  if (raw.scales !== undefined) objectValue(raw.scales);
   const grid_options = raw.grid_options;
   if (grid_options !== undefined && (!grid_options || typeof grid_options !== 'object' || Array.isArray(grid_options))) throw new Error('grid_options doit être un objet');
   return {
@@ -93,9 +82,7 @@ export function normalizeProbesConfig(input: unknown): ProbesConfig {
   };
 }
 export function probeIds(config: ProbesConfig): string[] { return config.entities; }
-export function probeScale(config: ProbesConfig, id: string, state?: EntityState): ProbeScale | undefined {
-  const item = config.items[id];
-  if (item?.min !== undefined && item?.max !== undefined) return { min: item.min, max: item.max };
+export function probeScale(_config: ProbesConfig, _id: string, state?: EntityState): ProbeScale | undefined {
   return attributeScale(state?.attributes);
 }
 export function probeValue(state?: EntityState): number | undefined {
