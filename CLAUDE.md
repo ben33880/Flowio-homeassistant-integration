@@ -19,6 +19,7 @@ Intégration Home Assistant (HACS) pour le contrôleur de piscine Flow.io (firmw
 - Rien n'est testé dans un vrai Home Assistant par l'assistant : le dire clairement dans les réponses.
 - Le propriétaire modifie aussi le dépôt à la main (workflow, manifest). Avant de modifier un fichier, relire sa version actuelle ; avant de parler de versions, lister les tags et les releases.
 - Format des notifications d'équipement voulu par le propriétaire (14/11/2026) : une seule première ligne (le titre) du type « Filtration : arrêt à 22:07 par le contrôleur, durée 12 min », la durée seulement à l'arrêt, sans emoji, icône = celle de l'entité MQTT. Dessous : récapitulatif pH/ORP, eau/air, pression.
+- Les fichiers de texte `strings.json` et `translations/en.json` doivent rester identiques ; `fr.json` suit la même structure.
 
 ## Publier une version
 
@@ -31,7 +32,7 @@ Intégration Home Assistant (HACS) pour le contrôleur de piscine Flow.io (firmw
 ## État au 14/11/2026
 
 - Versions publiées : 0.1.0 (11/11), 0.1.1 (12/11), 0.2.0 (12/11), 0.2.1 (13/11).
-- Version préparée dans le code : 0.2.2 (refonte des notifications), tag `v0.2.2` à créer par le propriétaire.
-- `strings.json` non synchronisé avec les traductions `en.json` / `fr.json`. À vérifier.
+- Version préparée dans le code : 0.2.2 (refonte des notifications et design Android), tag `v0.2.2` à créer par le propriétaire.
+- README.md pas encore mis à jour pour le design Android (valeurs colorées, ouverture de l'équipement au toucher).
 - `notification_actions.py` n'a pas été relu après le changement de signature de `FlowioRuntime.async_send` (arguments ajoutés en fin, anciens appels théoriquement compatibles).
-- Problème signalé le 14/11/2026 : aucune notification de démarrage d'équipement. Cause non confirmée ; le chronomètre Android a été retiré (seule différence avec l'arrêt). À revérifier avec les journaux si cela persiste.
+- Problème signalé le 14/11/2026 : aucune notification de démarrage d'équipement. Cause non confirmée ; le chronomètre Android a été retiré (seule différence avec l'arrêt). À revérifier avec les journaux (niveau debug de `custom_components.flowio`) si cela persiste.

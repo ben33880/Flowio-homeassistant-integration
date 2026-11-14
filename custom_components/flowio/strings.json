@@ -6,11 +6,19 @@
         "data": {
           "entity_prefix": "Entity prefix",
           "notify_service": "Notification service (e.g. notify.mobile_app_xxx)",
+          "mqtt_root": "Controller MQTT root (optional, e.g. flowio/ESP32-XXXXXX)",
           "ph_slot": "pH pump slot",
           "disinfection_slot": "Disinfectant pump slot",
           "notify_medium": "Also notify for 'to watch' levels"
+        },
+        "data_description": {
+          "mqtt_root": "Lets the integration read the volume actually injected, measured by the firmware. Leave empty to keep the estimate (run time x configured flow)."
         }
       }
+    },
+    "error": {
+      "invalid_prefix": "Invalid prefix: lowercase letters, digits and underscores only, not empty (e.g. fio).",
+      "invalid_mqtt_root": "Invalid MQTT root: no wildcards (+ #), spaces or empty segments."
     },
     "abort": {
       "already_configured": "This prefix is already configured."
@@ -22,11 +30,21 @@
         "data": {
           "entity_prefix": "Entity prefix",
           "notify_service": "Notification service (e.g. notify.mobile_app_xxx)",
+          "mqtt_root": "Controller MQTT root (optional, e.g. flowio/ESP32-XXXXXX)",
           "ph_slot": "pH pump slot",
           "disinfection_slot": "Disinfectant pump slot",
-          "notify_medium": "Also notify for 'to watch' levels"
+          "notify_medium": "Also notify for 'to watch' levels",
+          "notify_devices": "Equipment to notify when it starts or stops"
+        },
+        "data_description": {
+          "mqtt_root": "Lets the integration read the volume actually injected, measured by the firmware. Leave empty to keep the estimate (run time x configured flow).",
+          "notify_devices": "Tick the equipment (pumps, relays...) published by the controller. Nothing ticked means no start/stop notification. Only equipment already known to Home Assistant is listed."
         }
       }
+    },
+    "error": {
+      "invalid_prefix": "Invalid prefix: lowercase letters, digits and underscores only, not empty (e.g. fio).",
+      "invalid_mqtt_root": "Invalid MQTT root: no wildcards (+ #), spaces or empty segments."
     }
   },
   "entity": {
@@ -37,6 +55,71 @@
           "medium": "Medium",
           "bad": "Bad"
         }
+      }
+    }
+  },
+  "issues": {
+    "missing_entities": {
+      "title": "Flow.io: expected entities not found",
+      "description": "{count} entities expected for prefix \"{prefix}\" are missing: {entities}. Check the prefix, the pump slots and the firmware's MQTT discovery. Tank and data_* values are only published to Home Assistant when enabled in the firmware. Entities separated by | are alternatives: one of them is enough."
+    },
+    "notify_service_missing": {
+      "title": "Flow.io: notification service not found",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Notification service",
+            "description": "The service {service} does not exist. Enter an existing notify service (for example notify.mobile_app_xxx).",
+            "data": {
+              "notify_service": "Notification service"
+            }
+          }
+        },
+        "error": {
+          "service_not_found": "This service does not exist."
+        }
+      }
+    },
+    "frequent_restarts": {
+      "title": "Flow.io: controller restarting often",
+      "description": "The controller restarted {count} times in the last {hours} hours. Check the power supply, the Wi-Fi signal and the free memory."
+    }
+  },
+  "services": {
+    "force_equipment": {
+      "name": "Force equipment",
+      "description": "Temporarily forces an equipment on or off through the firmware's override. The firmware keeps its own safety rules.",
+      "fields": {
+        "prefix": {"name": "Prefix", "description": "Entity prefix, only needed with several Flow.io installations."},
+        "target": {"name": "Equipment", "description": "Option published by the firmware in the override selector."},
+        "state": {"name": "State", "description": "on or off."},
+        "minutes": {"name": "Duration", "description": "Duration in minutes (limited to 120 and to the firmware maximum)."}
+      }
+    },
+    "release_override": {
+      "name": "Release override",
+      "description": "Ends the temporary override of the selected equipment.",
+      "fields": {
+        "prefix": {"name": "Prefix", "description": "Entity prefix, only needed with several Flow.io installations."},
+        "target": {"name": "Equipment", "description": "Equipment to select first. Leave empty to use the current selection."}
+      }
+    },
+    "refill_tank": {
+      "name": "Tank refilled",
+      "description": "Tells the firmware that a tank has been physically refilled. Resets its estimated level.",
+      "fields": {
+        "prefix": {"name": "Prefix", "description": "Entity prefix, only needed with several Flow.io installations."},
+        "tank": {"name": "Tank", "description": "pH or disinfectant tank."},
+        "confirm": {"name": "Confirm", "description": "Must be true: the tank has really been refilled."}
+      }
+    },
+    "reset_uptime": {
+      "name": "Reset run-time counter",
+      "description": "Resets the firmware's daily run-time counter of a device.",
+      "fields": {
+        "prefix": {"name": "Prefix", "description": "Entity prefix, only needed with several Flow.io installations."},
+        "device": {"name": "Device", "description": "Counter to reset."},
+        "confirm": {"name": "Confirm", "description": "Must be true."}
       }
     }
   }
