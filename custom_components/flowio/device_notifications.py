@@ -31,8 +31,8 @@ PROCESS_START = dt_util.utcnow()
 DEVICE_CHANNEL = "Flow.io équipements"
 COMMAND_WINDOW = 120  # secondes : délai max entre une commande Home Assistant et le changement d'état
 RELIABLE_AFTER = 120  # secondes : une durée n'est fiable que si le démarrage a eu lieu après ce délai de démarrage
-# Suivi en direct : la carte n'est créée qu'après ce délai de marche. iOS limite les démarrages d'activités
-# par notification ; les marches très courtes (pompes doseuses) épuiseraient ce quota pour rien.
+# Suivi en direct (filtration seulement) : la carte n'est créée qu'après ce délai de marche, car iOS limite
+# les démarrages d'activités par notification.
 LIVE_START_DELAY = 60
 # Barre de progression de la filtration : rafraîchie rarement, Apple et Google limitent les envois.
 LIVE_REFRESH = timedelta(minutes=15)
@@ -68,8 +68,9 @@ def async_setup_device_notifications(rt):
 
     hass = rt.hass
     watched = set(entities)
-    live_on = bool(rt.conf.get(CONF_NOTIFY_LIVE, False))
     filtration = rt.resolve("switch.{p}_io_flt_pmp")
+    # Le suivi en direct ne concerne que la filtration ; les autres équipements gardent leurs notifications.
+    live_on = bool(rt.conf.get(CONF_NOTIFY_LIVE, False)) and filtration in watched
     pending: dict = {}  # entité -> annulation du démarrage différé du suivi en direct
     refreshing: dict = {}  # entité -> annulation du rafraîchissement de la barre de progression
     # Commandes du forçage du firmware : elles agissent sur n'importe quel équipement.
@@ -79,6 +80,9 @@ def async_setup_device_notifications(rt):
     def _tag(entity_id: str) -> str:
         return f"device_{entity_id.split('.', 1)[1]}"
 
+    def _is_live(entity_id: str) -> bool:
+        return live_on and entity_id == filtration
+
     def _cancel(entity_id: str) -> None:
         for registry in (pending, refreshing):
             cancel = registry.pop(entity_id, None)
@@ -86,7 +90,7 @@ def async_setup_device_notifications(rt):
                 cancel()
 
     def _clear_live(entity_id: str) -> None:
-        if live_on:
+        if _is_live(entity_id):
             hass.async_create_task(rt.async_clear_live(_tag(entity_id)))
 
     @callback
@@ -114,10 +118,10 @@ def async_setup_device_notifications(rt):
         return fallback
 
     def _schedule_live(new, title: str, tag: str, icon, url: str) -> None:
-        """Crée la carte en direct si l'équipement tourne toujours après LIVE_START_DELAY.
+        """Crée la carte en direct de la filtration si elle tourne toujours après LIVE_START_DELAY.
 
-        Filtration avec une plage horaire connue : barre de progression rafraîchie toutes les 15 minutes.
-        Sinon : chronomètre depuis le démarrage.
+        Plage horaire connue : barre de progression rafraîchie toutes les 15 minutes. Sinon : chronomètre
+        depuis le démarrage.
         """
         entity_id = new.entity_id
 
@@ -149,7 +153,7 @@ def async_setup_device_notifications(rt):
             pending.pop(entity_id, None)
             if not _still_running():
                 return
-            progress = rt.filtration_progress() if entity_id == filtration else None
+            progress = rt.filtration_progress()
             await _send(progress, False)
             if progress is not None:
                 refreshing[entity_id] = async_track_time_interval(hass, _tick, LIVE_REFRESH)
@@ -175,11 +179,12 @@ def async_setup_device_notifications(rt):
         icon = _icon(hass, new)
         # Toucher la notification ouvre la fiche de l'équipement.
         url = f"/?more-info-entity-id={new.entity_id}"
-        if live_on and running:
+        live = _is_live(new.entity_id)
+        if live and running:
             # Le suivi en direct remplace la notification de démarrage, après un délai de marche minimal.
             _schedule_live(new, title, tag, icon, url)
             return
-        if live_on:
+        if live:
             await rt.async_clear_live(tag)
         await rt.async_send(
             title,

@@ -39,14 +39,14 @@
           "notify_on_start": "Notify when equipment starts",
           "notify_on_stop": "Notify when equipment stops",
           "notify_recap": "Add the pH, ORP, temperature and pressure summary",
-          "notify_live": "Follow running equipment live (Live Activities / Live Updates)",
+          "notify_live": "Follow the filtration live (Live Activities / Live Updates)",
           "ios_alert_level": "iPhone interruption level for alerts"
         },
         "data_description": {
           "mobile_devices": "Android phones and iPhones each get a layout suited to their platform. Leave empty to receive no notification.",
           "mqtt_root": "Lets the integration read the volume actually injected, measured by the firmware. Leave empty to keep the estimate (run time x configured flow).",
           "notify_devices": "Tick the equipment (pumps, relays...) published by the controller. Nothing ticked means no start/stop notification. Only equipment already known to Home Assistant is listed.",
-          "notify_live": "Replaces the start notification with a live card on the lock screen and a running timer, removed at stop. Needs iOS 17.2 or later or Android 16 or later, and Home Assistant 2026.7 or later. An unsupported phone shows a normal notification instead. iOS ends a Live Activity after 8 hours.",
+          "notify_live": "The filtration must be ticked above. Replaces its start notification, sent after 1 minute of running, with a live card on the lock screen: progress bar of the scheduled window, or a timer if the window is unknown. Removed at stop. Other equipment keeps its normal notifications. Needs iOS 17.2 or later or Android 16 or later, and Home Assistant 2026.7 or later. An unsupported phone shows a normal notification instead. iOS ends a Live Activity after 8 hours.",
           "ios_alert_level": "Time sensitive can break through Focus modes if allowed in the app's iPhone settings. Passive delivers without waking the screen."
         }
       }
