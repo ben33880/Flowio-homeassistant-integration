@@ -3,7 +3,8 @@ import './order-list';
 import { mergeOrder } from './order-list';
 import { entityId, MEASUREMENTS, type Measurement } from './entities';
 import { available, type Hass } from './model';
-import { attributeScale, gaugeGeometry, numericValue } from './gauge-model';
+import { gaugeGeometry, numericValue } from './gauge-model';
+import { gaugeSettings } from './gauge-settings';
 import { iconFor, toneFor } from './visual';
 import { InstallationController, type InstallationHass } from './installation-controller';
 import {
@@ -44,18 +45,21 @@ class FlowioHeaderCard extends LitElement {
   }
 
   private ring(role: Measurement, prefix: string) {
-    const config = this.config!, state = this.hass!.states[entityId(prefix, role)];
-    const scale = attributeScale(state?.attributes);
+    const state = this.hass!.states[entityId(prefix, role)];
     const value = numericValue(available(state) ? state.state : undefined);
+    const settings = gaugeSettings(state?.attributes, role, value, this.installation.value, this.hass!.states);
+    const scale = settings.scale;
+    const quality = settings.tone ?? 'neutral';
+    const qualityLabel = quality === 'good' ? 'Dans la zone bonne' : quality === 'medium' ? 'Dans la zone intermédiaire' : quality === 'bad' ? 'Hors zone cible' : '';
     const unit = gaugeUnit(role, state?.attributes.unit_of_measurement);
     const label = gaugeLabel(role);
     const text = value === undefined ? '—' : state!.state;
     const geometry = scale ? gaugeGeometry(value, scale.min, scale.max, undefined, true) : undefined;
     const dash = geometry && geometry.ratio > 0 ? `${geometry.progress} ${geometry.circumference}` : `0 ${RING_CIRCUMFERENCE}`;
     const rotation = geometry ? geometry.start : -90;
-    return html`<button type=button class=gauge data-role=${role} data-tone=${toneFor(role)} ?disabled=${!state} @click=${() => this.more(role)}>
+    return html`<button type=button class=gauge data-role=${role} data-tone=${toneFor(role)} data-quality=${quality} ?disabled=${!state} @click=${() => this.more(role)}>
       <span class=dial>
-        <svg viewBox="0 0 120 120" role=img aria-label=${`${label} : ${text}${unit ? ` ${unit}` : ''}`}>
+        <svg viewBox="0 0 120 120" role=img aria-label=${`${label} : ${text}${unit ? ` ${unit}` : ''}${scale ? `. Échelle ${scale.min} à ${scale.max}` : '. Échelle firmware indisponible'}${qualityLabel ? `. ${qualityLabel}` : ''}`}>
           <circle class=track cx=60 cy=60 r=46 fill=none stroke-width=8></circle>
           <circle class=progress cx=60 cy=60 r=46 fill=none stroke-width=8 stroke-linecap=round stroke-dasharray=${dash} transform=${`rotate(${rotation} 60 60)`}></circle>
         </svg>
@@ -109,6 +113,9 @@ class FlowioHeaderCard extends LitElement {
     .dial svg{display:block;width:100%;height:100%}
     .track{stroke:var(--divider-color);opacity:.6}
     .progress{stroke:var(--fio-accent);transition:stroke-dasharray .24s ease}
+    .gauge[data-quality=good] .progress{stroke:#22c55e}
+    .gauge[data-quality=medium] .progress{stroke:#facc15}
+    .gauge[data-quality=bad] .progress{stroke:#ef4444}
     .reading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
     .reading strong{font-size:calc(1.2rem * var(--fio-font-scale, 1.32));font-weight:600;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.03em}
     .reading small{font-size:calc(.66rem * var(--fio-font-scale, 1.32));color:var(--secondary-text-color)}
@@ -194,7 +201,7 @@ class FlowioHeaderCardEditor extends LitElement {
     };
     const computeLabel = (field: { name: string }) => labels[field.name] ?? field.name;
     const items = this.config.measurements.map(role => ({ value: role, label: gaugeLabel(role) }));
-    return html`<p>Le préfixe est fourni par l’intégration Flow.io.</p>${this.error ? html`<p role=alert>${this.error}</p>` : nothing}<ha-form .hass=${this.hass} .data=${this.config} .schema=${schema} .computeLabel=${computeLabel} @value-changed=${this.changed}></ha-form><flowio-order-list .items=${items} @order-changed=${(event: CustomEvent) => this.reorder(event.detail.order)}></flowio-order-list><ha-form .hass=${this.hass} .data=${this.config} .schema=${measurementSchema} .computeLabel=${computeLabel} @value-changed=${this.changed}></ha-form>`;
+    return html`<p>Le préfixe et les zones colorées pH/ORP sont fournis par l’intégration Flow.io. Les extrémités des jauges viennent des attributs min/max du firmware.</p>${this.error ? html`<p role=alert>${this.error}</p>` : nothing}<ha-form .hass=${this.hass} .data=${this.config} .schema=${schema} .computeLabel=${computeLabel} @value-changed=${this.changed}></ha-form><flowio-order-list .items=${items} @order-changed=${(event: CustomEvent) => this.reorder(event.detail.order)}></flowio-order-list><ha-form .hass=${this.hass} .data=${this.config} .schema=${measurementSchema} .computeLabel=${computeLabel} @value-changed=${this.changed}></ha-form>`;
   }
 
   static styles = css`:host{display:block}p{color:var(--secondary-text-color);line-height:1.5}p[role=alert]{color:var(--error-color)}`;
