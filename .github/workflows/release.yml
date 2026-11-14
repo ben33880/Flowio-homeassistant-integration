@@ -32,7 +32,7 @@ jobs:
         run: |
           npm ci
           npm test
-          export RELEASE_VERSION=$(jq -r .version package.json)
+          export RELEASE_VERSION=$(jq -r .version ../custom_components/flowio/manifest.json)
           export RELEASE_SOURCE_SHA=$(git rev-parse HEAD)
           npm run release:prepare
 
