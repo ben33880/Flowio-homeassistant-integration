@@ -1,10 +1,12 @@
 import { LitElement, html, css, nothing } from 'lit';
 import './flowio-gauge';
 import { available, type Hass } from './model';
+import { attributeScale } from './gauge-model';
+import { probeTone } from './probes-model';
 import { InstallationController, type InstallationHass } from './installation-controller';
 import {
   PROBE_MODES, normalizeProbeConfig, probeDisplayName, probeLabel, probeMode, probeNamePrefix,
-  probeScale, probeValue, rawProbeName, resolveProbeColor, type ProbeConfig
+  probeValue, rawProbeName, resolveProbeColor, type ProbeConfig
 } from './probe-model';
 
 const PALETTE = ['#0288d1', '#00acc1', '#26a69a', '#43a047', '#7cb342', '#fbc02d', '#ffa000', '#f4511e', '#e53935', '#d81b60', '#8e24aa', '#5e35b1', '#546e7a', '#9e9e9e'];
@@ -26,21 +28,21 @@ class FlowioProbeCard extends LitElement {
     const label = probeLabel(config, state, prefix) || probeDisplayName(rawProbeName(id, state), prefix);
     const unit = typeof state?.attributes.unit_of_measurement === 'string' ? state.attributes.unit_of_measurement : '';
     const value = probeValue(state);
-    const scale = probeScale(config, state);
+    const scale = attributeScale(state?.attributes);
+    const role = probeTone(id, state);
     const text = !state ? 'Entité absente' : !available(state) ? 'Indisponible' : value === undefined ? state.state : `${state.state}${unit ? ` ${unit}` : ''}`;
     const { tone, custom } = resolveProbeColor(config, state);
     const availability = available(state) ? 'true' : 'false';
     if (probeMode(config) === 'gauge') {
       return html`<div class="probe gauge" data-entity=${id} data-tone=${tone} data-available=${availability} style=${custom ? `--fio-accent:${custom}` : ''}>
         <button type=button class=probe-head ?disabled=${!state} @click=${() => this.more(id)}><strong class=probe-value>${available(state) ? '' : !state ? 'Entité absente' : 'Indisponible'}</strong></button>
-        <flowio-gauge .value=${value} .valueText=${state?.state} .min=${scale?.min} .max=${scale?.max} .variant=${'arc'} .label=${label} .unit=${unit}></flowio-gauge>
+        <flowio-gauge .hass=${this.hass} .installation=${this.installation.value} .sourceAttributes=${state?.attributes} .qualityRole=${role === 'ph' || role === 'orp' ? role : ''} .value=${value} .valueText=${state?.state} .variant=${'arc'} .label=${label} .unit=${unit}></flowio-gauge>
       </div>`;
     }
     const ratio = value !== undefined && scale ? Math.min(100, Math.max(0, (value - scale.min) / (scale.max - scale.min) * 100)) : 0;
     return html`<div class=probe data-entity=${id} data-tone=${tone} data-available=${availability} style=${custom ? `--fio-accent:${custom}` : ''}>
       <button type=button class=probe-head ?disabled=${!state} @click=${() => this.more(id)}><strong class=probe-value>${text}</strong></button>
-      <div class=bar aria-hidden=true><span class=fill style=${`width:${ratio}%`}></span></div>
-      ${scale ? html`<div class=limits aria-hidden=true><span>${scale.min}</span><span>${scale.max}</span></div>` : nothing}
+      ${scale ? html`<div class=bar aria-hidden=true><span class=fill style=${`width:${ratio}%`}></span></div><div class=limits aria-hidden=true><span>${scale.min}</span><span>${scale.max}</span></div>` : html`<p class=empty>Échelle firmware indisponible</p>`}
     </div>`;
   }
   render() {
@@ -90,9 +92,12 @@ class FlowioProbeCardEditor extends LitElement {
   private error = '';
   setConfig(input: unknown) { this.config = normalizeProbeConfig(input); this.error = ''; }
   private commit(config: ProbeConfig) {
-    this.config = config;
+    const item = { ...config.item };
+    delete item.min;
+    delete item.max;
+    this.config = normalizeProbeConfig({ ...config, item });
     this.error = '';
-    this.dispatchEvent(new CustomEvent('config-changed', { detail: { config }, bubbles: true, composed: true }));
+    this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: this.config }, bubbles: true, composed: true }));
   }
   private changed(event: CustomEvent) {
     event.stopPropagation();
@@ -102,7 +107,7 @@ class FlowioProbeCardEditor extends LitElement {
       this.commit(normalizeProbeConfig({ ...value, item: this.config.item }));
     } catch (error) { this.error = error instanceof Error ? error.message : 'Configuration invalide'; }
   }
-  private setItem(patch: { name?: string; color?: string; min?: number; max?: number; mode?: string }) {
+  private setItem(patch: { name?: string; color?: string; mode?: string }) {
     if (!this.config) return;
     try {
       const next: Record<string, unknown> = { ...this.config.item };
@@ -112,11 +117,6 @@ class FlowioProbeCardEditor extends LitElement {
       }
       this.commit(normalizeProbeConfig({ ...this.config, item: next }));
     } catch (error) { this.error = error instanceof Error ? error.message : 'Configuration invalide'; }
-  }
-  private setScale(minRaw: string, maxRaw: string) {
-    const min = minRaw === '' ? undefined : Number(minRaw);
-    const max = maxRaw === '' ? undefined : Number(maxRaw);
-    this.setItem({ min: Number.isFinite(min) ? min : undefined, max: Number.isFinite(max) ? max : undefined });
   }
   private options(): { value: string; label: string }[] {
     if (!this.hass || !this.config) return [];
@@ -130,7 +130,6 @@ class FlowioProbeCardEditor extends LitElement {
     const selected = item.color ?? '';
     return html`<div class=items>
       <label class=field><span>Nom convivial</span><input type=text .value=${item.name ?? ''} placeholder=${label} @change=${(event: Event) => this.setItem({ name: (event.target as HTMLInputElement).value })}></label>
-      <div class=field><span>Min / Max</span><div class=scales><input type=number .value=${item.min ?? ''} placeholder=${'min'} @change=${(event: Event) => this.setScale((event.target as HTMLInputElement).value, item.max === undefined ? '' : String(item.max))}><input type=number .value=${item.max ?? ''} placeholder=${'max'} @change=${(event: Event) => this.setScale(item.min === undefined ? '' : String(item.min), (event.target as HTMLInputElement).value)}></div></div>
       <label class=field><span>Mode</span><select @change=${(event: Event) => this.setItem({ mode: (event.target as HTMLSelectElement).value })}>${PROBE_MODES.map(mode => html`<option value=${mode} ?selected=${(item.mode ?? 'line') === mode}>${mode === 'gauge' ? 'Gauge' : 'Ligne'}</option>`)}</select></label>
       <div class=field><span>Couleur</span><div class=swatches role=group aria-label=${`Couleur de ${label}`}>
         <button type=button class="swatch auto" data-selected=${selected ? 'false' : 'true'} title="Automatique" aria-label=${`Couleur automatique pour ${label}`} @click=${() => this.setItem({ color: '' })}>Auto</button>
@@ -145,7 +144,7 @@ class FlowioProbeCardEditor extends LitElement {
       { name: 'name_prefix', selector: { text: {} } },
       { name: 'entity', selector: { select: { mode: 'dropdown', options: this.options() } } }
     ];
-    return html`<p>Le préfixe est fourni par l’intégration Flow.io. Choisir une entité puis personnaliser son nom, sa couleur, son échelle et son mode (barre ou jauge). « Auto » reprend la détection Flow.io.</p>${this.error ? html`<p role=alert>${this.error}</p>` : nothing}<ha-form .hass=${this.hass} .data=${this.config} .schema=${schema} .computeLabel=${(field: { name: string }) => labels[field.name] ?? field.name} @value-changed=${this.changed}></ha-form>${this.config.entity ? this.item() : nothing}`;
+    return html`<p>Les extrémités de l’échelle viennent des attributs min/max publiés par le firmware. Les zones pH/ORP viennent du paramétrage de l’intégration. Le nom, la couleur de base et le mode restent personnalisables.</p>${this.error ? html`<p role=alert>${this.error}</p>` : nothing}<ha-form .hass=${this.hass} .data=${this.config} .schema=${schema} .computeLabel=${(field: { name: string }) => labels[field.name] ?? field.name} @value-changed=${this.changed}></ha-form>${this.config.entity ? this.item() : nothing}`;
   }
   static styles = css`
     :host{display:block}
