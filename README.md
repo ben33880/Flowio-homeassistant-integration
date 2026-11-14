@@ -117,17 +117,16 @@ Dans **Configurer**, coche les équipements dont tu veux être prévenu. La list
 Exemple à l'arrêt :
 
 ```text
-Filtration : arrêt
-22:07 · par le contrôleur · a fonctionné 12 min
+Filtration : arrêt à 22:07 par le contrôleur, durée 12 min
 pH 7,21 · ORP 720 mV
 Eau 24,5 °C · Air 18,0 °C
 Pression 1,2 bar
 ```
 
-Au démarrage, c'est le même format avec « démarrage » et sans la durée.
+Au démarrage, la première ligne est par exemple « Filtration : démarrage à 21:55 par Benoît », sans durée.
 
-- Le titre donne l'équipement et l'action. L'icône de la notification est celle de l'entité (celle publiée par le firmware, ou celle que tu as choisie dans Home Assistant).
-- La première ligne donne l'heure, l'auteur et, à l'arrêt seulement, la durée de fonctionnement.
+- La première ligne (le titre) donne l'équipement, l'action, l'heure, l'auteur et, à l'arrêt seulement, la durée de fonctionnement. Le récapitulatif suit en dessous.
+- L'icône de la notification est celle de l'entité (celle publiée par le firmware, ou celle que tu as choisie dans Home Assistant).
 - L'auteur vient d'une commande Home Assistant passée dans les 2 minutes qui précèdent le changement : le nom de l'utilisateur, « une automatisation ou un script », ou « Home Assistant ». Sans commande de ce genre, le changement vient du contrôleur (programmation ou commande locale) et la ligne indique « par le contrôleur ».
 - Chaque équipement a sa propre notification, qui remplace la précédente.
 - Les passages par `unavailable` ou `unknown` (redémarrage, perte de lien) ne notifient pas.

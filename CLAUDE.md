@@ -18,7 +18,7 @@ Intégration Home Assistant (HACS) pour le contrôleur de piscine Flow.io (firmw
 - Lire le firmware avant d'affirmer quoi que ce soit sur ses valeurs par défaut ou ses topics. Ne jamais deviner.
 - Rien n'est testé dans un vrai Home Assistant par l'assistant : le dire clairement dans les réponses.
 - Le propriétaire modifie aussi le dépôt à la main (workflow, manifest). Avant de modifier un fichier, relire sa version actuelle ; avant de parler de versions, lister les tags et les releases.
-- Format des notifications voulu par le propriétaire (14/11/2026) : lisible et sans emoji dans les titres d'équipement, icône = celle de l'entité MQTT, première ligne = heure, auteur et durée (arrêt seulement), puis récapitulatif pH/ORP, eau/air, pression.
+- Format des notifications d'équipement voulu par le propriétaire (14/11/2026) : une seule première ligne (le titre) du type « Filtration : arrêt à 22:07 par le contrôleur, durée 12 min », la durée seulement à l'arrêt, sans emoji, icône = celle de l'entité MQTT. Dessous : récapitulatif pH/ORP, eau/air, pression.
 
 ## Publier une version
 

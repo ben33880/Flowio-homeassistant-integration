@@ -75,20 +75,22 @@ def async_setup_device_notifications(rt):
     async def _notify(old, new, running: bool, context) -> None:
         name = new.attributes.get("friendly_name") or new.entity_id
         who = await _who(hass, context) if context else "le contrôleur"
-        parts = [dt_util.as_local(new.last_changed).strftime("%H:%M"), f"par {who}"]
+        at = dt_util.as_local(new.last_changed).strftime("%H:%M")
+        # Première ligne (titre) : équipement, action, heure, auteur, et durée à l'arrêt seulement.
+        title = f"{name} : {'démarrage' if running else 'arrêt'} à {at} par {who}"
         if not running:
-            parts.append(f"a fonctionné {format_duration(new.last_changed - old.last_changed)}")
+            title += f", durée {format_duration(new.last_changed - old.last_changed)}"
         style = {"color": COLOR_OK if running else COLOR_OFF, "channel": DEVICE_CHANNEL}
         icon = _icon(hass, new)
         if icon:
             style["notification_icon"] = icon
-        _LOGGER.debug("Notification %s : %s (%s)", new.entity_id, new.state, " · ".join(parts))
+        _LOGGER.debug("Notification %s : %s", new.entity_id, title)
+        # Corps : récapitulatif pH/ORP, eau/air, pression.
         await rt.async_send(
-            f"{name} : {'démarrage' if running else 'arrêt'}",
-            " · ".join(parts),
+            title,
+            rt.context_line() or "Flow.io",
             f"device_{new.entity_id.split('.', 1)[1]}",
             style=style,
-            context=True,
         )
 
     @callback
