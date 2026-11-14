@@ -2,6 +2,7 @@ export interface Installation {
   prefix: string;
   ph_slot: number;
   disinfection_slot: number;
+  filtration_slot: number;
   mqtt_root: string;
   thresholds: Record<string, number>;
   entities?: Record<string, string | null>;
@@ -58,7 +59,7 @@ export function parseInstallations(response: unknown): Installation[] {
       }
     }
     return { prefix: item.prefix, ph_slot: slot(item.ph_slot),
-      disinfection_slot: slot(item.disinfection_slot), mqtt_root: item.mqtt_root, thresholds,
+      disinfection_slot: slot(item.disinfection_slot), filtration_slot: slot(item.filtration_slot), mqtt_root: item.mqtt_root, thresholds,
       ...(entities !== undefined ? { entities } : {}) };
   });
 }
@@ -85,9 +86,7 @@ export function sharedEntity(installation: Installation, states: Record<string, 
 }
 export function sharedNumber(installation: Installation, states: Record<string, SharedState>, key: string): number | undefined {
   const value = sharedEntity(installation, states, key)?.state;
-  if (value === undefined || !value.trim()) return undefined;
-  const number = Number(value);
-  return Number.isFinite(number) ? number : undefined;
+  return value === undefined ? undefined : Number(value);
 }
 export function currentThresholds(installation: Installation, states: Record<string, SharedState>): Record<string, number | undefined> {
   return Object.fromEntries(thresholdKeys.map(key => [key,
