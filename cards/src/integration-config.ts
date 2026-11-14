@@ -4,6 +4,7 @@ export interface Installation {
   disinfection_slot: number;
   mqtt_root: string;
   thresholds: Record<string, number>;
+  entities?: Record<string, string | null>;
 }
 export interface ConfigConnection {
   callWS<T>(message: { type: string }): Promise<T>;
@@ -46,8 +47,19 @@ export function parseInstallations(response: unknown): Installation[] {
       if (typeof number !== 'number' || !Number.isFinite(number)) throw new Error(`Seuil Flow.io invalide : ${key}`);
       thresholds[key] = number;
     }
+    let entities: Record<string, string | null> | undefined;
+    if (item.entities !== undefined) {
+      entities = {};
+      for (const [key, id] of Object.entries(object(item.entities))) {
+        if (id !== null && (typeof id !== 'string' || !/^(sensor|number)\.[a-z0-9_]+$/.test(id))) {
+          throw new Error(`Entité Flow.io invalide : ${key}`);
+        }
+        entities[key] = id;
+      }
+    }
     return { prefix: item.prefix, ph_slot: slot(item.ph_slot),
-      disinfection_slot: slot(item.disinfection_slot), mqtt_root: item.mqtt_root, thresholds };
+      disinfection_slot: slot(item.disinfection_slot), mqtt_root: item.mqtt_root, thresholds,
+      ...(entities !== undefined ? { entities } : {}) };
   });
 }
 export async function loadInstallations(hass: ConfigConnection): Promise<Installation[]> {
@@ -62,4 +74,23 @@ export function selectInstallation(installations: Installation[], prefix?: strin
   if (installations.length === 1) return installations[0];
   if (!installations.length) throw new Error('Aucune intégration Flow.io chargée.');
   throw new Error('Plusieurs installations Flow.io : sélectionner une installation.');
+}
+export interface SharedState {
+  state: string;
+  attributes: Record<string, unknown>;
+}
+export function sharedEntity(installation: Installation, states: Record<string, SharedState>, key: string): SharedState | undefined {
+  const id = installation.entities?.[key];
+  return id ? states[id] : undefined;
+}
+export function sharedNumber(installation: Installation, states: Record<string, SharedState>, key: string): number | undefined {
+  const value = sharedEntity(installation, states, key)?.state;
+  if (value === undefined || !value.trim()) return undefined;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : undefined;
+}
+export function currentThresholds(installation: Installation, states: Record<string, SharedState>): Record<string, number | undefined> {
+  return Object.fromEntries(thresholdKeys.map(key => [key,
+    installation.entities === undefined ? installation.thresholds[key] : sharedNumber(installation, states, key)
+  ]));
 }
