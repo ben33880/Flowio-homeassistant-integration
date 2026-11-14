@@ -37,9 +37,11 @@ REFILL_ALERTS = {"ph_tank_low": "ph", "dis_tank_low": "disinfection"}
 COLOR_ALERT = "#F44336"
 COLOR_OK = "#4CAF50"
 COLOR_OFF = "#607D8B"
+COLOR_WARN = "#FF9800"
 
-# Couleur d'une valeur selon sa qualité (texte HTML Android).
-GRADE_COLORS = {GOOD: "#4CAF50", MEDIUM: "#FF9800", BAD: "#F44336"}
+# Qualité d'une valeur : couleur du texte (Android) et pastille (Android et iPhone).
+GRADE_COLORS = {GOOD: "#4CAF50", MEDIUM: COLOR_WARN, BAD: "#F44336"}
+GRADE_DOTS = {GOOD: "🟢", MEDIUM: "🟠", BAD: "🔴"}
 
 ALERT_CHANNEL = "Flow.io alertes"
 
@@ -171,35 +173,48 @@ class FlowioRuntime:
             return None
         unit = state.attributes.get("unit_of_measurement") or default_unit
         text = fmt(value, decimals) + (f" {unit}" if unit else "")
+        level = grade(self.values, band, value) if band else None
+        dot = f" {GRADE_DOTS[level]}" if level in GRADE_DOTS else ""
         if not html:
-            return f"{label} {text}"
-        color = GRADE_COLORS.get(grade(self.values, band, value)) if band else None
-        shown = f'<span style="color: {color}">{escape(text)}</span>' if color else escape(text)
-        return f"<b>{label}</b> {shown}"
+            return f"{label} {text}{dot}"
+        color = GRADE_COLORS.get(level)
+        shown = f'<font color="{color}">{escape(text)}</font>' if color else escape(text)
+        return f"<b>{label}</b> {shown}{dot}"
 
     def context_line(self, html: bool = False) -> str:
-        """Récapitulatif : pH et ORP, températures de l'eau et de l'air, pression (une ligne par groupe).
+        """Récapitulatif : une ligne par groupe, chacune avec son emoji.
 
-        Filtration arrêtée : une ligne prévient que le pH et l'ORP sont peu fiables.
-        En HTML (Android) : libellés en gras, pH et ORP colorés selon la qualité (vert, orange, rouge).
+        🧪 pH et ORP (pastille de qualité), 🌡️ eau et air, 📊 pression. Filtration arrêtée : une ligne
+        ⚠️ prévient que le pH et l'ORP sont peu fiables. En HTML (Android) : libellés en gras, valeurs
+        de pH et d'ORP colorées selon la qualité, avertissement en italique orange.
         """
         groups = [
-            [
-                self._reading("sensor.{p}_io_ph", "pH", 2, band="ph", html=html),
-                self._reading("sensor.{p}_io_orp", "ORP", 0, "mV", band="orp", html=html),
-            ],
-            [
-                self._reading("sensor.{p}_io_wat_tmp", "Eau", 1, "°C", html=html),
-                self._reading("sensor.{p}_io_air_tmp", "Air", 1, "°C", html=html),
-            ],
-            [self._reading("sensor.{p}_io_psi", "Pression", 1, html=html)],
+            (
+                "🧪",
+                [
+                    self._reading("sensor.{p}_io_ph", "pH", 2, band="ph", html=html),
+                    self._reading("sensor.{p}_io_orp", "ORP", 0, "mV", band="orp", html=html),
+                ],
+            ),
+            (
+                "🌡️",
+                [
+                    self._reading("sensor.{p}_io_wat_tmp", "Eau", 1, "°C", html=html),
+                    self._reading("sensor.{p}_io_air_tmp", "Air", 1, "°C", html=html),
+                ],
+            ),
+            ("📊", [self._reading("sensor.{p}_io_psi", "Pression", 1, html=html)]),
         ]
-        lines = [" · ".join(item for item in group if item) for group in groups]
+        lines = []
+        for icon, items in groups:
+            parts = [item for item in items if item]
+            if parts:
+                lines.append(f"{icon} " + " · ".join(parts))
         flt = self.hass.states.get(self.resolve("switch.{p}_io_flt_pmp"))
         if flt is not None and flt.state == "off":
-            note = "Filtration arrêtée : pH et ORP peu fiables"
-            lines.append(f"<i>{note}</i>" if html else note)
-        return ("<br>" if html else "\n").join(line for line in lines if line)
+            note = "⚠️ Filtration arrêtée : pH et ORP peu fiables"
+            lines.append(f'<i><font color="{COLOR_WARN}">{note}</font></i>' if html else note)
+        return ("<br>" if html else "\n").join(lines)
 
     async def async_notify(self, title: str, message: str, tag: str, alert_on: bool | None = None) -> None:
         """Notification d'alerte : supprimée si l'alerte est reportée ; boutons seulement au déclenchement."""
@@ -208,7 +223,7 @@ class FlowioRuntime:
         if alert_on is True:
             await self.async_send(
                 title,
-                message,
+                f"🚨 {message}".strip(),
                 tag,
                 self._actions(tag),
                 color=COLOR_ALERT,
@@ -221,7 +236,7 @@ class FlowioRuntime:
         elif alert_on is False:
             await self.async_send(
                 title,
-                message,
+                f"✅ {message}".strip(),
                 tag,
                 color=COLOR_OK,
                 icon="mdi:check-circle",
@@ -250,7 +265,7 @@ class FlowioRuntime:
         """Envoie la notification à chaque appareil choisi, avec le format de sa plateforme.
 
         Android : HTML (gras, couleurs), canal, priorité, clickAction. iPhone : texte natif, url, niveau
-        d'interruption. Un échec sur un appareil n'empêch pas les autres.
+        d'interruption. Un échec sur un appareil n'empêche pas les autres.
         """
         targets, _missing = self.resolve_targets()
         if not targets:
@@ -267,6 +282,8 @@ class FlowioRuntime:
                 data["notification_icon"] = icon
             if target.android:
                 body, extra, sep = escape(message), rich, "<br>"
+                if body and color:
+                    body = f'<b><font color="{color}">{body}</font></b>'
                 if channel:
                     data["channel"] = channel
                 if urgent:
@@ -284,13 +301,56 @@ class FlowioRuntime:
             text = sep.join(part for part in (body, extra) if part) or "Flow.io"
             await self._deliver(target, title, text, data)
 
+    def _live_tag(self, tag: str) -> str:
+        # L'identifiant d'une activité en direct : lettres, chiffres, tirets et underscores, 64 caractères max.
+        return f"flowio_{self.prefix}_live_{tag}"[:64]
+
+    async def async_send_live(
+        self,
+        title: str,
+        tag: str,
+        *,
+        started: datetime,
+        color: str | None = None,
+        icon: str | None = None,
+        url: str | None = None,
+    ) -> None:
+        """Suivi en direct : Live Activity (iPhone) / Live Update (Android), avec chronomètre depuis le démarrage.
+
+        Le titre est figé à la création ; le chronomètre tourne sur le téléphone sans autre envoi.
+        Un téléphone qui ne gère pas la fonction affiche une notification normale.
+        """
+        targets, _missing = self.resolve_targets()
+        message = self.context_line(html=False) if self.conf.get(CONF_NOTIFY_RECAP, True) else ""
+        for target in targets:
+            data: dict = {
+                "tag": self._live_tag(tag),
+                "live_update": True,
+                "chronometer": True,
+                "when": int(started.timestamp()),
+                "when_relative": False,
+                "critical_text": "En marche",
+            }
+            if color:
+                data["color"] = color
+                data["notification_icon_color"] = color
+            if icon:
+                data["notification_icon"] = icon
+            if url:
+                data["url"] = url
+            await self._deliver(target, title, message or "En marche", data)
+
+    async def async_clear_live(self, tag: str) -> None:
+        """Termine le suivi en direct et retire la notification correspondante."""
+        targets, _missing = self.resolve_targets()
+        for target in targets:
+            await self._deliver(target, "", "clear_notification", {"tag": self._live_tag(tag)})
+
     async def _deliver(self, target: MobileTarget, title: str, message: str, data: dict) -> None:
+        payload: dict = {"message": message, "data": data}
+        if title:
+            payload["title"] = title
         try:
-            await self.hass.services.async_call(
-                "notify",
-                target.service,
-                {"title": title, "message": message, "data": data},
-                blocking=True,
-            )
+            await self.hass.services.async_call("notify", target.service, payload, blocking=True)
         except HomeAssistantError as err:
             _LOGGER.warning("Notification vers %s impossible : %s", target.name, err)

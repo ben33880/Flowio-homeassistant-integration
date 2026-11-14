@@ -39,12 +39,14 @@
           "notify_on_start": "Notifier quand un équipement démarre",
           "notify_on_stop": "Notifier quand un équipement s'arrête",
           "notify_recap": "Ajouter le récapitulatif pH, ORP, températures et pression",
+          "notify_live": "Suivre en direct les équipements en marche (Live Activities / Live Updates)",
           "ios_alert_level": "Niveau d'interruption iPhone des alertes"
         },
         "data_description": {
           "mobile_devices": "Chaque téléphone Android ou iPhone reçoit une présentation adaptée à sa plateforme. Laisser vide pour ne recevoir aucune notification.",
           "mqtt_root": "Permet de lire le volume réellement injecté, mesuré par le firmware. Laisser vide pour garder l'estimation (temps de marche x débit configuré).",
           "notify_devices": "Cochez les équipements (pompes, relais...) publiés par le contrôleur. Aucune case cochée : aucune notification de marche ou d'arrêt. Seuls les équipements déjà connus de Home Assistant sont listés.",
+          "notify_live": "Remplace la notification de démarrage par une carte en direct sur l'écran verrouillé, avec un chronomètre, retirée à l'arrêt. Nécessite iOS 17.2 ou plus récent ou Android 16 ou plus récent, et Home Assistant 2026.7 ou plus récent. Un téléphone non compatible affiche une notification normale. iOS termine une Live Activity au bout de 8 heures.",
           "ios_alert_level": "« Urgent » peut traverser les modes Concentration si les réglages de l'application sur l'iPhone l'autorisent. « Discret » arrive sans réveiller l'écran."
         }
       }

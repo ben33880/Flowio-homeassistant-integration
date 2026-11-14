@@ -8,7 +8,13 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.util import dt as dt_util
 
-from .const import CONF_NOTIFY_DEVICES, CONF_NOTIFY_ON_START, CONF_NOTIFY_ON_STOP, DOMAIN
+from .const import (
+    CONF_NOTIFY_DEVICES,
+    CONF_NOTIFY_LIVE,
+    CONF_NOTIFY_ON_START,
+    CONF_NOTIFY_ON_STOP,
+    DOMAIN,
+)
 from .runtime import COLOR_OFF, COLOR_OK, format_duration
 
 _LOGGER = logging.getLogger(__name__)
@@ -91,14 +97,24 @@ def async_setup_device_notifications(rt):
             else:
                 title += ", durée inconnue"
         _LOGGER.debug("Notification %s : %s", new.entity_id, title)
+        tag = f"device_{new.entity_id.split('.', 1)[1]}"
+        icon = _icon(hass, new)
+        # Toucher la notification ouvre la fiche de l'équipement.
+        url = f"/?more-info-entity-id={new.entity_id}"
+        live = rt.conf.get(CONF_NOTIFY_LIVE, False)
+        if live and running:
+            # Le suivi en direct remplace la notification de démarrage.
+            await rt.async_send_live(title, tag, started=new.last_changed, color=COLOR_OK, icon=icon, url=url)
+            return
+        if live:
+            await rt.async_clear_live(tag)
         await rt.async_send(
             title,
             "",
-            f"device_{new.entity_id.split('.', 1)[1]}",
+            tag,
             color=COLOR_OK if running else COLOR_OFF,
-            icon=_icon(hass, new),
-            # Toucher la notification ouvre la fiche de l'équipement.
-            url=f"/?more-info-entity-id={new.entity_id}",
+            icon=icon,
+            url=url,
             channel=DEVICE_CHANNEL,
             recap=True,
         )
@@ -114,6 +130,9 @@ def async_setup_device_notifications(rt):
             return
         running = new.state == "on"
         if not rt.conf.get(CONF_NOTIFY_ON_START if running else CONF_NOTIFY_ON_STOP, True):
+            # Suivi en direct actif mais arrêts non notifiés : on retire quand même la carte.
+            if not running and rt.conf.get(CONF_NOTIFY_LIVE, False):
+                hass.async_create_task(rt.async_clear_live(f"device_{new.entity_id.split('.', 1)[1]}"))
             return
         hass.async_create_task(_notify(old, new, running, _find(new.entity_id)))
 

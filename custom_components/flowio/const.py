@@ -16,6 +16,7 @@ CONF_NOTIFY_DEVICES = "notify_devices"  # liste d'entités switch dont on notifi
 CONF_NOTIFY_ON_START = "notify_on_start"
 CONF_NOTIFY_ON_STOP = "notify_on_stop"
 CONF_NOTIFY_RECAP = "notify_recap"
+CONF_NOTIFY_LIVE = "notify_live"  # suivi en direct (Live Activities / Live Updates), désactivé par défaut
 CONF_IOS_LEVEL = "ios_alert_level"  # niveau d'interruption iPhone des alertes
 CONF_MQTT_ROOT = "mqtt_root"  # racine MQTT du contrôleur (baseTopic/deviceId), optionnelle
 DEFAULT_IOS_LEVEL = "time-sensitive"

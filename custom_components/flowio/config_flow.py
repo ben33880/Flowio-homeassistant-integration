@@ -12,6 +12,7 @@ from .const import (
     CONF_MOBILE_DEVICES,
     CONF_MQTT_ROOT,
     CONF_NOTIFY_DEVICES,
+    CONF_NOTIFY_LIVE,
     CONF_NOTIFY_MEDIUM,
     CONF_NOTIFY_ON_START,
     CONF_NOTIFY_ON_STOP,
@@ -63,6 +64,7 @@ def _schema(d: dict, equipment: list[dict] | None = None) -> vol.Schema:
         fields[vol.Required(CONF_NOTIFY_ON_START, default=d.get(CONF_NOTIFY_ON_START, True))] = bool
         fields[vol.Required(CONF_NOTIFY_ON_STOP, default=d.get(CONF_NOTIFY_ON_STOP, True))] = bool
         fields[vol.Required(CONF_NOTIFY_RECAP, default=d.get(CONF_NOTIFY_RECAP, True))] = bool
+        fields[vol.Required(CONF_NOTIFY_LIVE, default=d.get(CONF_NOTIFY_LIVE, False))] = bool
         fields[vol.Required(CONF_IOS_LEVEL, default=d.get(CONF_IOS_LEVEL, DEFAULT_IOS_LEVEL))] = (
             selector.SelectSelector(
                 selector.SelectSelectorConfig(
