@@ -10,14 +10,13 @@ const hass = (states: Record<string, string>): Hass => ({
 it('applique le libellé et les jauges Eau · ORP · Air par défaut', () => {
   const config = normalizeHeaderConfig({});
   expect(config.title).toBe('État du bassin');
-  expect(config.entity_prefix).toBe('fio');
   expect(config.measurements).toEqual(['water_temperature', 'orp', 'air_temperature']);
   expect(config.status).toBe(true);
 });
 
-it('accepte un préfixe vide et déduplique les mesures', () => {
-  const config = normalizeHeaderConfig({ entity_prefix: '', measurements: ['ph', 'ph', 'pressure'] });
-  expect(config.entity_prefix).toBe('');
+it('rejette entity_prefix et déduplique les mesures', () => {
+  expect(() => normalizeHeaderConfig({ entity_prefix: 'fio' })).toThrow();
+  const config = normalizeHeaderConfig({ measurements: ['ph', 'ph', 'pressure'] });
   expect(config.measurements).toEqual(['ph', 'pressure']);
 });
 

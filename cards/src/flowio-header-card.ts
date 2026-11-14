@@ -5,6 +5,7 @@ import { entityId, MEASUREMENTS, type Measurement } from './entities';
 import { available, type Hass } from './model';
 import { attributeScale, gaugeGeometry, numericValue } from './gauge-model';
 import { iconFor, toneFor } from './visual';
+import { InstallationController, type InstallationHass } from './installation-controller';
 import {
   gaugeLabel,
   gaugeUnit,
@@ -23,8 +24,9 @@ const STATUS_ICONS = {
 
 class FlowioHeaderCard extends LitElement {
   static properties = { hass: { attribute: false }, config: { state: true } };
-  declare hass?: Hass;
+  declare hass?: Hass & InstallationHass;
   private config?: HeaderConfig;
+  private installation = new InstallationController(this, () => this.hass);
 
   static getConfigElement() { return document.createElement('flowio-header-card-editor'); }
   static getStubConfig(): HeaderConfig { return normalizeHeaderConfig({}); }
@@ -33,14 +35,16 @@ class FlowioHeaderCard extends LitElement {
 
   private more(role: Measurement) {
     if (!this.config || !this.hass) return;
-    const id = entityId(this.config.entity_prefix, role);
+    const prefix = this.installation.value?.prefix;
+    if (!prefix) return;
+    const id = entityId(prefix, role);
     if (this.hass.states[id]) {
       this.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId: id }, bubbles: true, composed: true }));
     }
   }
 
-  private ring(role: Measurement) {
-    const config = this.config!, state = this.hass!.states[entityId(config.entity_prefix, role)];
+  private ring(role: Measurement, prefix: string) {
+    const config = this.config!, state = this.hass!.states[entityId(prefix, role)];
     const scale = attributeScale(state?.attributes);
     const value = numericValue(available(state) ? state.state : undefined);
     const unit = gaugeUnit(role, state?.attributes.unit_of_measurement);
@@ -64,8 +68,12 @@ class FlowioHeaderCard extends LitElement {
   render() {
     const config = this.config, hass = this.hass;
     if (!config || !hass) return html`<ha-card><div class=body>En attente de Home Assistant…</div></ha-card>`;
-    const status = poolStatus(hass, config.entity_prefix);
-    const description = statusDescription(hass, config.entity_prefix);
+    if (this.installation.error) return html`<ha-card><div class=body><p class=error role=alert>${this.installation.error}</p></div></ha-card>`;
+    const installation = this.installation.value;
+    if (!installation) return html`<ha-card><div class=body>Chargement des réglages de l’intégration Flow.io…</div></ha-card>`;
+    const prefix = installation.prefix;
+    const status = poolStatus(hass, prefix);
+    const description = statusDescription(hass, prefix);
     return html`<ha-card class=${config.design === 'flowio' ? 'flowio' : ''}>
       ${config.design === 'flowio' ? html`<svg class=wave viewBox="0 0 1200 90" preserveAspectRatio=none aria-hidden=true><path d="M0,55 C150,90 350,10 600,45 C850,80 1050,20 1200,50 L1200,90 L0,90 Z"></path><path d="M0,70 C200,40 400,95 600,65 C800,35 1000,85 1200,60 L1200,90 L0,90 Z"></path></svg>` : nothing}
       <div class=body>
@@ -77,7 +85,7 @@ class FlowioHeaderCard extends LitElement {
           </div>
           ${description ? html`<p class=status-description>${description}</p>` : nothing}
         </div>` : nothing}
-        <div class=gauges>${config.measurements.map(role => this.ring(role))}</div>
+        <div class=gauges>${config.measurements.map(role => this.ring(role, prefix))}</div>
       </div>
     </ha-card>`;
   }
@@ -174,24 +182,22 @@ class FlowioHeaderCardEditor extends LitElement {
     if (!this.config || !this.hass) return nothing;
     const schema = [
       { name: 'title', selector: { text: {} } },
-      { name: 'entity_prefix', selector: { text: {} } },
       { name: 'design', selector: { select: { mode: 'dropdown', options: [{ value: 'standard', label: 'Standard' }, { value: 'flowio', label: 'Flow.io' }] } } },
       { name: 'status', selector: { boolean: {} } }
     ];
     const measurementSchema = [{ name: 'measurements', selector: { select: { multiple: true, mode: 'list', options: MEASUREMENTS.map(value => ({ value, label: gaugeLabel(value) })) } } }];
     const labels: Record<string, string> = {
       title: 'Libellé',
-      entity_prefix: 'Préfixe firmware',
       design: 'Design',
       status: 'Afficher l’état du bassin',
       measurements: 'Jauges affichées'
     };
     const computeLabel = (field: { name: string }) => labels[field.name] ?? field.name;
     const items = this.config.measurements.map(role => ({ value: role, label: gaugeLabel(role) }));
-    return html`${this.error ? html`<p role=alert>${this.error}</p>` : nothing}<ha-form .hass=${this.hass} .data=${this.config} .schema=${schema} .computeLabel=${computeLabel} @value-changed=${this.changed}></ha-form><flowio-order-list .items=${items} @order-changed=${(event: CustomEvent) => this.reorder(event.detail.order)}></flowio-order-list><ha-form .hass=${this.hass} .data=${this.config} .schema=${measurementSchema} .computeLabel=${computeLabel} @value-changed=${this.changed}></ha-form>`;
+    return html`<p>Le préfixe est fourni par l’intégration Flow.io.</p>${this.error ? html`<p role=alert>${this.error}</p>` : nothing}<ha-form .hass=${this.hass} .data=${this.config} .schema=${schema} .computeLabel=${computeLabel} @value-changed=${this.changed}></ha-form><flowio-order-list .items=${items} @order-changed=${(event: CustomEvent) => this.reorder(event.detail.order)}></flowio-order-list><ha-form .hass=${this.hass} .data=${this.config} .schema=${measurementSchema} .computeLabel=${computeLabel} @value-changed=${this.changed}></ha-form>`;
   }
 
-  static styles = css`:host{display:block}p[role=alert]{color:var(--error-color)}`;
+  static styles = css`:host{display:block}p{color:var(--secondary-text-color);line-height:1.5}p[role=alert]{color:var(--error-color)}`;
 }
 
 if (!customElements.get('flowio-header-card')) customElements.define('flowio-header-card', FlowioHeaderCard);
