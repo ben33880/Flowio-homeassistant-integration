@@ -2,10 +2,11 @@
 
 Les versions antérieures sont dans l'historique Git. Dates au format JJ/MM/AAAA.
 
-Les tags `v0.3.0` et `v0.3.4` ont été créés par le propriétaire. Les versions 0.3.1, 0.3.2, 0.3.3, 0.3.5 et 0.3.6 n'ont pas de tag à la date du 14/11/2026.
+Les tags `v0.3.0` et `v0.3.4` ont été créés par le propriétaire. Les versions 0.3.1, 0.3.2, 0.3.3, 0.3.5, 0.3.6 et 0.3.7 n'ont pas de tag à la date du 15/11/2026.
 
-## Non publié — 14/11/2026
+## 0.3.7 — 15/11/2026
 
+- Jauges : les bornes `min`/`max` des sondes et de la carte piscine viennent exclusivement des attributs du firmware ; les échelles locales et les seuils de qualité codés en dur sont retirés des cartes.
 - Cartes Lovelace intégrées au dépôt : le code source est dans `cards/`, copie du commit `9977463` du dépôt `christophebelmont/flowio-home-assistant-cards` (licence MIT). Ce dépôt d'origine n'est pas modifié.
 - Les cartes n'ont plus de version propre : `cards/package.json` est figé à `1.0.0` et le bundle est reconstruit à chaque release de l'intégration, avec la version de l'intégration.
 - Nettoyage de `cards/` (commit `91428a2`) : retrait de `hacs.json`, du changelog et des notes de release des cartes, de leurs workflows et consignes Copilot, de `docs/RELEASE.md`, `docs/HACS.md`, `docs/HACS-TROUBLESHOOTING.md`, de `scripts/` et des fichiers `.DS_Store`.

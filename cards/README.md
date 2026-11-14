@@ -17,8 +17,8 @@ Cartes de supervision et de pilotage pour les entités MQTT du firmware Flow.io-
 - `custom:flowio-treatment-card` : informations du traitement actif, adaptées au type configuré (chlore/brome, électrolyse, oxygène actif, désactivé).
 - `custom:flowio-equipment-card` : grille de tuiles pour les équipements sélectionnés (bascule par l’icône).
 - `custom:flowio-modes-card` : grille de tuiles pour les modes manuel, automatique et hivernage.
-- `custom:flowio-probes-card` : grille de sondes en barres ou jauges, nom/couleur/échelle configurables.
-- `custom:flowio-probe-card` : sonde unique en barre ou jauge, nom/couleur/échelle configurables.
+- `custom:flowio-probes-card` : grille de sondes en barres ou jauges, nom/couleur configurables.
+- `custom:flowio-probe-card` : sonde unique en barre ou jauge, nom/couleur configurables.
 - `custom:flowio-alarms-card` : synthèse des alarmes surveillées et liste des alarmes actives.
 - `custom:flowio-status-card` : informations système du contrôleur (IP, mémoire, temps de fonctionnement, tension, courant).
 - `custom:flowio-override-card` : forçage d’un équipement en marche/arrêt pendant une durée choisie.
@@ -157,12 +157,10 @@ items:
   sensor.fio_io_orp:
     name: Redox
     color: '#8e24aa'
-    min: 350
-    max: 900
     mode: gauge
 ```
 
-`columns` règle le nombre de colonnes de la grille (1–6). `entities` liste les sondes affichées (l’éditeur propose les capteurs du préfixe, avec le préfixe d’équipement retiré). Le nom affiché retire le préfixe commun (par exemple « Flow.io Waveshare »), détecté automatiquement ou forcé via `name_prefix`. Chaque sonde peut être personnalisée via `items[<entité>]` : `name` (nom convivial), `color` (nom de modèle Flow.io ou code CSS), `min`/`max` (échelle) et `mode` (`line` = barre, ou `gauge` = jauge). Sans personnalisation, la couleur suit le modèle Flow.io, l’échelle reprend les bornes `min`/`max` de l’entité (barre ou jauge laissée vide si absentes), et le mode est `line`. La liste « Ordre d’affichage » (placée avant la liste de choix) permet de classer les sondes dans l’ordre d’apparition. Les anciens champs `colors` et `scales` restent acceptés et migrés. Une entité absente est signalée explicitement.
+`columns` règle le nombre de colonnes de la grille (1–6). `entities` liste les sondes affichées (l’éditeur propose les capteurs du préfixe, avec le préfixe d’équipement retiré). Le nom affiché retire le préfixe commun (par exemple « Flow.io Waveshare »), détecté automatiquement ou forcé via `name_prefix`. Chaque sonde peut être personnalisée via `items[<entité>]` : `name` (nom convivial), `color` (nom de modèle Flow.io ou code CSS) et `mode` (`line` = barre, ou `gauge` = jauge). L’échelle vient exclusivement des attributs `min`/`max` de l’entité ; sans ces attributs, la barre ou la jauge reste vide. La liste « Ordre d’affichage » (placée avant la liste de choix) permet de classer les sondes dans l’ordre d’apparition. Les anciens champs `colors` et `scales` sont ignorés. Une entité absente est signalée explicitement.
 
 ## Sonde unique
 
@@ -174,12 +172,10 @@ name_prefix: ''
 item:
   name: pH
   color: '#8e24aa'
-  min: 6
-  max: 8.4
   mode: gauge
 ```
 
-Même modèle que la carte Sondes, pour une seule entité. Le titre de la carte est directement le nom (modifiable) de l’entité : le préfixe commun est retiré automatiquement (ou forcé via `name_prefix`), et le champ « Nom convivial » (`item.name`) le remplace. Vider ce champ (`item.name: ''`) masque le titre et l’espace qu’il occupe. L’éditeur propose la liste des capteurs du préfixe dans une liste déroulante (sélection unique), puis permet de régler le nom, la couleur, l’échelle `min`/`max` et le mode (`line` = barre, ou `gauge` = jauge). Sans personnalisation, la couleur suit le modèle Flow.io et l’échelle reprend les bornes `min`/`max` de l’entité (barre ou jauge laissée vide si absentes). Une entité absente est signalée explicitement.
+Même modèle que la carte Sondes, pour une seule entité. Le titre de la carte est directement le nom (modifiable) de l’entité : le préfixe commun est retiré automatiquement (ou forcé via `name_prefix`), et le champ « Nom convivial » (`item.name`) le remplace. Vider ce champ (`item.name: ''`) masque le titre et l’espace qu’il occupe. L’éditeur propose la liste des capteurs du préfixe dans une liste déroulante (sélection unique), puis permet de régler le nom, la couleur et le mode (`line` = barre, ou `gauge` = jauge). L’échelle vient exclusivement des attributs `min`/`max` de l’entité ; sans ces attributs, la barre ou la jauge reste vide. Une entité absente est signalée explicitement.
 
 ## Alarmes
 
@@ -266,7 +262,7 @@ entities:
   - binary_sensor.fio_alm_any_active
 ```
 
-Une frise par entité couvre les 24 heures de la journée en cours : la piste reste grise quand l'état est inactif et prend la couleur d'activation quand il est actif (`on` ou `true`), l'icône s'allume avec l'état et un badge en haut de la frise marque l'heure courante, avec la durée d'activation du jour à droite. Les entités se choisissent dans la liste des interrupteurs et capteurs binaires du préfixe (`switch.*` et `binary_sensor.*`) ; `name_prefix` retire un texte devant les noms (vide = détection automatique) et l'ordre d'affichage se règle par glisser-déposer dans l'éditeur. Chaque entité peut être personnalisée via `items[<entité>]` : `name` (nom affiché, remplace le préfixe retiré) et `color` (couleur d'activation, choisie par pastilles dans l'éditeur ou code CSS ; vide = couleur d'activation par défaut). Les données viennent du Recorder ; une entité absente n'est pas transformée en zéro.
+Une frise par entité couvre les 24 heures de la journée en cours : la piste reste grise quand l'état est inactif et prend la couleur d'activation quand il est actif (`on` ou `true`), l'icône s'allume avec l'état et un badge en haut de la frise marque l'heure courante, avec la durée d'activation du jour à droite. Les entités se choisissent dans la liste des interrupteurs et capteurs binaires du préfixe (`switch.*` et `binary_sensor.*`) ; `name_prefix` retire un texte devant les noms (vide = détection automatique) et l'ordre d'affichage se règle par glisser-déposer dans l'éditeur. Chaque entité peut être personnalisée via `items[<entité>]` : `name` (nom affiché, remplace le préfixe retiré) et `color` (couleur d'activation, choisie par pastilles dans l’éditeur ou code CSS ; vide = couleur d'activation par défaut). Les données viennent du Recorder ; une entité absente n'est pas transformée en zéro.
 
 ## Équipements du bassin
 
@@ -312,7 +308,7 @@ Tableau des alarmes : nom, **condition** (`Active` en rouge ; `Inactive` en oran
 - Si `network` ou `system` est sélectionné dans `display.information`, une icône discrète « Système » apparaît juste après le titre « Supervision » ; les badges « Traitement » et « Alertes » sont alignés à droite. Le bouton est utilisable au toucher sur mobile. Le dialogue présente les informations réseau et système ; la ligne « Signal Wi-Fi » apparaît uniquement si sa valeur est disponible. Les icônes proviennent des entités Home Assistant ; tension (V) et courant (A) sont lus depuis `sensor.<préfixe>_io_voltage` et `sensor.<préfixe>_io_current`, indépendamment de `device_slot`.
 - Les actions de remplissage sélectionnées apparaissent sous forme d’icônes avec infobulle à côté des jauges des cuves pH et désinfectant. Les remises à zéro sélectionnées pour filtration, pH et désinfection apparaissent sous leur durée correspondante dans « Horaires & durées ». Une durée est affichée automatiquement si son action de remise à zéro est sélectionnée. Les actions gardent leur confirmation et sont omises du panneau général lorsqu’elles sont placées auprès de leur valeur.
 - Les autres boutons s’affichent uniquement lorsqu’ils sont sélectionnés. Le forçage temporaire s’ouvre dans une boîte de dialogue Home Assistant avec le formulaire et les commandes disponibles du firmware ; sa sélection est globale et partagée entre utilisateurs.
-- La pression est affichée et historisée sans conversion, telle que fournie par l’entité firmware. Son échelle visuelle par défaut est numérique (0,15–1,8), sans hypothèse d’unité ni zone de qualité.
+- La pression est affichée et historisée sans conversion, telle que fournie par l’entité firmware. Sa jauge utilise les bornes `min`/`max` de l’entité ; sans bornes, elle reste vide.
 - La télémétrie d’équipement et les valeurs calculées sont en lecture seule. Les métriques équipement utilisent `device_slot` (0–15) ; vérifier l’affectation dans Flow.io. Les informations réseau et le diagnostic système s’ajoutent via `display.information`.
 - Les démarrages sensibles et certains changements de stratégie demandent confirmation.
 - Un appel de service accepté ne confirme pas physiquement la marche d'un appareil. Les modes affichés suivent le retour d'état Home Assistant.
