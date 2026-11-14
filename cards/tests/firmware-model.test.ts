@@ -5,14 +5,13 @@ import { canSelectOverride, overrideOptions, overrideEntityIds } from '../src/fi
 
 it('construit les entités calculées, équipement, réseau et système documentées par le firmware', () => {
   const config = normalizeConfig({
-    device_slot: 3,
     display: {
       calculated_values: ['v02'],
       device_metrics: ['water_in', 'current'],
       information: ['network', 'system']
     }
   });
-  const ids = expectedBindings(config, undefined, 'fio').map(binding => binding.id);
+  const ids = expectedBindings(config, undefined, 'fio', 3).map(binding => binding.id);
   expect(ids).toContain('sensor.fio_io_value_v02');
   expect(ids).toContain('sensor.fio_data_291');
   expect(ids).toContain('sensor.fio_data_297');
@@ -26,7 +25,6 @@ it('construit les entités calculées, équipement, réseau et système document
 
 it('inclut les entités d’alimentation indépendamment du slot équipement', () => {
   const bindings = expectedBindings(normalizeConfig({
-    device_slot: 4,
     display: { device_metrics: [], information: ['system'] }
   }), undefined, 'fio');
   expect(bindings).toContainEqual({ id: 'sensor.fio_io_voltage', label: 'Tension', unit: 'V' });
@@ -43,7 +41,7 @@ it('expose uniquement les opérations sélectionnées et vérifie les slots', ()
   expect(ids).toContain('number.fio_pdm_ovr_min');
   expect(ids).toContain('button.fio_pdm_ovr_on');
   expect(ids).not.toContain('button.fio_pd_reset_upt_all');
-  expect(() => normalizeConfig({ device_slot: 16 })).toThrow();
+  expect(() => normalizeConfig({ runtime_slots: { filtration: 16 } })).toThrow();
   expect(() => normalizeConfig({ display: { operations: ['unknown'] } })).toThrow();
   expect(() => normalizeConfig({ display: { device_metrics: ['unknown'] } })).toThrow();
 });
