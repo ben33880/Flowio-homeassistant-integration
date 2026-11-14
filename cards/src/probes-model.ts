@@ -1,54 +1,34 @@
-import { normalizePrefix } from './entities';
 import { attributeScale, numericValue } from './gauge-model';
 import { available, type EntityState } from './model';
 import { commonEntityPrefix, commonNamePrefix, displayName, entityName } from './names';
 
 export { commonEntityPrefix, commonNamePrefix, displayName as probeDisplayName, entityName as rawProbeName };
 
-export interface ProbeScale {
-  min: number;
-  max: number;
-}
-
+export interface ProbeScale { min: number; max: number; }
 export const PROBE_TONES = ['water', 'air', 'ph', 'orp', 'pressure'] as const;
 export type ProbeTone = typeof PROBE_TONES[number];
-
 export const PROBE_MODES = ['line', 'gauge'] as const;
 export type ProbeMode = typeof PROBE_MODES[number];
-
-export interface ProbeOverride {
-  name?: string;
-  color?: string;
-  min?: number;
-  max?: number;
-  mode?: ProbeMode;
-}
-
+export interface ProbeOverride { name?: string; color?: string; min?: number; max?: number; mode?: ProbeMode; }
 export interface ProbesConfig {
   type: string;
   title: string;
-  entity_prefix: string;
   entities: string[];
   name_prefix: string;
   columns: number;
   items: Record<string, ProbeOverride>;
   grid_options?: Record<string, unknown>;
 }
-
 function objectValue(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Configuration objet attendue');
   return value as Record<string, unknown>;
 }
-
 function scaleValue(value: unknown): ProbeScale {
   const raw = objectValue(value);
   const { min, max } = raw;
-  if (typeof min !== 'number' || typeof max !== 'number' || !Number.isFinite(min) || !Number.isFinite(max) || max <= min) {
-    throw new Error('Échelle attendue avec max supérieur à min');
-  }
+  if (typeof min !== 'number' || typeof max !== 'number' || !Number.isFinite(min) || !Number.isFinite(max) || max <= min) throw new Error('Échelle attendue avec max supérieur à min');
   return { min, max };
 }
-
 export function probeOverride(value: unknown): ProbeOverride {
   const raw = objectValue(value);
   const result: ProbeOverride = {};
@@ -72,14 +52,12 @@ export function probeOverride(value: unknown): ProbeOverride {
     if (typeof raw.max !== 'number' || !Number.isFinite(raw.max)) throw new Error('Maximum invalide');
     result.max = raw.max;
   }
-  if (result.min !== undefined && result.max !== undefined && result.max <= result.min) {
-    throw new Error('Le maximum doit être supérieur au minimum');
-  }
+  if (result.min !== undefined && result.max !== undefined && result.max <= result.min) throw new Error('Le maximum doit être supérieur au minimum');
   return result;
 }
-
 export function normalizeProbesConfig(input: unknown): ProbesConfig {
   const raw = objectValue(input);
+  if ('entity_prefix' in raw) throw new Error('entity_prefix supprimé : le préfixe vient de l’intégration Flow.io. Retirer ce champ.');
   let title: string;
   if (!('title' in raw)) title = 'Sondes';
   else if (raw.title === undefined) title = '';
@@ -88,13 +66,9 @@ export function normalizeProbesConfig(input: unknown): ProbesConfig {
   const name_prefix = raw.name_prefix ?? '';
   if (typeof name_prefix !== 'string') throw new Error('name_prefix doit être un texte');
   const columns = raw.columns ?? 2;
-  if (typeof columns !== 'number' || !Number.isInteger(columns) || columns < 1 || columns > 6) {
-    throw new Error('Nombre de colonnes attendu entre 1 et 6');
-  }
+  if (typeof columns !== 'number' || !Number.isInteger(columns) || columns < 1 || columns > 6) throw new Error('Nombre de colonnes attendu entre 1 et 6');
   const supplied = raw.entities === undefined ? [] : raw.entities;
-  if (!Array.isArray(supplied) || supplied.some(value => typeof value !== 'string' || !value.trim())) {
-    throw new Error('Liste d’entités invalide');
-  }
+  if (!Array.isArray(supplied) || supplied.some(value => typeof value !== 'string' || !value.trim())) throw new Error('Liste d’entités invalide');
   const items: Record<string, ProbeOverride> = {};
   if (raw.items !== undefined) {
     for (const [id, value] of Object.entries(objectValue(raw.items))) items[id] = probeOverride(value);
@@ -111,46 +85,28 @@ export function normalizeProbesConfig(input: unknown): ProbesConfig {
       items[id] = { ...items[id], min: scale.min, max: scale.max };
     }
   }
-  const grid_options = raw.grid_options === undefined ? undefined : raw.grid_options;
-  if (grid_options !== undefined && (!grid_options || typeof grid_options !== 'object' || Array.isArray(grid_options))) {
-    throw new Error('grid_options doit être un objet');
-  }
+  const grid_options = raw.grid_options;
+  if (grid_options !== undefined && (!grid_options || typeof grid_options !== 'object' || Array.isArray(grid_options))) throw new Error('grid_options doit être un objet');
   return {
-    type: 'custom:flowio-probes-card',
-    title,
-    entity_prefix: normalizePrefix(raw.entity_prefix),
-    entities: [...new Set(supplied)] as string[],
-    name_prefix,
-    columns,
-    items,
-    ...(grid_options ? { grid_options: grid_options as Record<string, unknown> } : {})
+    type: 'custom:flowio-probes-card', title, entities: [...new Set(supplied)] as string[],
+    name_prefix, columns, items, ...(grid_options ? { grid_options: grid_options as Record<string, unknown> } : {})
   };
 }
-
-export function probeIds(config: ProbesConfig): string[] {
-  return config.entities;
-}
-
+export function probeIds(config: ProbesConfig): string[] { return config.entities; }
 export function probeScale(config: ProbesConfig, id: string, state?: EntityState): ProbeScale | undefined {
   const item = config.items[id];
   if (item?.min !== undefined && item?.max !== undefined) return { min: item.min, max: item.max };
   return attributeScale(state?.attributes);
 }
-
 export function probeValue(state?: EntityState): number | undefined {
   return numericValue(available(state) ? state.state : undefined);
 }
-
-export function probeMode(config: ProbesConfig, id: string): ProbeMode {
-  return config.items[id]?.mode ?? 'line';
-}
-
+export function probeMode(config: ProbesConfig, id: string): ProbeMode { return config.items[id]?.mode ?? 'line'; }
 export function probeLabel(config: ProbesConfig, id: string, state: EntityState | undefined, prefix: string): string {
   const name = config.items[id]?.name;
   if (name) return name;
   return displayName(entityName(id, state), prefix);
 }
-
 export function probeTone(id: string, state?: EntityState): ProbeTone {
   if (id.endsWith('_io_ph')) return 'ph';
   if (id.endsWith('_io_orp') || id.endsWith('_pl_dis_setpoint')) return 'orp';
@@ -162,7 +118,6 @@ export function probeTone(id: string, state?: EntityState): ProbeTone {
   if (unit === 'bar' || unit === 'psi') return 'pressure';
   return 'water';
 }
-
 export function resolveProbeColor(config: ProbesConfig, id: string, state?: EntityState): { tone: ProbeTone; custom: string } {
   const override = config.items[id]?.color;
   if (override && (PROBE_TONES as readonly string[]).includes(override)) return { tone: override as ProbeTone, custom: '' };
