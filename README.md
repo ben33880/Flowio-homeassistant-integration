@@ -46,6 +46,7 @@ Par défaut, le firmware utilise le préfixe `fio`, la base MQTT `flowio` et un 
 | Usage | Entité |
 |---|---|
 | pH, ORP, température de l'eau | `sensor.<préfixe>_io_ph`, `io_orp`, `io_wat_tmp` |
+| Température de l'air, pression (récapitulatif des notifications) | `sensor.<préfixe>_io_air_tmp`, `io_psi` |
 | Filtration | `switch.<préfixe>_io_flt_pmp` |
 | Débits des pompes (L/h) | `number.<préfixe>_pd1_flow` (pH), `pd2_flow` (désinfectant) |
 | Marche du jour des pompes | `sensor.<préfixe>_pd_ph_pmp_upt` / `pd_chl_pmp_upt`, sinon `data_(144+slot)` |
@@ -53,7 +54,7 @@ Par défaut, le firmware utilise le préfixe `fio`, la base MQTT `flowio` et un 
 | Temps de fonctionnement du contrôleur (minutes) | `sensor.<préfixe>_sys_upt_mn` |
 | Volume injecté mesuré (facultatif) | topic MQTT `<racine>/rt/pdm/metrics/pd<slot>`, champ `injected.day_ml` |
 
-Les valeurs `data_*` (cuves, compteurs) ne sont publiées dans Home Assistant que si elles sont activées dans le firmware. Les unités de temps `s`, `min`, `mn` et `h` sont reconnues.
+Les valeurs `data_*` (cuves, compteurs) ne sont publiées dans Home Assistant que si elles sont activées dans le firmware. Les unités de temps `s`, `min`, `mn` et `h` sont reconnues. La température de l'air et la pression ne servent qu'au récapitulatif : si elles sont absentes, elles n'y figurent pas.
 
 ## Qualité de l'eau
 
@@ -107,18 +108,35 @@ Toutes les notifications partent vers le service choisi à la configuration. Ave
 
 - Au déclenchement : titre avec ⚠️, couleur rouge, priorité haute, canal « Flow.io alertes ».
 - Au retour à la normale : titre avec ✅ et couleur verte.
-- Dans les deux cas, une ligne de contexte donne la température de l'eau, le pH, l'ORP et l'état de la filtration.
+- Sous le message, le récapitulatif (voir plus bas).
 
 ### Équipements
 
 Dans **Configurer**, coche les équipements dont tu veux être prévenu. La liste reprend les `switch.<préfixe>_*` déjà connus de Home Assistant (filtration, pompes, relais…). Rien n'est coché par défaut.
 
-- Démarrage : « 🟢 nom », l'heure de démarrage et le temps passé à l'arrêt. Sur Android, un chronomètre du temps de marche s'affiche.
-- Arrêt : « ⚪ nom », l'heure d'arrêt et la durée de fonctionnement.
+Exemple à l'arrêt :
+
+```text
+Filtration : arrêt
+22:07 · par le contrôleur · a fonctionné 12 min
+pH 7,21 · ORP 720 mV
+Eau 24,5 °C · Air 18,0 °C
+Pression 1,2 bar
+```
+
+Au démarrage, c'est le même format avec « démarrage » et sans la durée.
+
+- Le titre donne l'équipement et l'action. L'icône de la notification est celle de l'entité (celle publiée par le firmware, ou celle que tu as choisie dans Home Assistant).
+- La première ligne donne l'heure, l'auteur et, à l'arrêt seulement, la durée de fonctionnement.
+- L'auteur vient d'une commande Home Assistant passée dans les 2 minutes qui précèdent le changement : le nom de l'utilisateur, « une automatisation ou un script », ou « Home Assistant ». Sans commande de ce genre, le changement vient du contrôleur (programmation ou commande locale) et la ligne indique « par le contrôleur ».
 - Chaque équipement a sa propre notification, qui remplace la précédente.
 - Les passages par `unavailable` ou `unknown` (redémarrage, perte de lien) ne notifient pas.
 
-Les durées se basent sur le dernier changement d'état connu de Home Assistant. Juste après un redémarrage de Home Assistant, la première durée affichée est donc plus courte que la réalité.
+La durée se base sur le dernier changement d'état connu de Home Assistant. Juste après un redémarrage de Home Assistant, la première durée affichée est donc plus courte que la réalité.
+
+### Récapitulatif
+
+Sous chaque notification d'alerte ou d'équipement : pH et ORP, température de l'eau et de l'air, pression. Une ligne est omise si ses mesures sont indisponibles. Les unités sont celles publiées par le firmware.
 
 ### Boutons (Android)
 
@@ -162,7 +180,7 @@ Deux minutes après le démarrage, puis toutes les 15 minutes, l'intégration v�
 
 Le capteur `Redémarrages du contrôleur` compte les baisses de `sensor.<préfixe>_sys_upt_mn` et conserve les horodatages après un redémarrage de Home Assistant. Le premier relevé sert de référence : un redémarrage pendant que Home Assistant est arrêté n'est pas compté.
 
-Pour dépanner, utilise Appareils et services → Flow.io → Télécharger les diagnostics. Le fichier contient la configuration (service de notification masqué), les seuils, les états et unités lus, l'historique des pompes et les entités manquantes.
+Pour dépanner, utilise Appareils et services → Flow.io → Télécharger les diagnostics. Le fichier contient la configuration (service de notification masqué), les seuils, les états et unités lus, l'historique des pompes et les entités manquantes. Pour suivre les notifications d'équipement, active le niveau debug de `custom_components.flowio` dans le journal de Home Assistant.
 
 ## Dépannage rapide
 
@@ -171,10 +189,11 @@ Pour dépanner, utilise Appareils et services → Flow.io → Télécharger les 
 | Réparation « entités attendues introuvables » | Vérifie le préfixe, les slots et que les valeurs `data_*` sont activées dans le firmware |
 | Le volume injecté reste en `estimation` | La racine MQTT est vide ou fausse, ou le topic n'est pas publié ; vérifie `flowio/ESP32-XXXXXX` avec un explorateur MQTT |
 | Aucune notification | Vérifie le service de notification (réparation dédiée) et le canal Android du téléphone |
+| Pas de notification d'équipement | Vérifie que l'équipement est coché dans **Configurer** et active le niveau debug pour voir les changements d'état reçus |
 | Pas de couleur ni de boutons | Le service n'est pas de la forme `notify.mobile_app_*` |
 | Aucun équipement dans la liste à cocher | Le contrôleur n'a pas encore publié ses `switch` dans Home Assistant, ou le préfixe est faux |
 
 ## Documentation du projet et release
 
 - [CLAUDE.md](CLAUDE.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/DECISIONS.md](docs/DECISIONS.md) et [CHANGELOG.md](CHANGELOG.md) décrivent le code, les choix faits et l'historique.
-- Un tag `vX.Y.Z`, identique à la version de `custom_components/flowio/manifest.json`, lance `.github/workflows/release.yml`. Il récupère les cartes au commit épinglé par `CARDS_REF`, lance leurs tests et leur `release:prepare` (notices de licences incluses), copie le bundle dans l'intégration, crée `flowio.zip` et ouvre une release en brouillon. Le brouillon est à vérifier puis à publier à la main. Pour changer la version des cartes, modifie `CARDS_REF` dans ce fichier.
+- Un tag `vX.Y.Z`, identique à la version de `custom_components/flowio/manifest.json`, lance `.github/workflows/release.yml`. Il récupère les cartes au commit épinglé par `CARDS_REF`, lance leurs tests et leur `release:prepare` (notices de licences incluses), copie le bundle dans l'intégration, crée `flowio.zip` et publie la release. Pour changer la version des cartes, modifie `CARDS_REF` dans ce fichier.

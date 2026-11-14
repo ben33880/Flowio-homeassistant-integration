@@ -113,26 +113,29 @@ class FlowioRuntime:
             actions.insert(0, {"action": f"{head}refill_{key}", "title": "Cuve remplie"})
         return actions
 
+    def _reading(self, template: str, label: str, decimals: int, default_unit: str = "") -> str | None:
+        state = self.hass.states.get(self.resolve(template))
+        value = as_float(state)
+        if value is None:
+            return None
+        unit = state.attributes.get("unit_of_measurement") or default_unit
+        return f"{label} {fmt(value, decimals)}" + (f" {unit}" if unit else "")
+
     def context_line(self, about: str | None = None) -> str:
-        """Ligne de contexte : température de l'eau, pH, ORP, puis état de la filtration."""
-        states = self.hass.states
-        parts = []
-        temp = as_float(states.get(self.resolve("sensor.{p}_io_wat_tmp")))
-        if temp is not None:
-            parts.append(f"🌡️ {fmt(temp, 1)} °C")
-        ph = as_float(states.get(self.resolve("sensor.{p}_io_ph")))
-        if ph is not None:
-            parts.append(f"pH {fmt(ph, 2)}")
-        orp = as_float(states.get(self.resolve("sensor.{p}_io_orp")))
-        if orp is not None:
-            parts.append(f"ORP {fmt(orp, 0)} mV")
-        line = " · ".join(parts)
-        flt_id = self.resolve("switch.{p}_io_flt_pmp")
-        flt = states.get(flt_id)
-        if flt is not None and flt.state in ("on", "off") and about != flt_id:
-            note = "💧 Filtration en marche" if flt.state == "on" else "💤 Filtration arrêtée"
-            line = f"{line}\n{note}" if line else note
-        return line
+        """Récapitulatif : pH et ORP, températures de l'eau et de l'air, pression (une ligne par groupe)."""
+        groups = [
+            [
+                self._reading("sensor.{p}_io_ph", "pH", 2),
+                self._reading("sensor.{p}_io_orp", "ORP", 0, "mV"),
+            ],
+            [
+                self._reading("sensor.{p}_io_wat_tmp", "Eau", 1, "°C"),
+                self._reading("sensor.{p}_io_air_tmp", "Air", 1, "°C"),
+            ],
+            [self._reading("sensor.{p}_io_psi", "Pression", 1)],
+        ]
+        lines = [" · ".join(item for item in group if item) for group in groups]
+        return "\n".join(line for line in lines if line)
 
     async def async_notify(self, title: str, message: str, tag: str, alert_on: bool | None = None) -> None:
         """Notification d'alerte : supprimée si l'alerte est reportée ; boutons seulement au déclenchement."""
