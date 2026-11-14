@@ -59,7 +59,7 @@ it('configure la carte sondes', () => {
 });
 
 it('liste les sondes sélectionnées', () => {
-  const config = normalizeProbesConfig({ entity_prefix: 'fio', entities: ['sensor.fio_io_ph', 'sensor.fio_io_ph', 'sensor.fio_data_112'] });
+  const config = normalizeProbesConfig({ entities: ['sensor.fio_io_ph', 'sensor.fio_io_ph', 'sensor.fio_data_112'] });
   expect(probeIds(config)).toEqual(['sensor.fio_io_ph', 'sensor.fio_data_112']);
 });
 
