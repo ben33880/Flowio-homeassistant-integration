@@ -15,6 +15,8 @@ _LOGGER = logging.getLogger(__name__)
 
 DEVICE_CHANNEL = "Flow.io équipements"
 COMMAND_WINDOW = 120  # secondes : délai max entre une commande Home Assistant et le changement d'état
+# Services de l'intégration qui pilotent un équipement (refill_tank et reset_uptime n'en pilotent aucun).
+EQUIPMENT_SERVICES = {"force_equipment", "release_override"}
 
 
 def _icon(hass, state) -> str | None:
@@ -57,7 +59,8 @@ def async_setup_device_notifications(rt):
             ids = [ids]
         ids = {i for i in ids if isinstance(i, str)}
         targets = ids & watched
-        if targets or data.get("domain") == DOMAIN or any(i.startswith(generic) for i in ids):
+        own = data.get("domain") == DOMAIN and data.get("service") in EQUIPMENT_SERVICES
+        if targets or own or any(i.startswith(generic) for i in ids):
             commands.append((monotonic(), targets, event.context))
 
     def _find(entity_id: str):

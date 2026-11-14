@@ -11,6 +11,7 @@ Les versions antérieures sont dans l'historique Git. Dates au format JJ/MM/AAAA
 - Chronomètre Android retiré : c'était la seule différence entre les notifications de démarrage et d'arrêt, et les démarrages n'arrivaient pas.
 - Récapitulatif sous le titre, pour les équipements et pour les alertes : pH et ORP, eau et air, pression. La ligne de filtration est supprimée.
 - Journal de débogage (`custom_components.flowio`) pour suivre les changements d'état reçus.
+- Seuls `flowio.force_equipment` et `flowio.release_override` comptent comme commandes d'équipement pour déterminer l'auteur ; `refill_tank` et `reset_uptime` n'y sont plus pris en compte.
 - README, CLAUDE.md et CHANGELOG mis à jour.
 
 ### Design (Android)
