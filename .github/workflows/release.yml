@@ -27,14 +27,50 @@ jobs:
           cache: npm
           cache-dependency-path: cards/package-lock.json
 
-      - name: Tests, build et mentions de licences des cartes
+      - name: Tests et build des cartes
         working-directory: cards
         run: |
           npm ci
           npm test
-          export RELEASE_VERSION=$(jq -r .version ../custom_components/flowio/manifest.json)
-          export RELEASE_SOURCE_SHA=$(git rev-parse HEAD)
-          npm run release:prepare
+          npm run build
+
+      - name: Mentions de licences des cartes
+        working-directory: cards
+        run: |
+          shopt -s nocaseglob nullglob
+          version=$(jq -r .version ../custom_components/flowio/manifest.json)
+          count=0
+          {
+            echo "Third-party notices for Flow.io Home Assistant Cards ${version}"
+            echo "Copied from the production dependencies installed for this build."
+            for dir in $(npm ls --omit=dev --all --parseable | tail -n +2 | sort -u); do
+              name=$(jq -r '.name + " " + .version' "$dir/package.json")
+              found=0
+              echo
+              echo "--------------------"
+              echo
+              echo "$name"
+              for file in "$dir"/licen[sc]e* "$dir"/copying* "$dir"/notice*; do
+                if [ -f "$file" ]; then
+                  found=1
+                  echo
+                  basename "$file"
+                  cat "$file"
+                fi
+              done
+              if [ "$found" = 0 ]; then
+                echo "Aucun fichier de licence pour $name" >&2
+                exit 1
+              fi
+              count=$((count + 1))
+            done
+          } > dist/THIRD_PARTY_NOTICES.txt
+          test "$count" -gt 0
+          {
+            printf '\n/*!\nFlow.io Home Assistant Cards %s\nSource: %s\n\n' "$version" "$GITHUB_SHA"
+            { cat LICENSE; echo; cat dist/THIRD_PARTY_NOTICES.txt; } | sed 's#\*/#* /#g'
+            printf '\n*/\n'
+          } >> dist/flowio-home-assistant-cards.js
 
       - name: Copier le bundle dans l'intégration
         run: |
