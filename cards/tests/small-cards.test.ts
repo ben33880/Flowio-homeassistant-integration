@@ -130,6 +130,8 @@ it('configure la carte forçage et lit l’état', () => {
   const config = normalizeOverrideConfig({ device: 'Pompe pH', durations: [15, 5, 5] });
   expect(config.durations).toEqual([5, 15]);
   expect(() => normalizeOverrideConfig({ durations: [0] })).toThrow();
+  expect(() => normalizeOverrideConfig({ entity_prefix: 'fio' })).toThrow();
+  expect(() => normalizeOverrideConfig({ entity_prefix: '' })).toThrow();
   const status = (attributes: Record<string, unknown>) => ({ 'sensor.fio_pdm_ovr_state': state('idle', attributes) });
   expect(overrideAvailable(hass(status({ override_available: true })), 'fio')).toBe(true);
   expect(overrideForced(hass(status({ control_mode: 'forced' })), 'fio')).toBe(true);
