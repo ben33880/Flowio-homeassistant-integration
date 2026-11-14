@@ -6,9 +6,11 @@ Les tags `v0.3.0` et `v0.3.4` ont été créés par le propriétaire. Les versio
 
 ## Non publié — 14/11/2026
 
-- Cartes Lovelace intégrées au dépôt : le code source est dans `cards/`, copie du commit `9977463` du dépôt `christophebelmont/flowio-home-assistant-cards` (cartes 0.3.5, licence MIT). Ce dépôt d'origine n'est pas modifié.
-- Workflow de release : le bundle est construit depuis `cards/` (`b8f226a`). Les variables `CARDS_REPO` et `CARDS_REF` et l'étape qui récupérait le dépôt externe sont supprimées. Le build n'a pas encore été exécuté ; le prochain tag le vérifiera.
-- Documentation : nouvel index `docs/CARTES.md`. README, CLAUDE.md, ARCHITECTURE et DECISIONS mis à jour. Le README ajoute le dépannage de l'erreur `value_json.tank.remaining_ml`.
+- Cartes Lovelace intégrées au dépôt : le code source est dans `cards/`, copie du commit `9977463` du dépôt `christophebelmont/flowio-home-assistant-cards` (licence MIT). Ce dépôt d'origine n'est pas modifié.
+- Les cartes n'ont plus de version propre : `cards/package.json` est figé à `1.0.0` et le bundle est reconstruit à chaque release de l'intégration, avec la version de l'intégration.
+- Nettoyage de `cards/` (commit `91428a2`) : retrait de `hacs.json`, du changelog et des notes de release des cartes, de leurs workflows et consignes Copilot, de `docs/RELEASE.md`, `docs/HACS.md`, `docs/HACS-TROUBLESHOOTING.md`, de `scripts/` et des fichiers `.DS_Store`.
+- Workflow de release (`b8f226a`, `75145ce`, `4fd67dc`) : le build part de `cards/` et plus d'un dépôt externe (`CARDS_REPO` et `CARDS_REF` supprimés). Le workflow génère lui-même les mentions de licences des dépendances (`THIRD_PARTY_NOTICES.txt`) et les ajoute au bundle ; le script `prepare-release.mjs` et le script `release:prepare` sont supprimés. Le workflow n'a pas encore été exécuté ; le prochain tag le vérifiera.
+- Documentation : nouvel index `docs/CARTES.md`. README, README des cartes, CLAUDE.md, ARCHITECTURE et DECISIONS mis à jour. Le README ajoute le dépannage de l'erreur `value_json.tank.remaining_ml`.
 
 ## 0.3.6 — 14/11/2026
 

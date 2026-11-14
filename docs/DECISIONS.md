@@ -6,7 +6,8 @@ Choix validés ou refusés par le propriétaire. À respecter.
 
 - **Préfixe d'entités** : défaut `fio`, aligné sur le firmware. Normalisé et validé avec la même règle que les cartes. Un préfixe vide est refusé.
 - **Racine MQTT** : champ facultatif. Renseignée, l'intégration lit le volume mesuré par le firmware. Vide, elle utilise l'estimation. Exemple affiché : `flowio/ESP32-XXXXXX`.
-- **Cartes dans le dépôt** (14/11/2026) : le code source des cartes est dans `cards/`, et non plus dans un dépôt à part. Copie complète du commit `9977463`, fichiers `.md` compris. Le build de release part de `cards/`. Les `.md` des cartes restent sur place (liens relatifs, script de release) ; l'index est `docs/CARTES.md`.
+- **Cartes dans le dépôt, sans version propre** (14/11/2026) : le code source des cartes est dans `cards/`, et non plus dans un dépôt à part. Les cartes n'ont pas de numéro de version : `cards/package.json` est figé à `1.0.0` et le bundle est reconstruit à chaque release de l'intégration, avec la version de l'intégration. Plus de changelog ni de notes de release des cartes, plus d'installation HACS séparée, plus de CI propre aux cartes.
+- **Release portée par le workflow** (14/11/2026) : le workflow `release.yml` lance les tests, le build, génère les mentions de licences des dépendances et copie le bundle. Le script `prepare-release.mjs` est supprimé.
 - **Destinataires des notifications** (14/11/2026) : une liste de téléphones de l'application mobile, choisis dans un sélecteur d'appareils. Le champ `notify_service` est supprimé, sans mécanisme de repli. Rien de choisi : aucune notification.
 - **Notifications par plateforme** (14/11/2026) : chaque téléphone reçoit un format adapté, Android en HTML, iPhone en texte simple. « Soyons créatifs », avec emojis dans le corps et couleurs, mais le titre reste sans emoji.
 - **Notifications d'équipement** : au choix de l'utilisateur, par cases à cocher dans Configurer, rien de coché par défaut. Seuls les `switch` sont proposés. Démarrages et arrêts peuvent être désactivés séparément.
@@ -27,6 +28,7 @@ Choix validés ou refusés par le propriétaire. À respecter.
 - **Boutons de forçage, de dosage ou de démarrage dans les notifications** : volontairement absents.
 - **Emoji dans le titre des notifications d'équipement** : refusé par le propriétaire.
 - **Écrire dans le dépôt externe des cartes ou dans celui du firmware** (14/11/2026) : ils n'appartiennent pas au propriétaire. Lecture seule. Les changements de cartes se font dans `cards/`.
+- **Version, changelog ou notes de release propres aux cartes** (14/11/2026) : refusés par le propriétaire. Ne pas les réintroduire.
 - **Chiffres inventés** : pas de pourcentage de progression sans durée prévue connue ; la barre de la filtration vient de la plage publiée par le firmware.
 
 ## Questions ouvertes
@@ -35,4 +37,5 @@ Choix validés ou refusés par le propriétaire. À respecter.
 - Faut-il proposer d'autres entités que les `switch` dans les notifications (capteurs binaires du contrôleur) ?
 - Progression des pompes doseuses (volume injecté face à une limite journalière) : non fait, à demander au propriétaire si une limite existe dans le firmware.
 - Barre de progression sur Android : un rapport de bug de l'application signale qu'elle ne s'affiche pas toujours avec `live_update`. À revérifier sur l'appareil du propriétaire.
-- Corriger dans `cards/` le README (version 0.3.2/0.3.3, installation HACS séparée) et supprimer `cards/hacs.json`, `cards/.github/workflows/` et `cards/docs/.DS_Store` : voir `docs/CARTES.md`.
+- Les tests des cartes (`npm test`) ne tournent qu'à la release : faut-il un workflow de tests au push ? Pas de demande à ce jour.
+- Les fiches `cards/docs/DESIGN.md`, `DEVELOPMENT.md`, `DISPLAY.md`, `INJECTIONS.md`, `MAINTENANCE.md` et `TIMING.md` n'ont pas été relues : elles peuvent encore parler de versions ou de release séparées.
