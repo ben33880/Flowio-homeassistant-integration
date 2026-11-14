@@ -6,8 +6,9 @@ from homeassistant.components import websocket_api
 from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er
 
-from .const import CONF_MQTT_ROOT, DOMAIN, JS_FILE, PLATFORMS, URL_BASE
+from .const import CONF_MQTT_ROOT, DOMAIN, JS_FILE, PLATFORMS, THRESHOLDS, URL_BASE
 from .device_notifications import async_setup_device_notifications
 from .notification_actions import async_setup_actions
 from .runtime import FlowioRuntime
@@ -25,13 +26,26 @@ def _frontend_info():
 
 
 def _installation(rt: FlowioRuntime) -> dict:
-    """Réglages de l'installation que les cartes reprennent : elles ne les saisissent plus."""
+    """Réglages partagés et identifiants réels, y compris après renommage."""
+    registry = er.async_get(rt.hass)
+    entities = {
+        key: registry.async_get_entity_id("sensor", DOMAIN, f"{rt.prefix}_{key}")
+        for key in (
+            "ph_quality", "orp_quality", "water_quality", "ph_injected",
+            "dis_injected", "ph_autonomy", "dis_autonomy",
+        )
+    }
+    entities.update({
+        t.key: registry.async_get_entity_id("number", DOMAIN, f"{rt.prefix}_threshold_{t.key}")
+        for t in THRESHOLDS
+    })
     return {
         "prefix": rt.prefix,
         "ph_slot": rt.ph_slot,
         "disinfection_slot": rt.dis_slot,
         "mqtt_root": (rt.conf.get(CONF_MQTT_ROOT) or "").strip().strip("/"),
         "thresholds": dict(rt.values),
+        "entities": entities,
     }
 
 
