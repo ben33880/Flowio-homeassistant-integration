@@ -6,6 +6,8 @@ Les versions antérieures sont dans l'historique Git. Dates au format JJ/MM/AAAA
 
 - Notifications d'équipement : l'option `alert_once` est retirée. Comme un démarrage et un arrêt d'un même équipement partagent le même tag, un démarrage qui remplace la notification d'arrêt restait silencieux. Chaque changement se signale de nouveau.
 - Icône et logo Flow.io pour Home Assistant : dossier `custom_components/flowio/brand/` (`icon.png`, `icon@2x.png`, `logo.png`, `logo@2x.png`), pris en compte par Home Assistant 2026.3 ou plus récent.
+- iPhone : les alertes qui se déclenchent utilisent le niveau d'interruption « time-sensitive » (elles traversent le mode Concentration) et le retour à la normale le niveau « passive » (sans réveiller l'écran). Le niveau n'est pas envoyé à un appareil Android connu.
+- Documentation : les boutons « Reporter 24 h » et « Cuve remplie » sont bien proposés sur iPhone (actions intégrées aux notifications depuis iOS 2021.5). Le README disait à tort qu'iOS ne les supportait pas.
 
 ## 0.2.3 et 0.2.4 — 14/11/2026
 

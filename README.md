@@ -104,11 +104,11 @@ Les alertes « à surveiller » ne notifient que si l'option correspondante est 
 
 ## Notifications
 
-Toutes les notifications partent vers le service choisi à la configuration. Avec un service `notify.mobile_app_*` (application Android), elles gagnent des couleurs, des icônes, des canaux et un regroupement. Avec un autre service, tu reçois le même texte, sans ces options.
+Toutes les notifications partent vers le service choisi à la configuration. Avec un service `notify.mobile_app_*` (application Home Assistant sur Android ou iPhone), elles gagnent des couleurs, des icônes, un regroupement et des boutons. Avec un autre service, tu reçois le même texte, sans ces options.
 
 ### Alertes
 
-- Au déclenchement : titre avec ⚠️, couleur rouge, priorité haute, canal « Flow.io alertes ».
+- Au déclenchement : titre avec ⚠️, couleur rouge, priorité haute, canal Android « Flow.io alertes ».
 - Au retour à la normale : titre avec ✅ et couleur verte.
 - Sous le message, le récapitulatif (voir plus bas).
 
@@ -142,14 +142,25 @@ Sous chaque notification d'alerte ou d'équipement : pH et ORP, température de 
 
 Sur Android, les libellés sont en gras et les valeurs de pH et d'ORP sont colorées selon la qualité : vert (bon), orange (moyen), rouge (mauvais), d'après les plages de la section Qualité de l'eau. Ce rendu n'est utilisé que si le service `notify.mobile_app_*` correspond à un appareil Android connu de Home Assistant. Sinon (iPhone, autre service), le récapitulatif est en texte simple. Les couleurs peuvent mal s'afficher en mode sombre.
 
-### Boutons (Android)
+### iPhone
+
+Les notifications destinées à un iPhone suivent la documentation de l'application Home Assistant pour iOS. Je n'ai pas pu les tester sur un iPhone.
+
+- **Aspect** : l'icône de l'entité et la couleur sont affichées comme celles d'une notification de communication (pastille arrondie), et le titre sert de nom d'expéditeur. Le récapitulatif est en texte simple, sans gras ni couleur.
+- **Alertes** : à leur déclenchement, elles ont le niveau d'interruption « time-sensitive » (elles traversent le mode Concentration, et iOS peut les annoncer à voix haute selon tes réglages). Le retour à la normale a le niveau « passive » : il arrive sans réveiller l'écran.
+- **Équipements** : niveau d'interruption normal.
+- **Remplacement et regroupement** : une notification remplace la précédente du même équipement ou de la même alerte, et toutes sont regroupées sous Flow.io.
+- **Boutons** : « Reporter 24 h » et « Cuve remplie » sont proposés comme sur Android (iOS 2021.5 ou plus récent).
+- **Toucher la notification** ouvre la fiche de l'équipement.
+
+### Boutons (Android et iPhone)
 
 Chaque alerte qui se déclenche propose :
 
 - **Reporter 24 h** : supprime les notifications de cette alerte pendant 24 h. Le capteur reste exact, son attribut `snoozed` l'indique. Le report est gardé en mémoire et disparaît au redémarrage de Home Assistant.
 - **Cuve remplie** (alertes de cuve basse seulement) : appelle `flowio.refill_tank`. Le bouton n'agit que si le niveau est encore sous le seuil, pour qu'un appui accidentel ne réinitialise pas une cuve pleine.
 
-Chaque appui reçoit une réponse qui remplace la notification. Les notifications de retour à la normale n'ont pas de bouton. Les actions dynamiques ne sont pas supportées sur iOS : l'intégration n'en ajoute que pour un service `notify.mobile_app_*`. Il n'y a volontairement aucun bouton de forçage.
+Chaque appui reçoit une réponse qui remplace la notification. Les notifications de retour à la normale n'ont pas de bouton. Les boutons ne sont ajoutés que pour un service `notify.mobile_app_*`. Il n'y a volontairement aucun bouton de forçage.
 
 ## Services
 
@@ -192,7 +203,7 @@ Pour dépanner, utilise Appareils et services → Flow.io → Télécharger les 
 |---|---|
 | Réparation « entités attendues introuvables » | Vérifie le préfixe, les slots et que les valeurs `data_*` sont activées dans le firmware |
 | Le volume injecté reste en `estimation` | La racine MQTT est vide ou fausse, ou le topic n'est pas publié ; vérifie `flowio/ESP32-XXXXXX` avec un explorateur MQTT |
-| Aucune notification | Vérifie le service de notification (réparation dédiée) et le canal Android du téléphone |
+| Aucune notification | Vérifie le service de notification (réparation dédiée) et, sur Android, le canal du téléphone ; sur iPhone, les réglages de notifications de l'application |
 | Pas de notification d'équipement | Vérifie que l'équipement est coché dans **Configurer** et active le niveau debug pour voir les changements d'état reçus |
 | Pas de couleur ni de boutons | Le service n'est pas de la forme `notify.mobile_app_*` |
 | Récapitulatif en texte simple sur Android | Le service ne correspond pas à un appareil Android enregistré dans Home Assistant ; vérifie le nom `notify.mobile_app_<appareil>` |

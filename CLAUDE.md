@@ -17,7 +17,7 @@ Intégration Home Assistant (HACS) pour le contrôleur de piscine Flow.io (firmw
 - Ne pas sur-concevoir : quand le propriétaire dit « ne te prends pas la tête », on garde la solution simple.
 - Lire le firmware avant d'affirmer quoi que ce soit sur ses valeurs par défaut ou ses topics. Ne jamais deviner.
 - Rien n'est testé dans un vrai Home Assistant par l'assistant : le dire clairement dans les réponses.
-- Le propriétaire modifie aussi le dépôt à la main (workflow, manifest, tags). Avant de modifier un fichier, relire sa version actuelle ; avant de parler de versions, lister les tags et les releases.
+- Le propriétaire modifie aussi le dépôt à la main (workflow, manifest, tags, images). Avant de modifier un fichier, relire sa version actuelle ; avant de parler de versions, lister les tags et les releases.
 - Après chaque push, relire `CLAUDE.md` : tout point d'état devenu faux doit être corrigé dans le même push, pas annoncé comme fait sans l'être.
 - Un push dont la confirmation n'a pas reçu de réponse n'est pas fait : vérifier avec la liste des commits avant de dire qu'il l'est.
 - L'outil GitHub disponible n'envoie que du texte : les images (PNG, JPG) doivent être déposées à la main par le propriétaire.
@@ -35,7 +35,9 @@ Intégration Home Assistant (HACS) pour le contrôleur de piscine Flow.io (firmw
 ## État au 14/11/2026
 
 - Tags existants au 14/11/2026 : v0.1.0, v0.1.1, v0.2.0, v0.2.1, v0.2.2, v0.2.3, v0.2.4. L'état de publication des releases n'a pas été vérifié pour les trois dernières.
-- Version préparée dans le code : 0.2.5 (retrait d'`alert_once` des notifications d'équipement, icône Flow.io). Le tag `v0.2.5` est à créer par le propriétaire, après avoir déposé `custom_components/flowio/brand/` (`icon.png`, `icon@2x.png`, `logo.png`, `logo@2x.png`) : sans ces fichiers, l'icône ne sera pas dans la release.
+- Version préparée dans le code : 0.2.5 (retrait d'`alert_once`, icône Flow.io, niveaux d'interruption iPhone). Le tag `v0.2.5` est à créer par le propriétaire.
+- Dossier `custom_components/flowio/brand/` déposé par le propriétaire le 14/11/2026 : `icon.png`, `icon@2x.png`, `logo.png` (vague seule), `logo@2x.png`. Les fichiers `dark_icon.png` et `dark_icon@2x.png` (texte clair pour le thème sombre) ont été générés mais ne sont pas déposés : facultatifs.
+- Notifications iPhone : relues dans la documentation de l'application Companion (tag et groupe, boutons intégrés depuis iOS 2021.5, icône mdi et couleur en notification de communication, niveau d'interruption). Rien n'a été testé sur un iPhone.
 - Le README, le CHANGELOG et `strings.json` sont à jour avec le code de la 0.2.5.
 - `notification_actions.py` relu le 14/11/2026 : ses réponses appellent `rt.async_send(titre, message, clé)` avec trois arguments, compatible avec la signature actuelle ; le tag et le groupe sont les mêmes que ceux de l'alerte, donc la réponse la remplace bien. Lecture seule, rien n'a été exécuté.
 - Notifications de démarrage d'équipement absentes (signalé le 14/11/2026 sur la 0.2.1) : cause non confirmée. Dans le code 0.2.0/0.2.1, la seule différence entre démarrage et arrêt était le chronomètre Android, retiré en 0.2.2. `alert_once`, présent de la 0.2.2 à la 0.2.4, rendait silencieux un démarrage remplaçant un arrêt (même tag) : retiré en 0.2.5, ne pas le remettre. À revérifier avec les journaux (niveau debug de `custom_components.flowio`) si cela persiste.

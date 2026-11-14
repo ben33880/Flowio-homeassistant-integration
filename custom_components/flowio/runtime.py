@@ -25,7 +25,7 @@ from .quality import BAD, GOOD, MEDIUM, as_float, grade
 # Alertes de cuve basse -> cuve concernée par le bouton « Cuve remplie ».
 REFILL_ALERTS = {"ph_tank_low": "ph", "dis_tank_low": "disinfection"}
 
-# Couleurs de l'application Android (ignorées ailleurs).
+# Couleurs de l'application mobile (Android : accent ; iPhone : fond de l'icône).
 COLOR_ALERT = "#F44336"
 COLOR_OK = "#4CAF50"
 COLOR_OFF = "#607D8B"
@@ -121,7 +121,7 @@ class FlowioRuntime:
         return False
 
     def _actions(self, key: str) -> list[dict] | None:
-        # Actions dynamiques : application Android uniquement (service notify.mobile_app_*).
+        # Boutons : application mobile Android ou iPhone (iOS 2021.5 ou plus récent), service notify.mobile_app_*.
         if not self.is_mobile:
             return None
         head = f"flowio_{self.prefix}_"
@@ -174,6 +174,7 @@ class FlowioRuntime:
         """Notification d'alerte : supprimée si l'alerte est reportée ; boutons seulement au déclenchement."""
         if self.is_snoozed(tag):
             return
+        level = None
         if alert_on is True:
             style = {
                 "color": COLOR_ALERT,
@@ -183,12 +184,20 @@ class FlowioRuntime:
                 "priority": "high",
                 "ttl": 0,
             }
+            level = "time-sensitive"  # iPhone : traverse le mode Concentration
         elif alert_on is False:
             style = {"color": COLOR_OK, "notification_icon": "mdi:check-circle", "channel": ALERT_CHANNEL}
+            level = "passive"  # iPhone : retour à la normale, sans réveiller l'écran
         else:
             style = None
         await self.async_send(
-            title, message, tag, self._actions(tag) if alert_on else None, style=style, context=True
+            title,
+            message,
+            tag,
+            self._actions(tag) if alert_on else None,
+            style=style,
+            context=True,
+            level=level,
         )
 
     async def async_send(
@@ -200,6 +209,7 @@ class FlowioRuntime:
         style: dict | None = None,
         context: bool = False,
         about: str | None = None,
+        level: str | None = None,
     ) -> None:
         service = self.conf.get(CONF_NOTIFY)
         if not service or "." not in service:
@@ -219,6 +229,9 @@ class FlowioRuntime:
             data["group"] = f"flowio_{self.prefix}"
             if style:
                 data.update(style)
+            # Niveau d'interruption : propre à iOS, donc pas envoyé à un appareil Android connu.
+            if level and not self.is_android:
+                data["push"] = {"interruption-level": level}
         if actions:
             data["actions"] = actions
         await self.hass.services.async_call(
