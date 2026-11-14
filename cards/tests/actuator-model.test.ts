@@ -13,14 +13,14 @@ import type { Hass } from '../src/model';
 
 const state = (attributes: Record<string, unknown>) => ({ state: 'on', attributes });
 
-it('applique les valeurs par défaut', () => {
+it('applique les valeurs par défaut sans préfixe local', () => {
   const config = normalizeActuatorConfig({});
   expect(config.title).toBe('Équipements du bassin');
   expect(config.subtitle).toBe('Contrôle et suivi de consommation');
-  expect(config.entity_prefix).toBe('fio');
   expect(config.entities).toEqual([]);
   expect(config.runtime_keys).toEqual({ day: 'uptime_day_s', week: 'uptime_week_s', month: 'uptime_month_s', total: 'uptime_total_s' });
   expect(config.resets).toEqual({});
+  expect(config).not.toHaveProperty('entity_prefix');
 });
 
 it('accepte les clés d’attributs et les remises à zéro personnalisées', () => {
@@ -35,21 +35,21 @@ it('accepte les clés d’attributs et les remises à zéro personnalisées', ()
   expect(config.resets).toEqual({ 'switch.a': 'button.reset_a' });
 });
 
-it('rejette les configurations invalides', () => {
-  for (const input of [undefined, [], 'x', { title: '  ' }, { subtitle: 3 }, { entities: 'switch.a' }, { entities: [''] }, { runtime_keys: { day: '' } }, { runtime_keys: 3 }, { resets: { a: 3 } }, { resets: [] }, { grid_options: [] }]) {
+it('rejette les configurations invalides et les anciens préfixes', () => {
+  for (const input of [undefined, [], 'x', { title: '  ' }, { subtitle: 3 }, { entities: 'switch.a' }, { entities: [''] }, { runtime_keys: { day: '' } }, { runtime_keys: 3 }, { resets: { a: 3 } }, { resets: [] }, { grid_options: [] }, { entity_prefix: 'fio' }, { entity_prefix: '' }]) {
     expect(() => normalizeActuatorConfig(input)).toThrow();
   }
 });
 
-it('résout le rôle et l’entité de remise à zéro', () => {
+it('résout le rôle et l’entité de remise à zéro avec le préfixe fourni', () => {
   expect(actuatorRole('fio', 'switch.fio_io_flt_pmp')).toBe('filtration');
   expect(actuatorRole('fio', 'switch.fio_inconnu')).toBeUndefined();
-  const config = normalizeActuatorConfig({ entity_prefix: 'fio', resets: { 'switch.fio_io_robot': 'button.fio_pd_reset_upt_robot' } });
-  expect(actuatorResetEntity(config, 'switch.fio_io_flt_pmp')).toBe('button.fio_pd_reset_upt_flt');
-  expect(actuatorResetEntity(config, 'switch.fio_io_ph_pmp')).toBe('button.fio_pd_reset_upt_ph');
-  expect(actuatorResetEntity(config, 'switch.fio_io_robot')).toBe('button.fio_pd_reset_upt_robot');
-  expect(actuatorResetEntity(config, 'switch.fio_inconnu')).toBeUndefined();
-  expect(actuatorGlobalReset(config)).toBe('button.fio_pd_reset_upt_all');
+  const config = normalizeActuatorConfig({ resets: { 'switch.fio_io_robot': 'button.fio_pd_reset_upt_robot' } });
+  expect(actuatorResetEntity(config, 'switch.fio_io_flt_pmp', 'fio')).toBe('button.fio_pd_reset_upt_flt');
+  expect(actuatorResetEntity(config, 'switch.fio_io_ph_pmp', 'fio')).toBe('button.fio_pd_reset_upt_ph');
+  expect(actuatorResetEntity(config, 'switch.fio_io_robot', 'fio')).toBe('button.fio_pd_reset_upt_robot');
+  expect(actuatorResetEntity(config, 'switch.fio_inconnu', 'fio')).toBeUndefined();
+  expect(actuatorGlobalReset('fio')).toBe('button.fio_pd_reset_upt_all');
 });
 
 it('lit et formate les durées de fonctionnement', () => {
