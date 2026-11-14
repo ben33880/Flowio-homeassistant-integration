@@ -1,25 +1,16 @@
 import { LitElement, css, html, nothing, type PropertyValues } from 'lit';
 import { available, type Hass } from './model';
 import {
-  DEVICE_METRIC_DEFINITIONS,
-  OPERATION_DEFINITIONS,
-  calculatedValueId,
-  canSelectOverride,
-  deviceMetricId,
-  operationEntityId,
-  overrideEntityIds,
-  overrideOptions,
-  type CalculatedValue,
-  type DeviceMetric,
-  type Operation
+  DEVICE_METRIC_DEFINITIONS, OPERATION_DEFINITIONS, calculatedValueId, canSelectOverride, deviceMetricId,
+  operationEntityId, overrideEntityIds, overrideOptions, type CalculatedValue, type DeviceMetric, type Operation
 } from './firmware-model';
 import { ensureHaElements } from './ha-controls';
 import './flowio-maintenance-alarms';
+import { InstallationController, type InstallationHass } from './installation-controller';
 
 class FlowioFirmwarePanel extends LitElement {
   static properties = {
     hass: { attribute: false },
-    prefix: { type: String },
     mqttTopic: { type: String },
     calculatedValues: { attribute: false },
     deviceMetrics: { attribute: false },
@@ -35,15 +26,14 @@ class FlowioFirmwarePanel extends LitElement {
     overrideConfirmation: { state: true },
     ready: { state: true }
   };
-
-  declare hass?: Hass;
-  prefix = '';
+  declare hass?: Hass & InstallationHass;
   mqttTopic = '';
   calculatedValues: readonly CalculatedValue[] = [];
   deviceMetrics: readonly DeviceMetric[] = [];
   deviceSlot = 0;
   operations: readonly Operation[] = [];
   inlineOperations: readonly Operation[] = [];
+  private installation = new InstallationController(this, () => this.hass);
   private busy = '';
   private maintenanceBusy = false;
   private error = '';
@@ -58,17 +48,12 @@ class FlowioFirmwarePanel extends LitElement {
     super.connectedCallback();
     const token = ++this.uiGeneration;
     void ensureHaElements(['ha-dialog', 'ha-button', 'ha-form', 'ha-alert'])
-      .then(() => {
-        if (this.isConnected && token === this.uiGeneration) this.ready = true;
-      })
+      .then(() => { if (this.isConnected && token === this.uiGeneration) this.ready = true; })
       .catch(error => {
         console.error('[flowio] Contrôles natifs indisponibles pour le panneau firmware', error);
-        if (this.isConnected && token === this.uiGeneration) {
-          this.error = 'Composants natifs Home Assistant indisponibles. Recharger le tableau de bord.';
-        }
+        if (this.isConnected && token === this.uiGeneration) this.error = 'Composants natifs Home Assistant indisponibles. Recharger le tableau de bord.';
       });
   }
-
   disconnectedCallback() {
     super.disconnectedCallback();
     this.uiGeneration++;
@@ -76,9 +61,8 @@ class FlowioFirmwarePanel extends LitElement {
     this.overrideOpened = false;
     this.maintenanceBusy = false;
   }
-
   protected willUpdate(changed: PropertyValues) {
-    if (changed.has('prefix')) {
+    if (changed.has('mqttTopic')) {
       this.overrideOpened = false;
       this.overrideTarget = '';
       this.overrideDuration = undefined;
@@ -87,93 +71,69 @@ class FlowioFirmwarePanel extends LitElement {
       this.error = '';
     }
   }
-
   private isActionPanelOperation(operation: Operation) {
-    return !operation.startsWith('reset_')
-      && !['timed_override', 'refill_ph', 'refill_disinfection'].includes(operation)
-      && !this.inlineOperations.includes(operation);
+    return !operation.startsWith('reset_') && !['timed_override', 'refill_ph', 'refill_disinfection'].includes(operation) && !this.inlineOperations.includes(operation);
   }
-
   private actionAvailable(entityId: string) {
     const state = this.hass?.states[entityId];
     return !!state && !['unavailable', ''].includes(state.state);
   }
-
   private more(entityId: string) {
-    if (this.hass?.states[entityId]) {
-      this.dispatchEvent(new CustomEvent('hass-more-info', {
-        detail: { entityId },
-        bubbles: true,
-        composed: true
-      }));
-    }
+    if (this.hass?.states[entityId]) this.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId }, bubbles: true, composed: true }));
   }
-
   private async invoke(domain: string, service: string, entityId: string, data: Record<string, unknown> = {}) {
     const hass = this.hass;
     if (!hass || !this.actionAvailable(entityId) || this.busy || this.maintenanceBusy) return false;
     this.busy = entityId;
     this.error = '';
-    try {
-      await hass.callService(domain, service, { ...data, entity_id: entityId });
-      return true;
-    } catch (error) {
+    try { await hass.callService(domain, service, { ...data, entity_id: entityId }); return true; }
+    catch (error) {
       console.error('[flowio] Action firmware impossible', error);
       this.error = `Action refusée ou échouée pour ${entityId}. Vérifier les droits et la disponibilité du contrôleur.`;
       return false;
-    } finally {
-      this.busy = '';
-    }
+    } finally { this.busy = ''; }
   }
-
   async runOperation(operation: Operation, stillAllowed: () => boolean = () => true) {
-    if (!this.operations.includes(operation) || !stillAllowed() || this.busy || this.maintenanceBusy) return;
+    const installation = this.installation.value;
+    if (!installation || !this.operations.includes(operation) || !stillAllowed() || this.busy || this.maintenanceBusy) return;
     const definition = OPERATION_DEFINITIONS[operation];
-    const entityId = operationEntityId(this.prefix, operation);
+    const entityId = operationEntityId(installation.prefix, operation);
     if (!this.actionAvailable(entityId)) return;
     if (!window.confirm(`${definition.confirm} Flow.io conserve la responsabilité des sécurités.`)) return;
     if (!this.operations.includes(operation) || !stillAllowed()) return;
     await this.invoke('button', 'press', entityId);
   }
-
   openOverride() {
-    if (!this.ready) return false;
-    const ids = overrideEntityIds(this.prefix);
+    const installation = this.installation.value;
+    if (!this.ready || !installation) return false;
+    const ids = overrideEntityIds(installation.prefix);
     const selected = this.hass?.states[ids.target]?.state ?? '';
     const duration = Number(this.hass?.states[ids.duration]?.state);
-    this.overrideTarget = canSelectOverride(this.hass, this.prefix, selected) ? selected : overrideOptions(this.hass, this.prefix)[0] ?? '';
+    this.overrideTarget = canSelectOverride(this.hass, installation.prefix, selected) ? selected : overrideOptions(this.hass, installation.prefix)[0] ?? '';
     this.overrideDuration = Number.isInteger(duration) && duration >= 1 && duration <= 1440 ? duration : undefined;
     this.overrideConfirmation = undefined;
     this.error = '';
     this.overrideOpened = true;
     return true;
   }
-
-  private closeOverride() {
-    this.overrideOpened = false;
-    this.overrideConfirmation = undefined;
-  }
-
+  private closeOverride() { this.overrideOpened = false; this.overrideConfirmation = undefined; }
   private requestOverride(action: 'on' | 'off' | 'release') {
     if (this.maintenanceBusy || this.busy) return;
     this.error = '';
     this.overrideConfirmation = action;
   }
-
   private async confirmOverride() {
     const action = this.overrideConfirmation;
     if (!action || this.maintenanceBusy || this.busy) return;
     this.overrideConfirmation = undefined;
     await this.executeOverride(action);
   }
-
-  private cancelOverride() {
-    this.overrideConfirmation = undefined;
-  }
-
+  private cancelOverride() { this.overrideConfirmation = undefined; }
   private async updateOverrideForm(event: CustomEvent<{ value?: Record<string, unknown> }>) {
     event.stopPropagation();
     if (this.maintenanceBusy) return;
+    const installation = this.installation.value;
+    if (!installation) return;
     const values = event.detail?.value;
     if (!values) return;
     const form = event.currentTarget as HTMLElement & { data: Record<string, unknown> };
@@ -187,22 +147,23 @@ class FlowioFirmwarePanel extends LitElement {
       this.error = 'La durée du forçage doit être comprise entre 1 et 1 440 minutes.';
     }
     const target = values.target;
-    if (typeof target === 'string' && target !== this.overrideTarget && canSelectOverride(this.hass, this.prefix, target)) {
+    if (typeof target === 'string' && target !== this.overrideTarget && canSelectOverride(this.hass, installation.prefix, target)) {
       const previous = this.overrideTarget;
       this.overrideTarget = target;
       this.overrideConfirmation = undefined;
-      const changed = await this.invoke('select', 'select_option', overrideEntityIds(this.prefix).target, { option: target });
+      const changed = await this.invoke('select', 'select_option', overrideEntityIds(installation.prefix).target, { option: target });
       if (!changed) this.overrideTarget = previous;
     }
   }
-
   private async executeOverride(action: 'on' | 'off' | 'release') {
     if (this.maintenanceBusy || this.busy) return;
-    const ids = overrideEntityIds(this.prefix);
+    const installation = this.installation.value;
+    if (!installation) return;
+    const ids = overrideEntityIds(installation.prefix);
     const target = this.overrideTarget || this.hass?.states[ids.target]?.state;
     const status = this.hass?.states[ids.state];
     const entityId = ids[action];
-    if (!target || !canSelectOverride(this.hass, this.prefix, target) || !this.actionAvailable(entityId)) return;
+    if (!target || !canSelectOverride(this.hass, installation.prefix, target) || !this.actionAvailable(entityId)) return;
     if (action !== 'release' && status?.attributes.override_available !== true) return;
     if (action === 'release' && status?.attributes.control_mode === 'guided') return;
     const duration = this.overrideDuration ?? Number(this.hass?.states[ids.duration]?.state);
@@ -216,24 +177,25 @@ class FlowioFirmwarePanel extends LitElement {
     }
     if (await this.invoke('button', 'press', entityId)) this.closeOverride();
   }
-
   private operationsView() {
+    const installation = this.installation.value;
+    if (!installation) return nothing;
     const actions = this.operations.filter(operation => this.isActionPanelOperation(operation));
     const showOverride = this.operations.includes('timed_override');
     if (!actions.length && !showOverride) return nothing;
     const h = this.hass;
-    const ids = overrideEntityIds(this.prefix);
+    const ids = overrideEntityIds(installation.prefix);
     const target = h?.states[ids.target];
     const duration = h?.states[ids.duration];
     const status = h?.states[ids.state];
-    const options = overrideOptions(h, this.prefix);
+    const options = overrideOptions(h, installation.prefix);
     const currentDuration = this.overrideDuration ?? Number(duration?.state);
     const forced = status?.attributes.control_mode !== 'guided' && !!status;
     return html`
       <div class="operations-panel" data-panel="operations">
         ${actions.length ? html`<div class="action-grid">${actions.map(operation => {
           const definition = OPERATION_DEFINITIONS[operation];
-          const entityId = operationEntityId(this.prefix, operation);
+          const entityId = operationEntityId(installation.prefix, operation);
           const state = h?.states[entityId];
           return html`<button type="button" class="action-button" data-operation=${operation}
             ?disabled=${!this.actionAvailable(entityId) || !!this.busy || this.maintenanceBusy}
@@ -249,7 +211,7 @@ class FlowioFirmwarePanel extends LitElement {
             <div class="override-content">
               <section class="maintenance-section" data-maintenance="alarms">
                 <h3><ha-icon icon="mdi:alarm-light-outline" aria-hidden="true"></ha-icon>Alarmes</h3>
-                <flowio-maintenance-alarms .hass=${h} .prefix=${this.prefix} .mqttTopic=${this.mqttTopic}
+                <flowio-maintenance-alarms .hass=${h} .prefix=${installation.prefix} .mqttTopic=${this.mqttTopic}
                   .active=${this.overrideOpened && this.ready}
                   .disabled=${!!this.busy || !!this.overrideConfirmation}
                   @maintenance-busy=${(event: CustomEvent<{ busy: boolean }>) => { event.stopPropagation(); this.maintenanceBusy = event.detail.busy; }}>
@@ -313,25 +275,25 @@ class FlowioFirmwarePanel extends LitElement {
           </ha-dialog>` : nothing}
       </div>`;
   }
-
   private valuesView() {
+    const installation = this.installation.value;
+    if (!installation) return nothing;
     if (!this.calculatedValues.length && !this.deviceMetrics.length) return nothing;
     return html`<section class="panel" data-panel="values">
       <h3><ha-icon icon="mdi:chart-box-outline" aria-hidden="true"></ha-icon>Valeurs et télémétrie</h3>
       <div class="value-grid">
         ${this.calculatedValues.map(value => {
-          const entityId = calculatedValueId(this.prefix, value);
+          const entityId = calculatedValueId(installation.prefix, value);
           return this.valueTile(entityId, `Valeur calculée ${value.toUpperCase()}`);
         })}
         ${this.deviceMetrics.map(metric => {
-          const entityId = deviceMetricId(this.prefix, this.deviceSlot, metric);
+          const entityId = deviceMetricId(installation.prefix, this.deviceSlot, metric);
           return this.valueTile(entityId, DEVICE_METRIC_DEFINITIONS[metric].label);
         })}
       </div>
       ${this.deviceMetrics.length ? html`<p class="note">Télémétrie du slot équipement ${this.deviceSlot}. Vérifier l’affectation du slot dans le firmware.</p>` : nothing}
     </section>`;
   }
-
   private valueTile(entityId: string, label: string) {
     const state = this.hass?.states[entityId];
     const unit = typeof state?.attributes.unit_of_measurement === 'string' ? state.attributes.unit_of_measurement : '';
@@ -342,18 +304,17 @@ class FlowioFirmwarePanel extends LitElement {
       <span>${name}</span><strong>${available(state) ? state.state : !state ? 'Entité absente' : 'Indisponible'}${available(state) && unit ? html`<small> ${unit}</small>` : nothing}</strong>
     </button>`;
   }
-
   render() {
-    const hasPanel = this.operations.some(operation =>
-      operation === 'timed_override' || this.isActionPanelOperation(operation)
-    ) || this.calculatedValues.length || this.deviceMetrics.length;
+    const installation = this.installation.value;
+    if (this.installation.error) return html`<div class="firmware-panels"><p class="error" role="alert">${this.installation.error}</p></div>`;
+    if (!installation) return html`<div class="firmware-panels"><p class="error" role="alert">Chargement des réglages de l’intégration Flow.io…</p></div>`;
+    const hasPanel = this.operations.some(operation => operation === 'timed_override' || this.isActionPanelOperation(operation)) || this.calculatedValues.length || this.deviceMetrics.length;
     if (!hasPanel) return nothing;
     return html`<div class="firmware-panels">
       ${this.error && !this.overrideOpened ? html`<p class="error" role="alert">${this.error}</p>` : nothing}
       ${this.operationsView()}${this.valuesView()}
     </div>`;
   }
-
   static styles = css`
     :host{display:block;min-width:0}.firmware-panels{display:flex;flex-wrap:wrap;align-items:flex-start;gap:14px;margin-top:14px}
     .panel{min-width:0;padding:14px 16px;border:1px solid var(--divider-color);border-radius:18px;background:var(--fio-surface)}
@@ -382,5 +343,4 @@ class FlowioFirmwarePanel extends LitElement {
     .note{margin:0;font-size:calc(.68rem * var(--fio-font-scale, 1.32));line-height:1.5;color:var(--secondary-text-color)}.error{grid-column:1/-1;color:var(--error-color);margin:0}
   `;
 }
-
 if (!customElements.get('flowio-firmware-panel')) customElements.define('flowio-firmware-panel', FlowioFirmwarePanel);
