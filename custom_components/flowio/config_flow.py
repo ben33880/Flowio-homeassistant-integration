@@ -8,6 +8,7 @@ from homeassistant.helpers import selector
 
 from .const import (
     CONF_DIS_SLOT,
+    CONF_FILTRATION_SLOT,
     CONF_IOS_LEVEL,
     CONF_MOBILE_DEVICES,
     CONF_MQTT_ROOT,
@@ -20,6 +21,7 @@ from .const import (
     CONF_PH_SLOT,
     CONF_PREFIX,
     DEFAULT_DIS_SLOT,
+    DEFAULT_FILTRATION_SLOT,
     DEFAULT_IOS_LEVEL,
     DEFAULT_PH_SLOT,
     DOMAIN,
@@ -46,6 +48,7 @@ def _schema(d: dict, equipment: list[dict] | None = None) -> vol.Schema:
         vol.Required(CONF_PREFIX, default=d.get(CONF_PREFIX, "fio")): str,
         vol.Optional(CONF_MOBILE_DEVICES, default=list(d.get(CONF_MOBILE_DEVICES) or [])): _MOBILE,
         vol.Optional(CONF_MQTT_ROOT, default=d.get(CONF_MQTT_ROOT, "")): str,
+        vol.Required(CONF_FILTRATION_SLOT, default=d.get(CONF_FILTRATION_SLOT, DEFAULT_FILTRATION_SLOT)): _SLOT,
         vol.Required(CONF_PH_SLOT, default=d.get(CONF_PH_SLOT, DEFAULT_PH_SLOT)): _SLOT,
         vol.Required(CONF_DIS_SLOT, default=d.get(CONF_DIS_SLOT, DEFAULT_DIS_SLOT)): _SLOT,
         vol.Required(CONF_NOTIFY_MEDIUM, default=d.get(CONF_NOTIFY_MEDIUM, False)): bool,
@@ -81,7 +84,7 @@ def _clean(user_input: dict) -> dict:
     """Préfixe en minuscules sans espace ni underscore final ; slots en entiers ; racine MQTT sans barres de bord."""
     data = dict(user_input)
     data[CONF_PREFIX] = (data.get(CONF_PREFIX) or "").strip().lower().rstrip("_")
-    for key in (CONF_PH_SLOT, CONF_DIS_SLOT):
+    for key in (CONF_FILTRATION_SLOT, CONF_PH_SLOT, CONF_DIS_SLOT):
         data[key] = int(data[key])
     data[CONF_MQTT_ROOT] = (data.get(CONF_MQTT_ROOT) or "").strip().strip("/")
     data[CONF_MOBILE_DEVICES] = list(data.get(CONF_MOBILE_DEVICES) or [])
