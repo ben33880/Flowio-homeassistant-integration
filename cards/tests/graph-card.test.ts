@@ -5,12 +5,13 @@ import { consolidatePoints, consolidationMs, onIntervals, statisticsPoints, type
 it('applique les valeurs par défaut de la carte graphique', () => {
   const config = normalizeGraphConfig({});
   expect(config.title).toBe('Graphique');
-  expect(config.entity_prefix).toBe('fio');
   expect(config.hours_to_show).toBe(12);
   expect(config.chart_type).toBe('line');
   expect(config.show_stats).toBe(true);
   expect(config.entities).toEqual([]);
   expect(config.colors).toEqual({});
+  expect(() => normalizeGraphConfig({ entity_prefix: 'fio' })).toThrow();
+  expect(() => normalizeGraphConfig({ entity_prefix: '' })).toThrow();
 });
 
 it('accepte de masquer le bandeau Min · Moy · Max', () => {

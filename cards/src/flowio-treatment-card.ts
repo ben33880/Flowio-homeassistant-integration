@@ -1,59 +1,36 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { treatmentFromFirmware } from './modes-model';
 import type { Hass } from './model';
-import {
-  normalizeTreatmentConfig,
-  treatmentPresentation,
-  treatmentTileValue,
-  treatmentTiles,
-  type TreatmentConfig,
-  type TreatmentTile
-} from './treatment-model';
+import { InstallationController, type InstallationHass } from './installation-controller';
+import { normalizeTreatmentConfig, treatmentPresentation, treatmentTileValue, treatmentTiles, type TreatmentConfig, type TreatmentTile } from './treatment-model';
 
 class FlowioTreatmentCard extends LitElement {
   static properties = { hass: { attribute: false }, config: { state: true } };
-  declare hass?: Hass;
+  declare hass?: Hass & InstallationHass;
   private config?: TreatmentConfig;
-
+  private installation = new InstallationController(this, () => this.hass);
   static getConfigElement() { return document.createElement('flowio-treatment-card-editor'); }
   static getStubConfig(): TreatmentConfig { return normalizeTreatmentConfig({}); }
   setConfig(input: unknown) { this.config = normalizeTreatmentConfig(input); }
   getCardSize() { return 3; }
-
   private more(entityId: string) {
-    if (this.hass?.states[entityId]) {
-      this.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId }, bubbles: true, composed: true }));
-    }
+    if (this.hass?.states[entityId]) this.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId }, bubbles: true, composed: true }));
   }
-
   private tile(tile: TreatmentTile) {
     const state = this.hass!.states[tile.entityId];
-    return html`<button type=button class=tile data-tile=${tile.entityId} ?disabled=${!state} @click=${() => this.more(tile.entityId)}>
-      <span class=tile-label>${tile.label}</span>
-      <strong class=tile-value>${treatmentTileValue(state, tile)}</strong>
-    </button>`;
+    return html`<button type=button class=tile data-tile=${tile.entityId} ?disabled=${!state} @click=${() => this.more(tile.entityId)}><span class=tile-label>${tile.label}</span><strong class=tile-value>${treatmentTileValue(state, tile)}</strong></button>`;
   }
-
   render() {
     const config = this.config, hass = this.hass;
     if (!config || !hass) return html`<ha-card><div class=body>En attente de Home Assistant…</div></ha-card>`;
-    const treatment = treatmentFromFirmware(hass, config.entity_prefix);
+    if (this.installation.error) return html`<ha-card><div class=body><p role=alert>${this.installation.error}</p></div></ha-card>`;
+    const installation = this.installation.value;
+    if (!installation) return html`<ha-card><div class=body>Chargement des réglages de l’intégration Flow.io…</div></ha-card>`;
+    const treatment = treatmentFromFirmware(hass, installation.prefix);
     const presentation = treatmentPresentation(treatment);
-    const tiles = treatmentTiles(config.entity_prefix, treatment);
-    return html`<ha-card>
-      <div class=body>
-        <div class=heading>
-          <span class=icon-plate><ha-icon .icon=${presentation.icon} aria-hidden=true></ha-icon></span>
-          <div class=heading-copy>
-            <h3>${presentation.title}</h3>
-            <p>${presentation.description}</p>
-          </div>
-        </div>
-        ${tiles.length ? html`<div class=tiles>${tiles.map(tile => this.tile(tile))}</div>` : nothing}
-      </div>
-    </ha-card>`;
+    const tiles = treatmentTiles(installation.prefix, treatment);
+    return html`<ha-card><div class=body><div class=heading><span class=icon-plate><ha-icon .icon=${presentation.icon} aria-hidden=true></ha-icon></span><div class=heading-copy><h3>${presentation.title}</h3><p>${presentation.description}</p></div></div>${tiles.length ? html`<div class=tiles>${tiles.map(tile => this.tile(tile))}</div>` : nothing}</div></ha-card>`;
   }
-
   static styles = css`
     :host{display:block;container-type:inline-size;color:var(--primary-text-color);font-family:var(--ha-font-family-body,inherit);--fio-water:var(--flowio-water-color,var(--blue-color,var(--primary-color)))}
     ha-card{overflow:hidden}
@@ -74,36 +51,13 @@ class FlowioTreatmentCard extends LitElement {
     @media (prefers-reduced-motion: reduce){.tile{transition:none}}
   `;
 }
-
 class FlowioTreatmentCardEditor extends LitElement {
-  static properties = { hass: { attribute: false }, config: { state: true }, error: { state: true } };
-  declare hass?: Hass;
-  private config?: TreatmentConfig;
-  private error = '';
-
-  setConfig(input: unknown) { this.config = normalizeTreatmentConfig(input); this.error = ''; }
-
-  private changed(event: CustomEvent) {
-    event.stopPropagation();
-    try {
-      this.config = normalizeTreatmentConfig(event.detail.value);
-      this.error = '';
-      this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: this.config }, bubbles: true, composed: true }));
-    } catch (error) {
-      this.error = error instanceof Error ? error.message : 'Configuration invalide';
-    }
-  }
-
+  setConfig(input: unknown) { normalizeTreatmentConfig(input); }
   render() {
-    if (!this.config || !this.hass) return nothing;
-    const schema = [{ name: 'entity_prefix', selector: { text: {} } }];
-    const labels: Record<string, string> = { entity_prefix: 'Préfixe firmware' };
-    return html`<p>Le type de traitement est lu depuis l’entité Flow.io « Type de désinfection ». Cette carte affiche les informations du traitement actif et ne permet pas de le modifier.</p>${this.error ? html`<p role=alert>${this.error}</p>` : nothing}<ha-form .hass=${this.hass} .data=${this.config} .schema=${schema} .computeLabel=${(field: { name: string }) => labels[field.name] ?? field.name} @value-changed=${this.changed}></ha-form>`;
+    return html`<p>Le préfixe est fourni par l’intégration Flow.io. Le type de traitement et ses paramètres sont lus dans les entités MQTT du firmware. Cette carte ne possède aucun réglage métier local.</p>`;
   }
-
-  static styles = css`:host{display:block}p{color:var(--secondary-text-color);line-height:1.5}p[role=alert]{color:var(--error-color)}`;
+  static styles = css`:host{display:block}p{color:var(--secondary-text-color);line-height:1.5}`;
 }
-
 if (!customElements.get('flowio-treatment-card')) customElements.define('flowio-treatment-card', FlowioTreatmentCard);
 if (!customElements.get('flowio-treatment-card-editor')) customElements.define('flowio-treatment-card-editor', FlowioTreatmentCardEditor);
 const registry = window as Window & { customCards?: Array<Record<string, unknown>> };

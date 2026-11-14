@@ -1,20 +1,9 @@
 import { expect, it } from 'vitest';
-import {
-  formatMinutes,
-  normalizeTreatmentConfig,
-  treatmentPresentation,
-  treatmentTileValue,
-  treatmentTiles
-} from '../src/treatment-model';
-
-it('applique le préfixe fio par défaut et rejette les options invalides', () => {
-  expect(normalizeTreatmentConfig({}).entity_prefix).toBe('fio');
-  expect(normalizeTreatmentConfig({ entity_prefix: 'piscine' }).entity_prefix).toBe('piscine');
-  for (const input of [{ entity_prefix: 24 }, { grid_options: [] }]) {
-    expect(() => normalizeTreatmentConfig(input)).toThrow();
-  }
+import { formatMinutes, normalizeTreatmentConfig, treatmentPresentation, treatmentTileValue, treatmentTiles } from '../src/treatment-model';
+it('ne conserve aucun préfixe local et rejette les anciennes options', () => {
+  expect(normalizeTreatmentConfig({})).toEqual({ type: 'custom:flowio-treatment-card' });
+  for (const input of [{ entity_prefix: 'fio' }, { entity_prefix: '' }, { grid_options: [] }]) expect(() => normalizeTreatmentConfig(input)).toThrow();
 });
-
 it('présente chaque type de traitement', () => {
   expect(treatmentPresentation('chlorine_bromine').title).toBe('Chlore / Brome');
   expect(treatmentPresentation('electrolyzer').icon).toBe('mdi:lightning-bolt-outline');
@@ -22,23 +11,13 @@ it('présente chaque type de traitement', () => {
   expect(treatmentPresentation('disabled').description).toContain('Aucun traitement');
   expect(treatmentPresentation(undefined).title).toBe('Traitement indisponible');
 });
-
 it('expose les entités adaptées au traitement actif', () => {
-  expect(treatmentTiles('fio', 'chlorine_bromine').map(tile => tile.entityId)).toEqual([
-    'switch.fio_pl_dis_auto',
-    'number.fio_pl_dis_setpoint',
-    'number.fio_pl_dis_window'
-  ]);
-  expect(treatmentTiles('', 'electrolyzer').map(tile => tile.entityId)).toEqual([
-    'select.pl_swg_ctrl',
-    'number.pl_swg_dly_elec',
-    'number.pl_swg_min_temp'
-  ]);
+  expect(treatmentTiles('fio', 'chlorine_bromine').map(tile => tile.entityId)).toEqual(['switch.fio_pl_dis_auto', 'number.fio_pl_dis_setpoint', 'number.fio_pl_dis_window']);
+  expect(treatmentTiles('', 'electrolyzer').map(tile => tile.entityId)).toEqual(['select.pl_swg_ctrl', 'number.pl_swg_dly_elec', 'number.pl_swg_min_temp']);
   expect(treatmentTiles('fio', 'oxygen').map(tile => tile.label)).toEqual(['Volume bassin', 'Dose hebdo', 'Injections', 'En attente']);
   expect(treatmentTiles('fio', 'disabled')).toEqual([]);
   expect(treatmentTiles('fio', undefined)).toEqual([]);
 });
-
 it('met en forme les valeurs des tuiles', () => {
   const state = (value: string, unit?: string) => ({ state: value, attributes: unit ? { unit_of_measurement: unit } : {} });
   expect(treatmentTileValue(undefined, { label: 'x', entityId: 'x' })).toBe('Entité absente');
@@ -51,7 +30,6 @@ it('met en forme les valeurs des tuiles', () => {
   expect(treatmentTileValue(state('15'), { label: 'Sécurité eau', entityId: 'x', unit: '°C' })).toBe('15 °C');
   expect(treatmentTileValue(state('Continu sur filtration'), { label: 'Contrôle', entityId: 'x' })).toBe('Continu sur filtration');
 });
-
 it('formate les durées en minutes', () => {
   expect(formatMinutes(60)).toBe('1 h');
   expect(formatMinutes(90)).toBe('1 h 30');

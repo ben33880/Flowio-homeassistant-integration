@@ -1,4 +1,4 @@
-import { MEASUREMENTS, normalizePrefix, type Measurement } from './entities';
+import { MEASUREMENTS, type Measurement } from './entities';
 import { available, type Hass } from './model';
 import { modeId } from './modes-model';
 
@@ -7,7 +7,6 @@ export type HeaderDesign = 'standard' | 'flowio';
 export interface HeaderConfig {
   type: string;
   title: string;
-  entity_prefix: string;
   measurements: Measurement[];
   status: boolean;
   design: HeaderDesign;
@@ -51,6 +50,7 @@ export function normalizeHeaderConfig(input: unknown): HeaderConfig {
     throw new Error('Configuration objet attendue');
   }
   const raw = input as Record<string, unknown>;
+  if ('entity_prefix' in raw) throw new Error('entity_prefix supprimé : le préfixe vient de l’intégration Flow.io. Retirer ce champ.');
   const title = raw.title ?? 'État du bassin';
   if (typeof title !== 'string' || !title.trim()) throw new Error('Titre invalide');
   const status = raw.status ?? true;
@@ -69,7 +69,6 @@ export function normalizeHeaderConfig(input: unknown): HeaderConfig {
   return {
     type: 'custom:flowio-header-card',
     title,
-    entity_prefix: normalizePrefix(raw.entity_prefix),
     measurements: [...new Set(supplied)] as Measurement[],
     status,
     design,

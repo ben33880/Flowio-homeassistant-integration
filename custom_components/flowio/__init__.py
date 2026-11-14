@@ -1,11 +1,14 @@
 import json
 from pathlib import Path
 
+import voluptuous as vol
+from homeassistant.components import websocket_api
 from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.http import StaticPathConfig
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er
 
-from .const import DOMAIN, JS_FILE, PLATFORMS, URL_BASE
+from .const import CONF_MQTT_ROOT, DOMAIN, JS_FILE, PLATFORMS, THRESHOLDS, URL_BASE
 from .device_notifications import async_setup_device_notifications
 from .notification_actions import async_setup_actions
 from .runtime import FlowioRuntime
@@ -22,9 +25,42 @@ def _frontend_info():
     return version
 
 
+def _installation(rt: FlowioRuntime) -> dict:
+    """Réglages partagés et identifiants réels, y compris après renommage."""
+    registry = er.async_get(rt.hass)
+    entities = {
+        key: registry.async_get_entity_id("sensor", DOMAIN, f"{rt.prefix}_{key}")
+        for key in (
+            "ph_quality", "orp_quality", "water_quality", "ph_injected",
+            "dis_injected", "ph_autonomy", "dis_autonomy",
+        )
+    }
+    entities.update({
+        t.key: registry.async_get_entity_id("number", DOMAIN, f"{rt.prefix}_threshold_{t.key}")
+        for t in THRESHOLDS
+    })
+    return {
+        "prefix": rt.prefix,
+        "ph_slot": rt.ph_slot,
+        "disinfection_slot": rt.dis_slot,
+        "filtration_slot": rt.filtration_slot,
+        "mqtt_root": (rt.conf.get(CONF_MQTT_ROOT) or "").strip().strip("/"),
+        "thresholds": dict(rt.values),
+        "entities": entities,
+    }
+
+
+@websocket_api.websocket_command({vol.Required("type"): "flowio/config"})
+@callback
+def _ws_config(hass: HomeAssistant, connection, msg) -> None:
+    runtimes = [v for v in hass.data.get(DOMAIN, {}).values() if isinstance(v, FlowioRuntime)]
+    connection.send_result(msg["id"], {"installations": [_installation(rt) for rt in runtimes]})
+
+
 async def async_setup(hass: HomeAssistant, config) -> bool:
     hass.data.setdefault(DOMAIN, {})
     async_register_services(hass)
+    websocket_api.async_register_command(hass, _ws_config)
     version = await hass.async_add_executor_job(_frontend_info)
     if version is None:
         return True
@@ -63,5 +99,6 @@ async def async_unload_entry(hass: HomeAssistant, entry) -> bool:
     return ok
 
 
-async def _reload(hass: HomeAssistant, entry) -> None:
+async def _reload(hass: HomeAssistant, entry) -> bool:
     await hass.config_entries.async_reload(entry.entry_id)
+    return True

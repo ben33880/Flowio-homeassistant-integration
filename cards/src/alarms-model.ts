@@ -1,49 +1,25 @@
-import { normalizePrefix } from './entities';
 import { available, type Hass } from './model';
 
 export interface AlarmsConfig {
   type: string;
   title: string;
-  entity_prefix: string;
   name_prefix: string;
   grid_options?: Record<string, unknown>;
 }
-
-export interface AlarmEntry {
-  id: string;
-  entityId: string;
-  title: string;
-  resetEntity: string;
-  active: boolean;
-}
-
-export interface AlarmSummary {
-  total: number;
-  active: number;
-  tone: 'ok' | 'alert' | 'unknown';
-  label: string;
-}
-
+export interface AlarmEntry { id: string; entityId: string; title: string; resetEntity: string; active: boolean; }
+export interface AlarmSummary { total: number; active: number; tone: 'ok' | 'alert' | 'unknown'; label: string; }
 export function normalizeAlarmsConfig(input: unknown): AlarmsConfig {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Configuration objet attendue');
   const raw = input as Record<string, unknown>;
+  if ('entity_prefix' in raw) throw new Error('entity_prefix supprimé : le préfixe vient de l’intégration Flow.io. Retirer ce champ.');
   const title = raw.title ?? 'Alarmes';
   if (typeof title !== 'string' || !title.trim()) throw new Error('Titre invalide');
   const name_prefix = raw.name_prefix ?? '';
   if (typeof name_prefix !== 'string') throw new Error('name_prefix doit être un texte');
-  const grid_options = raw.grid_options === undefined ? undefined : raw.grid_options;
-  if (grid_options !== undefined && (!grid_options || typeof grid_options !== 'object' || Array.isArray(grid_options))) {
-    throw new Error('grid_options doit être un objet');
-  }
-  return {
-    type: 'custom:flowio-alarms-card',
-    title,
-    entity_prefix: normalizePrefix(raw.entity_prefix),
-    name_prefix,
-    ...(grid_options ? { grid_options: grid_options as Record<string, unknown> } : {})
-  };
+  const grid_options = raw.grid_options;
+  if (grid_options !== undefined && (!grid_options || typeof grid_options !== 'object' || Array.isArray(grid_options))) throw new Error('grid_options doit être un objet');
+  return { type: 'custom:flowio-alarms-card', title, name_prefix, ...(grid_options ? { grid_options: grid_options as Record<string, unknown> } : {}) };
 }
-
 export function alarmEntries(hass: Hass | undefined, prefix: string): AlarmEntry[] {
   const stem = prefix ? `${prefix}_` : '';
   const start = `binary_sensor.${stem}alm_`;
@@ -55,7 +31,6 @@ export function alarmEntries(hass: Hass | undefined, prefix: string): AlarmEntry
     return [{ id, entityId, title, resetEntity: `button.${stem}alm_${id}_reset`, active: state.state === 'on' }];
   }).sort((a, b) => Number(a.id) - Number(b.id));
 }
-
 export function alarmSummary(hass: Hass | undefined, prefix: string): AlarmSummary {
   const entries = alarmEntries(hass, prefix);
   const active = entries.filter(entry => entry.active).length;

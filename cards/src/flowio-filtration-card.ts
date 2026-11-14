@@ -3,14 +3,20 @@ import { available, type Hass } from './model';
 import { formatHour, timingBindings, type RuntimeSlots } from './timing-model';
 import { scheduleWindow, plannedDuration } from './filtration-schedule';
 import { normalizeFiltrationConfig, type FiltrationConfig } from './filtration-model';
+import { loadInstallations, selectInstallation, type ConfigConnection, type Installation } from './integration-config';
 
-const SLOTS: RuntimeSlots = { filtration: 0, ph: 1, disinfection: 2 };
 const TICKS = ['00:00', '06:00', '12:00', '18:00', '24:00'];
+type ConnectedHass = Hass & Partial<ConfigConnection> & { connection?: unknown };
 
 class FlowioFiltrationCard extends LitElement {
-  static properties = { hass: { attribute: false }, config: { state: true }, now: { state: true } };
-  declare hass?: Hass;
+  static properties = { hass: { attribute: false }, config: { state: true }, now: { state: true }, installation: { state: true }, configError: { state: true } };
+  declare hass?: ConnectedHass;
   private config?: FiltrationConfig;
+  private installation?: Installation;
+  private configError = '';
+  private requested = false;
+  private connection?: unknown;
+  private generation = 0;
   private now = Date.now();
   private timer?: ReturnType<typeof setInterval>;
 
@@ -23,27 +29,48 @@ class FlowioFiltrationCard extends LitElement {
     super.connectedCallback();
     this.now = Date.now();
     this.timer = setInterval(() => { this.now = Date.now(); }, 60000);
+    this.requested = false;
+    this.installation = undefined;
+    this.configError = '';
+    this.requestUpdate();
   }
-
   disconnectedCallback() {
     super.disconnectedCallback();
+    this.generation++;
     if (this.timer) clearInterval(this.timer);
     this.timer = undefined;
   }
-
-  private more(entityId: string) {
-    if (this.hass?.states[entityId]) {
-      this.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId }, bubbles: true, composed: true }));
+  protected updated() {
+    const hass = this.hass;
+    if (!this.isConnected || !hass) return;
+    if (this.connection !== hass.connection) {
+      this.connection = hass.connection;
+      this.generation++;
+      this.requested = false;
+      this.installation = undefined;
+      this.configError = '';
     }
+    if (this.requested || typeof hass.callWS !== 'function') return;
+    this.requested = true;
+    const token = ++this.generation;
+    void loadInstallations({ callWS: message => hass.callWS!(message) }).then(items => {
+      if (token !== this.generation || !this.isConnected) return;
+      this.installation = selectInstallation(items);
+    }).catch(error => {
+      if (token !== this.generation || !this.isConnected) return;
+      this.configError = error instanceof Error ? error.message : 'Lecture des réglages Flow.io impossible.';
+    });
   }
 
+  private more(entityId: string) {
+    if (this.hass?.states[entityId]) this.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId }, bubbles: true, composed: true }));
+  }
   private value(id: string): string {
     const state = this.hass?.states[id];
     if (!state) return 'Entité absente';
     if (!available(state)) return 'Indisponible';
     return formatHour(state.state) ?? 'Valeur invalide';
   }
-
   private clock() {
     const zone = (this.hass as (Hass & { config?: { time_zone?: string } }) | undefined)?.config?.time_zone;
     try {
@@ -51,41 +78,39 @@ class FlowioFiltrationCard extends LitElement {
       const hour = parts.find(part => part.type === 'hour')!.value;
       const minute = parts.find(part => part.type === 'minute')!.value;
       return { left: (Number(hour) * 60 + Number(minute)) / 1440 * 100, label: `Heure actuelle : ${hour}:${minute} · ${zone || 'heure locale de cet appareil'}` };
-    } catch {
-      return undefined;
-    }
+    } catch { return undefined; }
   }
-
   render() {
     const config = this.config, hass = this.hass;
     if (!config || !hass) return html`<ha-card><div class=body>En attente de Home Assistant…</div></ha-card>`;
-    const [startBinding, stopBinding] = timingBindings(config.entity_prefix, SLOTS, 'filtration_schedule');
+    if (this.configError) return html`<ha-card><div class=body><p role=alert>${this.configError}</p></div></ha-card>`;
+    if (!this.installation) return html`<ha-card><div class=body>Chargement des réglages de l’intégration Flow.io…</div></ha-card>`;
+    const slots: RuntimeSlots = {
+      filtration: this.installation.filtration_slot,
+      ph: this.installation.ph_slot,
+      disinfection: this.installation.disinfection_slot
+    };
+    const [startBinding, stopBinding] = timingBindings(this.installation.prefix, slots, 'filtration_schedule');
     const start = hass.states[startBinding.id], stop = hass.states[stopBinding.id];
     const window = scheduleWindow(available(start) ? start.state : undefined, available(stop) ? stop.state : undefined);
     const clock = this.clock();
-    return html`<ha-card>
-      <div class=body>
-        <div class=heading>
-          <h3>${config.title}</h3>
-          ${config.description ? html`<p>${config.description}</p>` : nothing}
+    return html`<ha-card><div class=body>
+      <div class=heading><h3>${config.title}</h3>${config.description ? html`<p>${config.description}</p>` : nothing}</div>
+      <div class=timeline>
+        <div class=rail role=img aria-label=${window ? `Filtration prévue de ${window.startText} à ${window.endText}, durée ${plannedDuration(window.durationMinutes)}${window.overnight ? ', passage à minuit' : ''}` : 'Plage de filtration indisponible'}>
+          ${window?.segments.map(segment => html`<span class=band aria-hidden=true style=${`left:${segment.left}%;width:${segment.width}%`}></span>`)}
+          ${clock ? html`<span class=now aria-hidden=true title=${clock.label} style=${`left:${clock.left}%`}></span>` : nothing}
         </div>
-        <div class=timeline>
-          <div class=rail role=img aria-label=${window ? `Filtration prévue de ${window.startText} à ${window.endText}, durée ${plannedDuration(window.durationMinutes)}${window.overnight ? ', passage à minuit' : ''}` : 'Plage de filtration indisponible'}>
-            ${window?.segments.map(segment => html`<span class=band aria-hidden=true style=${`left:${segment.left}%;width:${segment.width}%`}></span>`)}
-            ${clock ? html`<span class=now aria-hidden=true title=${clock.label} style=${`left:${clock.left}%`}></span>` : nothing}
-          </div>
-          <div class=ticks aria-hidden=true>${TICKS.map(tick => html`<span>${tick}</span>`)}</div>
-        </div>
-        ${!window ? html`<p class=unavailable role=status>Plage indisponible : vérifier les horaires Flow.io.</p>` : nothing}
-        <div class=summary>
-          <button type=button class=stat ?disabled=${!start} @click=${() => this.more(startBinding.id)} aria-label="Début calculé de filtration"><strong>${this.value(startBinding.id)}</strong><span>Début</span></button>
-          <button type=button class=stat ?disabled=${!stop} @click=${() => this.more(stopBinding.id)} aria-label="Fin calculée de filtration"><strong>${this.value(stopBinding.id)}</strong><span>Fin</span></button>
-          <div class=stat data-stat=duration><strong>${window ? plannedDuration(window.durationMinutes) : 'Indisponible'}</strong><span>Durée prévue</span></div>
-        </div>
+        <div class=ticks aria-hidden=true>${TICKS.map(tick => html`<span>${tick}</span>`)}</div>
       </div>
-    </ha-card>`;
+      ${!window ? html`<p class=unavailable role=status>Plage indisponible : vérifier les horaires Flow.io.</p>` : nothing}
+      <div class=summary>
+        <button type=button class=stat ?disabled=${!start} @click=${() => this.more(startBinding.id)} aria-label="Début calculé de filtration"><strong>${this.value(startBinding.id)}</strong><span>Début</span></button>
+        <button type=button class=stat ?disabled=${!stop} @click=${() => this.more(stopBinding.id)} aria-label="Fin calculée de filtration"><strong>${this.value(stopBinding.id)}</strong><span>Fin</span></button>
+        <div class=stat data-stat=duration><strong>${window ? plannedDuration(window.durationMinutes) : 'Indisponible'}</strong><span>Durée prévue</span></div>
+      </div>
+    </div></ha-card>`;
   }
-
   static styles = css`
     :host{display:block;container-type:inline-size;color:var(--primary-text-color);font-family:var(--ha-font-family-body,inherit);--fio-water:var(--flowio-water-color,var(--blue-color,var(--primary-color)));--fio-orp:var(--flowio-orp-color,var(--cyan-color,var(--info-color,var(--primary-color))))}
     ha-card{overflow:hidden}
@@ -106,40 +131,31 @@ class FlowioFiltrationCard extends LitElement {
     @media (prefers-reduced-motion: reduce){.band{transition:none}}
   `;
 }
-
 class FlowioFiltrationCardEditor extends LitElement {
   static properties = { hass: { attribute: false }, config: { state: true }, error: { state: true } };
   declare hass?: Hass;
   private config?: FiltrationConfig;
   private error = '';
-
   setConfig(input: unknown) { this.config = normalizeFiltrationConfig(input); this.error = ''; }
-
   private changed(event: CustomEvent) {
     event.stopPropagation();
     try {
       this.config = normalizeFiltrationConfig(event.detail.value);
       this.error = '';
       this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: this.config }, bubbles: true, composed: true }));
-    } catch (error) {
-      this.error = error instanceof Error ? error.message : 'Configuration invalide';
-    }
+    } catch (error) { this.error = error instanceof Error ? error.message : 'Configuration invalide'; }
   }
-
   render() {
     if (!this.config || !this.hass) return nothing;
     const schema = [
       { name: 'title', selector: { text: {} } },
-      { name: 'description', selector: { text: { multiline: true } } },
-      { name: 'entity_prefix', selector: { text: {} } }
+      { name: 'description', selector: { text: { multiline: true } } }
     ];
-    const labels: Record<string, string> = { title: 'Titre', description: 'Description', entity_prefix: 'Préfixe firmware' };
-    return html`${this.error ? html`<p role=alert>${this.error}</p>` : nothing}<ha-form .hass=${this.hass} .data=${this.config} .schema=${schema} .computeLabel=${(field: { name: string }) => labels[field.name] ?? field.name} @value-changed=${this.changed}></ha-form>`;
+    const labels: Record<string, string> = { title: 'Titre', description: 'Description' };
+    return html`<p>Le préfixe est fourni par l’intégration Flow.io.</p>${this.error ? html`<p role=alert>${this.error}</p>` : nothing}<ha-form .hass=${this.hass} .data=${this.config} .schema=${schema} .computeLabel=${(field: { name: string }) => labels[field.name] ?? field.name} @value-changed=${this.changed}></ha-form>`;
   }
-
   static styles = css`:host{display:block}p[role=alert]{color:var(--error-color)}`;
 }
-
 if (!customElements.get('flowio-filtration-card')) customElements.define('flowio-filtration-card', FlowioFiltrationCard);
 if (!customElements.get('flowio-filtration-card-editor')) customElements.define('flowio-filtration-card-editor', FlowioFiltrationCardEditor);
 const registry = window as Window & { customCards?: Array<Record<string, unknown>> };

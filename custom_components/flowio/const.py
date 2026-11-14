@@ -11,6 +11,7 @@ CONF_PREFIX = "entity_prefix"
 CONF_MOBILE_DEVICES = "mobile_devices"  # appareils (registre) de l'application mobile à notifier
 CONF_PH_SLOT = "ph_slot"
 CONF_DIS_SLOT = "disinfection_slot"
+CONF_FILTRATION_SLOT = "filtration_slot"
 CONF_NOTIFY_MEDIUM = "notify_medium"
 CONF_NOTIFY_DEVICES = "notify_devices"  # liste d'entités switch dont on notifie les changements d'état
 CONF_NOTIFY_ON_START = "notify_on_start"
@@ -22,6 +23,7 @@ CONF_MQTT_ROOT = "mqtt_root"  # racine MQTT du contrôleur (baseTopic/deviceId),
 DEFAULT_IOS_LEVEL = "time-sensitive"
 DEFAULT_PH_SLOT = 1
 DEFAULT_DIS_SLOT = 2
+DEFAULT_FILTRATION_SLOT = 0
 HISTORY_DAYS = 7
 
 

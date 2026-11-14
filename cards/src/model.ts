@@ -1,13 +1,11 @@
 import {
   configObject,
-  normalizePrefix,
   entityId,
   MEASUREMENTS,
   roleLabel,
   type Role,
   type TankSlots
 } from './entities';
-import { normalizeMqttRoot } from './maintenance-mqtt';
 import { normalizeVisuals, type Visuals } from './gauge-model';
 import {
   TIMING_ITEMS,
@@ -60,13 +58,10 @@ export type DisplayConfig = {
 export interface PoolConfig {
   type: string;
   title: string;
-  entity_prefix: string;
-  mqtt_topic?: string;
   grid_options?: Record<string, unknown>;
   display: DisplayConfig;
   tank_slots: TankSlots;
   runtime_slots: RuntimeSlots;
-  device_slot: number;
   visuals: Visuals;
 }
 
@@ -99,14 +94,14 @@ function selection<T extends string>(
 
 export function normalizeConfig(input: unknown): PoolConfig {
   const raw = configObject(input);
+  if ('entity_prefix' in raw) throw new Error('entity_prefix supprimé : le préfixe vient de l’intégration Flow.io. Retirer ce champ.');
+  if ('mqtt_topic' in raw) throw new Error('mqtt_topic supprimé : le topic vient de l’intégration Flow.io. Retirer ce champ.');
   for (const key of ['features', 'show_tanks', 'treatment', 'measurements']) {
     if (key in raw) throw new Error(`Le champ ${key} est supprimé de la synthèse. Utiliser display ; recréer la configuration.`);
   }
 
   const title = raw.title ?? 'Supervision';
-  if (typeof title !== 'string') throw new Error('Titre invalide');
-  if (raw.mqtt_topic !== undefined && typeof raw.mqtt_topic !== 'string') throw new Error('mqtt_topic doit être un texte');
-  const mqtt_topic = typeof raw.mqtt_topic === 'string' && raw.mqtt_topic.trim() ? normalizeMqttRoot(raw.mqtt_topic) : undefined;
+  if (typeof title !== 'string' || !title.trim()) throw new Error('Titre invalide');
   const grid_options = raw.grid_options === undefined ? undefined : configObject(raw.grid_options);
   const d = raw.display === undefined ? {} : configObject(raw.display);
   for (const key of Object.keys(d)) {
@@ -143,21 +138,13 @@ export function normalizeConfig(input: unknown): PoolConfig {
     tank_slots[key] = n;
   }
 
-  const device_slot = raw.device_slot ?? 0;
-  if (typeof device_slot !== 'number' || !Number.isInteger(device_slot) || device_slot < 0 || device_slot > 15) {
-    throw new Error('Slot équipement attendu entre 0 et 15');
-  }
-
   return {
     type: 'custom:flowio-pool-card',
     title,
-    entity_prefix: normalizePrefix(raw.entity_prefix),
-    ...(mqtt_topic ? { mqtt_topic } : {}),
     ...(grid_options ? { grid_options } : {}),
     display,
     tank_slots,
     runtime_slots: normalizeRuntimeSlots(raw.runtime_slots),
-    device_slot,
     visuals: normalizeVisuals(raw.visuals)
   };
 }
@@ -185,8 +172,8 @@ export function inlineOperations(c: PoolConfig, treatment?: Treatment): Operatio
     : [];
 }
 
-export function idFor(c: PoolConfig, role: Role) {
-  return entityId(c.entity_prefix, role, c.tank_slots);
+export function idFor(c: PoolConfig, role: Role, prefix: string) {
+  return entityId(prefix, role, c.tank_slots);
 }
 
 export function equipmentTargetRole(c: PoolConfig, role: Role, treatment?: Treatment): Role {
@@ -209,7 +196,7 @@ export function tankPercent(s?: EntityState): number | undefined {
   return Number.isFinite(n) && n >= 0 && n <= 100 ? n : undefined;
 }
 
-export function expectedRoles(c: PoolConfig, treatment?: Treatment): Role[] {
+export function expectedRoles(c: PoolConfig, prefix: string, treatment?: Treatment): Role[] {
   type Info = Exclude<DisplayConfig['information'][number], 'diagnostics' | 'network' | 'system'>;
   return [...new Set<Role>([
     ...c.display.measurements,
@@ -222,35 +209,35 @@ export function expectedRoles(c: PoolConfig, treatment?: Treatment): Role[] {
   ])];
 }
 
-export function expectedBindings(c: PoolConfig, hass?: Hass) {
-  const treatment = treatmentFromFirmware(hass, c.entity_prefix);
+export function expectedBindings(c: PoolConfig, hass: Hass | undefined, prefix: string, filtrationSlot = 0) {
+  const treatment = treatmentFromFirmware(hass, prefix);
   const all = [
-    ...expectedRoles(c, treatment).map(role => ({ id: idFor(c, role), label: roleLabel(role) })),
+    ...expectedRoles(c, prefix, treatment).map(role => ({ id: idFor(c, role, prefix), label: roleLabel(role) })),
     ...c.display.injections
       .filter(item => item !== 'disinfection_injected' ||
         treatment === 'chlorine_bromine' || treatment === 'oxygen')
-      .flatMap(item => injectionBindings(c.entity_prefix, c.runtime_slots, item)),
-    ...visibleModes(c.display.modes, c.display.equipment, treatment).map(mode => ({ id: modeId(c.entity_prefix, mode), label: MODES[mode].label })),
-    ...c.display.timing.flatMap(item => timingBindings(c.entity_prefix, c.runtime_slots, item)),
-    ...(c.display.values_telemetry ? calculatedBindings(c.entity_prefix, c.display.calculated_values) : []),
-    ...(c.display.values_telemetry ? deviceMetricBindings(c.entity_prefix, c.device_slot, c.display.device_metrics) : []),
-    ...operationBindings(c.entity_prefix, configuredOperations(c, treatment)),
-    ...systemBindings(c.entity_prefix, c.display.information),
-    ...(c.display.information.includes('system') ? powerBindings(c.entity_prefix) : [])
+      .flatMap(item => injectionBindings(prefix, c.runtime_slots, item)),
+    ...visibleModes(c.display.modes, c.display.equipment, treatment).map(mode => ({ id: modeId(prefix, mode), label: MODES[mode].label })),
+    ...c.display.timing.flatMap(item => timingBindings(prefix, c.runtime_slots, item)),
+    ...(c.display.values_telemetry ? calculatedBindings(prefix, c.display.calculated_values) : []),
+    ...(c.display.values_telemetry ? deviceMetricBindings(prefix, filtrationSlot, c.display.device_metrics) : []),
+    ...operationBindings(prefix, configuredOperations(c, treatment)),
+    ...systemBindings(prefix, c.display.information),
+    ...(c.display.information.includes('system') ? powerBindings(prefix) : [])
   ];
   if (c.display.equipment.includes('disinfection_pump') ||
       c.display.injections.includes('disinfection_injected') ||
       c.display.modes.some(mode => ['disinfection_auto', 'disinfection_type', 'swg_control', 'o2_temp_comp'].includes(mode)) ||
       c.display.operations.some(operation => ['refill_disinfection', 'reset_disinfection', 'reset_electrolyzer'].includes(operation))) {
-    all.push({ id: modeId(c.entity_prefix, 'disinfection_type'), label: MODES.disinfection_type.label });
+    all.push({ id: modeId(prefix, 'disinfection_type'), label: MODES.disinfection_type.label });
   }
   return all.filter((item, index) => all.findIndex(other => other.id === item.id) === index);
 }
 
-export function canCommand(c: PoolConfig, hass: Hass, role: Role): boolean {
+export function canCommand(c: PoolConfig, hass: Hass, role: Role, prefix: string): boolean {
   if (!(c.display.equipment as readonly Role[]).includes(role)) return false;
-  const treatment = treatmentFromFirmware(hass, c.entity_prefix);
+  const treatment = treatmentFromFirmware(hass, prefix);
   if (role === 'disinfection_pump' && (!treatment || treatment === 'disabled')) return false;
-  const s = hass.states[idFor(c, equipmentTargetRole(c, role, treatment))];
+  const s = hass.states[idFor(c, equipmentTargetRole(c, role, treatment), prefix)];
   return available(s) && ['on', 'off'].includes(s.state);
 }
