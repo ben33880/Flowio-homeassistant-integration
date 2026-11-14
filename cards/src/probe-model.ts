@@ -37,7 +37,10 @@ export function normalizeProbeConfig(input: unknown): ProbeConfig {
 }
 export function probeNamePrefix(config: ProbeConfig, states: Record<string, EntityState>): string {
   if (config.name_prefix) return config.name_prefix;
-  return commonEntityPrefix(config.entity ? [config.entity] : [], states);
+  if (!config.entity) return '';
+  const name = entityName(config.entity, states[config.entity]);
+  const boundary = Math.max(name.lastIndexOf(' '), name.lastIndexOf('·'), name.lastIndexOf('-'));
+  return boundary >= 0 ? name.slice(0, boundary + 1) : '';
 }
 function asProbes(config: ProbeConfig): ProbesConfig {
   return {
