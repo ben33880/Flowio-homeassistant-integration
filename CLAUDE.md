@@ -18,6 +18,7 @@ Intégration Home Assistant (HACS) pour le contrôleur de piscine Flow.io (firmw
 - Lire le firmware avant d'affirmer quoi que ce soit sur ses valeurs par défaut ou ses topics. Ne jamais deviner.
 - Rien n'est testé dans un vrai Home Assistant par l'assistant : le dire clairement dans les réponses.
 - Le propriétaire modifie aussi le dépôt à la main (workflow, manifest). Avant de modifier un fichier, relire sa version actuelle ; avant de parler de versions, lister les tags et les releases.
+- Après chaque push, relire `CLAUDE.md` : tout point d'état devenu faux doit être corrigé dans le même push, pas annoncé comme fait sans l'être.
 - Format des notifications d'équipement voulu par le propriétaire (14/11/2026) : une seule première ligne (le titre) du type « Filtration : arrêt à 22:07 par le contrôleur, durée 12 min », la durée seulement à l'arrêt, sans emoji, icône = celle de l'entité MQTT. Dessous : récapitulatif pH/ORP, eau/air, pression.
 - Les fichiers de texte `strings.json` et `translations/en.json` doivent rester identiques ; `fr.json` suit la même structure.
 
@@ -32,7 +33,7 @@ Intégration Home Assistant (HACS) pour le contrôleur de piscine Flow.io (firmw
 ## État au 14/11/2026
 
 - Versions publiées : 0.1.0 (11/11), 0.1.1 (12/11), 0.2.0 (12/11), 0.2.1 (13/11).
-- Version préparée dans le code : 0.2.2 (refonte des notifications et design Android), tag `v0.2.2` à créer par le propriétaire.
+- Version préparée dans le code : 0.2.2 (refonte des notifications et design Android), tag `v0.2.2` à créer par le propriétaire. Si le tag existe déjà sur un commit plus ancien, préparer une 0.2.3.
 - Le README, le CHANGELOG et `strings.json` sont à jour avec le code de la 0.2.2.
-- `notification_actions.py` n'a pas été relu après le changement de signature de `FlowioRuntime.async_send` (arguments ajoutés en fin, anciens appels théoriquement compatibles).
+- `notification_actions.py` relu le 14/11/2026 : ses réponses appellent `rt.async_send(titre, message, clé)` avec trois arguments, compatible avec la signature actuelle ; le tag et le groupe sont les mêmes que ceux de l'alerte, donc la réponse la remplace bien. Lecture seule, rien n'a été exécuté.
 - Problème signalé le 14/11/2026 : aucune notification de démarrage d'équipement. Cause non confirmée ; le chronomètre Android a été retiré (seule différence avec l'arrêt). À revérifier avec les journaux (niveau debug de `custom_components.flowio`) si cela persiste.
