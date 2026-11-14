@@ -1,15 +1,14 @@
 import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
 import './order-list';
-import { normalizePrefix } from './entities';
 import type { Hass } from './model';
-import { commonEntityPrefix, displayName, entityName } from './names';
+import { displayName, entityName } from './names';
 import { mergeOrder, orderItems } from './order-list';
+import { InstallationController, type InstallationHass } from './installation-controller';
 
 export interface TileGridConfig {
   type: string;
   title: string;
   columns: number;
-  entity_prefix: string;
   name_prefix: string;
   entities: string[];
   grid_options?: Record<string, unknown>;
@@ -18,29 +17,19 @@ export interface TileGridConfig {
 export function normalizeTileGridConfig(input: unknown, type: string, defaultTitle: string): TileGridConfig {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Configuration objet attendue');
   const raw = input as Record<string, unknown>;
+  if ('entity_prefix' in raw) throw new Error('entity_prefix supprimé : le préfixe vient de l’intégration Flow.io. Retirer ce champ.');
   const title = raw.title ?? defaultTitle;
   if (typeof title !== 'string' || !title.trim()) throw new Error('Titre invalide');
   const columns = raw.columns ?? 2;
-  if (typeof columns !== 'number' || !Number.isInteger(columns) || columns < 1 || columns > 6) {
-    throw new Error('Nombre de colonnes attendu entre 1 et 6');
-  }
+  if (typeof columns !== 'number' || !Number.isInteger(columns) || columns < 1 || columns > 6) throw new Error('Nombre de colonnes attendu entre 1 et 6');
   const name_prefix = raw.name_prefix ?? '';
   if (typeof name_prefix !== 'string') throw new Error('name_prefix doit être un texte');
   const supplied = raw.entities === undefined ? [] : raw.entities;
-  if (!Array.isArray(supplied) || supplied.some(value => typeof value !== 'string' || !value.trim())) {
-    throw new Error('Liste d’entités invalide');
-  }
-  const grid_options = raw.grid_options === undefined ? undefined : raw.grid_options;
-  if (grid_options !== undefined && (!grid_options || typeof grid_options !== 'object' || Array.isArray(grid_options))) {
-    throw new Error('grid_options doit être un objet');
-  }
+  if (!Array.isArray(supplied) || supplied.some(value => typeof value !== 'string' || !value.trim())) throw new Error('Liste d’entités invalide');
+  const grid_options = raw.grid_options;
+  if (grid_options !== undefined && (!grid_options || typeof grid_options !== 'object' || Array.isArray(grid_options))) throw new Error('grid_options doit être un objet');
   return {
-    type,
-    title,
-    columns,
-    entity_prefix: normalizePrefix(raw.entity_prefix),
-    name_prefix,
-    entities: [...new Set(supplied)] as string[],
+    type, title, columns, name_prefix, entities: [...new Set(supplied)] as string[],
     ...(grid_options ? { grid_options: grid_options as Record<string, unknown> } : {})
   };
 }
@@ -49,18 +38,15 @@ type NativeCard = HTMLElement & { hass?: Hass; setConfig: (config: Record<string
 type CardHelpers = { createCardElement: (config: Record<string, unknown>) => NativeCard };
 
 if (typeof CSS !== 'undefined' && typeof CSS.registerProperty === 'function') {
-  try {
-    CSS.registerProperty({ name: '--fio-snake', syntax: '<angle>', inherits: false, initialValue: '0deg' });
-  } catch {
-    // propriété déjà enregistrée
-  }
+  try { CSS.registerProperty({ name: '--fio-snake', syntax: '<angle>', inherits: false, initialValue: '0deg' }); } catch { /* déjà enregistré */ }
 }
 
 export abstract class FlowioTileGridCard extends LitElement {
   static properties = { hass: { attribute: false }, config: { state: true }, error: { state: true } };
-  declare hass?: Hass;
+  declare hass?: Hass & InstallationHass;
   protected config?: TileGridConfig;
   protected error = '';
+  private installation = new InstallationController(this, () => this.hass);
   private tiles: NativeCard[] = [];
   private slots: HTMLElement[] = [];
   private overlays: (HTMLElement | undefined)[] = [];
@@ -70,20 +56,12 @@ export abstract class FlowioTileGridCard extends LitElement {
   private generation = 0;
 
   protected abstract normalizeConfig(input: unknown): TileGridConfig;
-
   protected tileForcedLabel(_entity: string): string | undefined { return undefined; }
 
-  setConfig(input: unknown) {
-    this.config = this.normalizeConfig(input);
-    this.error = '';
-    void this.syncTiles();
-  }
-
+  setConfig(input: unknown) { this.config = this.normalizeConfig(input); this.error = ''; void this.syncTiles(); }
   getCardSize() { return 2 + Math.ceil((this.config?.entities.length ?? 0) / (this.config?.columns ?? 2)); }
-
   connectedCallback() { super.connectedCallback(); void this.syncTiles(); }
   disconnectedCallback() { super.disconnectedCallback(); this.generation++; }
-
   protected updated(_changed: PropertyValues) { void this.syncTiles(); this.mount(); }
 
   private mount() {
@@ -92,41 +70,28 @@ export abstract class FlowioTileGridCard extends LitElement {
     const entities = this.config?.entities ?? [];
     const slots = this.tiles.map((tile, index) => {
       let slot = this.slots[index];
-      if (!slot) {
-        slot = document.createElement('div');
-        slot.className = 'tile-slot';
-        slot.append(tile);
-        this.slots[index] = slot;
-      }
+      if (!slot) { slot = document.createElement('div'); slot.className = 'tile-slot'; slot.append(tile); this.slots[index] = slot; }
       let overlay = this.overlays[index];
       const label = this.tileForcedLabel(entities[index] ?? '');
       slot.dataset.forced = label ? 'true' : 'false';
       if (label) {
-        if (!overlay) {
-          overlay = document.createElement('span');
-          overlay.className = 'tile-forced';
-          overlay.setAttribute('role', 'img');
-          slot.append(overlay);
-          this.overlays[index] = overlay;
-        }
+        if (!overlay) { overlay = document.createElement('span'); overlay.className = 'tile-forced'; overlay.setAttribute('role', 'img'); slot.append(overlay); this.overlays[index] = overlay; }
         overlay.textContent = label;
         overlay.setAttribute('aria-label', label);
-      } else if (overlay) {
-        overlay.remove();
-        this.overlays[index] = undefined;
-      }
+      } else if (overlay) { overlay.remove(); this.overlays[index] = undefined; }
       return slot;
     });
-    if (grid.children.length !== slots.length || slots.some((slot, index) => grid.children[index] !== slot)) {
-      grid.replaceChildren(...slots);
-    }
+    if (grid.children.length !== slots.length || slots.some((slot, index) => grid.children[index] !== slot)) grid.replaceChildren(...slots);
     for (const tile of this.tiles) tile.hass = this.hass;
   }
 
   private async syncTiles() {
     const config = this.config;
     if (!config) return;
-    const key = JSON.stringify({ columns: config.columns, entities: config.entities, name_prefix: config.name_prefix });
+    if (this.installation.error) { this.error = this.installation.error; this.synced = false; this.tiles = []; this.slots = []; this.overlays = []; this.requestUpdate(); return; }
+    const installation = this.installation.value;
+    if (!installation) { this.error = ''; this.synced = false; this.tiles = []; this.slots = []; this.overlays = []; this.requestUpdate(); return; }
+    const key = JSON.stringify({ columns: config.columns, entities: config.entities, name_prefix: config.name_prefix, prefix: installation.prefix });
     if (key === this.key && this.synced) { this.mount(); return; }
     if (this.loading) return;
     this.loading = true;
@@ -136,7 +101,7 @@ export abstract class FlowioTileGridCard extends LitElement {
       if (!load) throw new Error('Helpers Home Assistant indisponibles');
       const helpers = await load();
       if (token !== this.generation || !this.isConnected) return;
-      const prefix = config.name_prefix || commonEntityPrefix(config.entities, this.hass?.states);
+      const prefix = config.name_prefix;
       this.slots = [];
       this.overlays = [];
       this.tiles = config.entities.map(entity => {
@@ -163,6 +128,9 @@ export abstract class FlowioTileGridCard extends LitElement {
   render() {
     const config = this.config, hass = this.hass;
     if (!config || !hass) return html`<ha-card><div class=body>En attente de Home Assistant…</div></ha-card>`;
+    if (this.installation.error) return html`<ha-card><div class=body><p class=error role=alert>${this.installation.error}</p></div></ha-card>`;
+    const installation = this.installation.value;
+    if (!installation) return html`<ha-card><div class=body>Chargement des réglages de l’intégration Flow.io…</div></ha-card>`;
     return html`<ha-card><div class=body>
       ${config.title ? html`<h3 class=title>${config.title}</h3>` : nothing}
       ${this.error ? html`<p class=error role=alert>${this.error}</p>` : nothing}
@@ -193,17 +161,13 @@ export abstract class FlowioTileGridEditor extends LitElement {
   declare hass?: Hass;
   protected config?: TileGridConfig;
   protected error = '';
-
   protected abstract normalizeConfig(input: unknown): TileGridConfig;
-
   setConfig(input: unknown) { this.config = this.normalizeConfig(input); this.error = ''; }
-
   private commit(config: TileGridConfig) {
     this.config = config;
     this.error = '';
     this.dispatchEvent(new CustomEvent('config-changed', { detail: { config }, bubbles: true, composed: true }));
   }
-
   private changed(event: CustomEvent) {
     event.stopPropagation();
     if (!this.config) return;
@@ -211,43 +175,32 @@ export abstract class FlowioTileGridEditor extends LitElement {
       const value = (event.detail?.value ?? {}) as Record<string, unknown>;
       const selected = Array.isArray(value.entities) ? value.entities as string[] : this.config.entities;
       this.commit(this.normalizeConfig({ ...value, entities: mergeOrder(this.config.entities, selected) }));
-    } catch (error) {
-      this.error = error instanceof Error ? error.message : 'Configuration invalide';
-    }
+    } catch (error) { this.error = error instanceof Error ? error.message : 'Configuration invalide'; }
   }
-
   private reorder(order: string[]) {
     if (!this.config) return;
-    try {
-      this.commit(this.normalizeConfig({ ...this.config, entities: order }));
-    } catch (error) {
-      this.error = error instanceof Error ? error.message : 'Configuration invalide';
-    }
+    try { this.commit(this.normalizeConfig({ ...this.config, entities: order })); }
+    catch (error) { this.error = error instanceof Error ? error.message : 'Configuration invalide'; }
   }
-
   private options(): { value: string; label: string }[] {
     if (!this.hass) return [];
-    const stem = this.config?.entity_prefix ? `${this.config.entity_prefix}_` : '';
-    const ids = Object.keys(this.hass.states).filter(id => id.startsWith(`switch.${stem}`)).sort();
-    const prefix = this.config?.name_prefix || commonEntityPrefix(ids, this.hass.states);
+    const ids = Object.keys(this.hass.states).filter(id => id.startsWith('switch.')).sort();
+    const prefix = this.config?.name_prefix || '';
     return ids.map(id => ({ value: id, label: `${displayName(entityName(id, this.hass!.states[id]), prefix)} · ${id}` }));
   }
-
   render() {
     if (!this.config || !this.hass) return nothing;
     const schema = [
       { name: 'title', selector: { text: {} } },
       { name: 'columns', selector: { number: { min: 1, max: 6, step: 1, mode: 'box' } } },
-      { name: 'entity_prefix', selector: { text: {} } },
       { name: 'name_prefix', selector: { text: {} } }
     ];
     const entitySchema = [{ name: 'entities', selector: { select: { multiple: true, mode: 'list', options: this.options() } } }];
-    const labels: Record<string, string> = { title: 'Nom', columns: 'Colonnes', entity_prefix: 'Préfixe firmware', name_prefix: 'Texte à retirer devant les noms (vide = automatique)', entities: 'Entités' };
-    const prefix = this.config.name_prefix || commonEntityPrefix(this.config.entities, this.hass.states);
+    const labels: Record<string, string> = { title: 'Nom', columns: 'Colonnes', name_prefix: 'Texte à retirer devant les noms (vide = automatique)', entities: 'Entités' };
+    const prefix = this.config.name_prefix;
     const items = orderItems(this.config.entities, this.hass.states, prefix);
     const computeLabel = (field: { name: string }) => labels[field.name] ?? field.name;
-    return html`<p>Tuiles standard Home Assistant : cliquer sur l’icône bascule l’entité, cliquer ailleurs ouvre l’entité.</p>${this.error ? html`<p role=alert>${this.error}</p>` : nothing}<ha-form .hass=${this.hass} .data=${this.config} .schema=${schema} .computeLabel=${computeLabel} @value-changed=${this.changed}></ha-form><flowio-order-list .items=${items} @order-changed=${(event: CustomEvent) => this.reorder(event.detail.order)}></flowio-order-list><ha-form .hass=${this.hass} .data=${this.config} .schema=${entitySchema} .computeLabel=${computeLabel} @value-changed=${this.changed}></ha-form>`;
+    return html`<p>Le préfixe est fourni par l’intégration Flow.io. Tuiles standard Home Assistant : cliquer sur l’icône bascule l’entité, cliquer ailleurs ouvre l’entité.</p>${this.error ? html`<p role=alert>${this.error}</p>` : nothing}<ha-form .hass=${this.hass} .data=${this.config} .schema=${schema} .computeLabel=${computeLabel} @value-changed=${this.changed}></ha-form><flowio-order-list .items=${items} @order-changed=${(event: CustomEvent) => this.reorder(event.detail.order)}></flowio-order-list><ha-form .hass=${this.hass} .data=${this.config} .schema=${entitySchema} .computeLabel=${computeLabel} @value-changed=${this.changed}></ha-form>`;
   }
-
   static styles = css`:host{display:block}p{color:var(--secondary-text-color);line-height:1.5}p[role=alert]{color:var(--error-color)}`;
 }
