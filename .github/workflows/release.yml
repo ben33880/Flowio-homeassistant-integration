@@ -59,8 +59,13 @@ jobs:
                 fi
               done
               if [ "$found" = 0 ]; then
-                echo "Aucun fichier de licence pour $name" >&2
-                exit 1
+                license=$(jq -r '.license // empty' "$dir/package.json")
+                if [ -z "$license" ]; then
+                  echo "Aucun fichier de licence ni champ license pour $name" >&2
+                  exit 1
+                fi
+                echo
+                echo "Licence déclarée : $license"
               fi
               count=$((count + 1))
             done
