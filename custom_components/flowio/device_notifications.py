@@ -24,9 +24,13 @@ from .runtime import COLOR_OFF, COLOR_OK, format_duration
 
 _LOGGER = logging.getLogger(__name__)
 
+# Instant où ce module est importé : au démarrage de Home Assistant, pas à chaque rechargement de
+# l'intégration (enregistrer les options recharge l'intégration mais ne réimporte pas le module).
+PROCESS_START = dt_util.utcnow()
+
 DEVICE_CHANNEL = "Flow.io équipements"
 COMMAND_WINDOW = 120  # secondes : délai max entre une commande Home Assistant et le changement d'état
-RELIABLE_AFTER = 120  # secondes : une durée n'est fiable que si le démarrage a été observé après ce délai
+RELIABLE_AFTER = 120  # secondes : une durée n'est fiable que si le démarrage a eu lieu après ce délai de démarrage
 # Suivi en direct : la carte n'est créée qu'après ce délai de marche. iOS limite les démarrages d'activités
 # par notification ; les marches très courtes (pompes doseuses) épuiseraient ce quota pour rien.
 LIVE_START_DELAY = 60
@@ -159,9 +163,9 @@ def async_setup_device_notifications(rt):
         # Première ligne (titre) : équipement, action, heure, auteur, et durée à l'arrêt seulement.
         title = f"{name} : {'démarrage' if running else 'arrêt'} à {at} par {who}"
         if not running:
-            # Durée fiable seulement si le démarrage a été observé après le chargement de l'intégration
-            # (après un redémarrage, l'état restauré porte l'heure du redémarrage, pas celle du démarrage).
-            reliable = (old.last_changed - rt.loaded_at).total_seconds() > RELIABLE_AFTER
+            # Durée fiable seulement si le démarrage a eu lieu bien après le démarrage de Home Assistant
+            # (au démarrage, l'état restauré ou retenu par MQTT porte l'heure du démarrage, pas celle de la marche).
+            reliable = (old.last_changed - PROCESS_START).total_seconds() > RELIABLE_AFTER
             if reliable:
                 title += f", durée {format_duration(new.last_changed - old.last_changed)}"
             else:
