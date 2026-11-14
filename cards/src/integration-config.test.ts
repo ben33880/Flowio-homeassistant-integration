@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { loadInstallations, parseInstallations, selectInstallation } from './integration-config';
 function fixture() {
-  return { prefix: 'fio', ph_slot: 1, disinfection_slot: 2, mqtt_root: 'flowio/ESP32-ABCDEF',
+  return { prefix: 'fio', ph_slot: 1, disinfection_slot: 2, filtration_slot: 0, mqtt_root: 'flowio/ESP32-ABCDEF',
     thresholds: { ph_good_min: 7, ph_good_max: 7.4, ph_mid_min: 6.8, ph_mid_max: 7.6,
       orp_good_min: 650, orp_good_max: 750, orp_mid_min: 600, orp_mid_max: 800,
       temp_min: 4, temp_max: 32, tank_min: 15, offline_min: 10 } };
@@ -20,6 +20,7 @@ describe('configuration de l’intégration', () => {
     expect(() => parseInstallations({})).toThrow();
     expect(() => parseInstallations({ installations: [{ ...fixture(), thresholds: {} }] })).toThrow();
     expect(() => parseInstallations({ installations: [{ ...fixture(), ph_slot: 16 }] })).toThrow();
+    expect(() => parseInstallations({ installations: [{ ...fixture(), filtration_slot: 16 }] })).toThrow();
     expect(() => parseInstallations({ installations: [{ ...fixture(), mqtt_root: 'flowio/+' }] })).toThrow();
     expect(() => parseInstallations({ installations: [fixture(), fixture()] })).toThrow();
   });
