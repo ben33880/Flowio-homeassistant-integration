@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { currentThresholds, sharedEntity, sharedNumber, type Installation } from './integration-config';
 const installation: Installation = {
-  prefix: 'fio', ph_slot: 1, disinfection_slot: 2, mqtt_root: '',
+  prefix: 'fio', ph_slot: 1, disinfection_slot: 2, filtration_slot: 0, mqtt_root: '',
   thresholds: { ph_good_min: 7 },
   entities: { ph_good_min: 'number.mon_seuil', ph_injected: 'sensor.mon_volume', dis_injected: null }
 };
