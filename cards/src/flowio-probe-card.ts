@@ -1,6 +1,7 @@
 import { LitElement, html, css, nothing } from 'lit';
 import './flowio-gauge';
 import { available, type Hass } from './model';
+import { InstallationController, type InstallationHass } from './installation-controller';
 import {
   PROBE_MODES, normalizeProbeConfig, probeDisplayName, probeLabel, probeMode, probeNamePrefix,
   probeScale, probeValue, rawProbeName, resolveProbeColor, type ProbeConfig
@@ -10,8 +11,9 @@ const PALETTE = ['#0288d1', '#00acc1', '#26a69a', '#43a047', '#7cb342', '#fbc02d
 
 class FlowioProbeCard extends LitElement {
   static properties = { hass: { attribute: false }, config: { state: true } };
-  declare hass?: Hass;
+  declare hass?: Hass & InstallationHass;
   private config?: ProbeConfig;
+  private installation = new InstallationController(this, () => this.hass);
   static getConfigElement() { return document.createElement('flowio-probe-card-editor'); }
   static getStubConfig(): ProbeConfig { return normalizeProbeConfig({}); }
   setConfig(input: unknown) { this.config = normalizeProbeConfig(input); }
@@ -44,6 +46,9 @@ class FlowioProbeCard extends LitElement {
   render() {
     const config = this.config, hass = this.hass;
     if (!config || !hass) return html`<ha-card><div class=body>En attente de Home Assistant…</div></ha-card>`;
+    if (this.installation.error) return html`<ha-card><div class=body><p class=error role=alert>${this.installation.error}</p></div></ha-card>`;
+    const installation = this.installation.value;
+    if (!installation) return html`<ha-card><div class=body>Chargement des réglages de l’intégration Flow.io…</div></ha-card>`;
     const id = config.entity;
     const state = id ? hass.states[id] : undefined;
     const prefix = probeNamePrefix(config, hass.states);
@@ -58,6 +63,7 @@ class FlowioProbeCard extends LitElement {
     .body{padding:16px}
     .title{margin:0 0 8px;font-size:calc(1.05rem * var(--fio-font-scale, 1.32));font-weight:650;line-height:1.25}
     .empty{margin:0;font-size:calc(.82rem * var(--fio-font-scale, 1.32));color:var(--secondary-text-color)}
+    .error{margin:0 0 10px;color:var(--error-color);font-size:calc(.78rem * var(--fio-font-scale, 1.32))}
     .probes{display:block}
     .probe{min-width:0}
     .probe[data-tone=water]{--fio-accent:var(--fio-water)}
