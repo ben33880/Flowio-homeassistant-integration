@@ -6,7 +6,6 @@ import {
   type Role,
   type TankSlots
 } from './entities';
-import { normalizeMqttRoot } from './maintenance-mqtt';
 import { normalizeVisuals, type Visuals } from './gauge-model';
 import {
   TIMING_ITEMS,
@@ -59,7 +58,6 @@ export type DisplayConfig = {
 export interface PoolConfig {
   type: string;
   title: string;
-  mqtt_topic?: string;
   grid_options?: Record<string, unknown>;
   display: DisplayConfig;
   tank_slots: TankSlots;
@@ -98,14 +96,13 @@ function selection<T extends string>(
 export function normalizeConfig(input: unknown): PoolConfig {
   const raw = configObject(input);
   if ('entity_prefix' in raw) throw new Error('entity_prefix supprimé : le préfixe vient de l’intégration Flow.io. Retirer ce champ.');
+  if ('mqtt_topic' in raw) throw new Error('mqtt_topic supprimé : le topic vient de l’intégration Flow.io. Retirer ce champ.');
   for (const key of ['features', 'show_tanks', 'treatment', 'measurements']) {
     if (key in raw) throw new Error(`Le champ ${key} est supprimé de la synthèse. Utiliser display ; recréer la configuration.`);
   }
 
   const title = raw.title ?? 'Supervision';
   if (typeof title !== 'string') throw new Error('Titre invalide');
-  if (raw.mqtt_topic !== undefined && typeof raw.mqtt_topic !== 'string') throw new Error('mqtt_topic doit être un texte');
-  const mqtt_topic = typeof raw.mqtt_topic === 'string' && raw.mqtt_topic.trim() ? normalizeMqttRoot(raw.mqtt_topic) : undefined;
   const grid_options = raw.grid_options === undefined ? undefined : configObject(raw.grid_options);
   const d = raw.display === undefined ? {} : configObject(raw.display);
   for (const key of Object.keys(d)) {
@@ -150,7 +147,6 @@ export function normalizeConfig(input: unknown): PoolConfig {
   return {
     type: 'custom:flowio-pool-card',
     title,
-    ...(mqtt_topic ? { mqtt_topic } : {}),
     ...(grid_options ? { grid_options } : {}),
     display,
     tank_slots,
