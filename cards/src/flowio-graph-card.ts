@@ -5,6 +5,7 @@ import { numericValue } from './gauge-model';
 import { consolidatePoints, consolidationMs, historyPoints, historySummary, onIntervals, statisticsPoints, type HistoryPoint } from './history-data';
 import { commonEntityPrefix, probeDisplayName, rawProbeName } from './probes-model';
 import { GRAPH_PALETTE, SHADE_PALETTE, defaultShadeColor, normalizeGraphConfig, seriesColor, shadeColor, type GraphConfig } from './graph-model';
+import { InstallationController, type InstallationHass } from './installation-controller';
 
 type GraphHass = Hass & {
   callApi?: (method: string, path: string) => Promise<unknown>;
@@ -14,8 +15,9 @@ interface LoadedSeries { id: string; name: string; color: string; unit: string; 
 
 class FlowioGraphCard extends LitElement {
   static properties = { hass: { attribute: false }, config: { state: true }, loaded: { state: true }, hours: { state: true }, loading: { state: true }, error: { state: true }, start: { state: true }, end: { state: true } };
-  declare hass?: GraphHass;
+  declare hass?: GraphHass & InstallationHass;
   private config?: GraphConfig;
+  private installation = new InstallationController(this, () => this.hass);
   private loaded: LoadedSeries[] = [];
   private chartSeries: { name: string; color: string; points: HistoryPoint[] }[] = [];
   private ranges: { from: number; to: number; color: string }[] = [];
@@ -92,6 +94,8 @@ class FlowioGraphCard extends LitElement {
   private async load() {
     const config = this.config, hass = this.hass;
     if (!config || !hass) return;
+    const installation = this.installation.value;
+    if (!installation) return;
     const token = ++this.generation;
     this.error = '';
     this.loading = true;
@@ -160,6 +164,9 @@ class FlowioGraphCard extends LitElement {
   render() {
     const config = this.config, hass = this.hass;
     if (!config || !hass) return nothing;
+    if (this.installation.error) return html`<ha-card><div class=body><p class=warning role=alert>${this.installation.error}</p></div></ha-card>`;
+    const installation = this.installation.value;
+    if (!installation) return html`<ha-card><div class=body><p class=message>Chargement des réglages de l’intégration Flow.io…</p></div></ha-card>`;
     const single = config.entities.length === 1 ? this.loaded[0] : undefined;
     const singleState = single ? hass.states[single.id] : undefined;
     const title = config.title !== 'Graphique' ? config.title : (single ? single.name : 'Graphique');
@@ -214,8 +221,9 @@ class FlowioGraphCard extends LitElement {
 
 class FlowioGraphCardEditor extends LitElement {
   static properties = { hass: { attribute: false }, config: { state: true }, error: { state: true } };
-  declare hass?: Hass;
+  declare hass?: Hass & InstallationHass;
   private config?: GraphConfig;
+  private installation = new InstallationController(this, () => this.hass);
   private error = '';
 
   setConfig(input: unknown) { this.config = normalizeGraphConfig(input); this.error = ''; }
@@ -257,7 +265,9 @@ class FlowioGraphCardEditor extends LitElement {
 
   private shadeOptions(): { value: string; label: string }[] {
     if (!this.hass) return [];
-    const stem = this.config?.entity_prefix ? `${this.config.entity_prefix}_` : '';
+    const installation = this.installation.value;
+    if (!installation) return [];
+    const stem = `${installation.prefix}_`;
     const ids = Object.keys(this.hass.states).filter(id => id.startsWith(`switch.${stem}`) || id.startsWith(`binary_sensor.${stem}`)).sort();
     const prefix = this.config?.name_prefix || commonEntityPrefix(ids, this.hass.states);
     return ids.map(id => ({ value: id, label: `${probeDisplayName(rawProbeName(id, this.hass!.states[id]), prefix)} · ${id}` }));
@@ -271,7 +281,9 @@ class FlowioGraphCardEditor extends LitElement {
 
   private options(): { value: string; label: string }[] {
     if (!this.hass) return [];
-    const stem = this.config?.entity_prefix ? `${this.config.entity_prefix}_` : '';
+    const installation = this.installation.value;
+    if (!installation) return [];
+    const stem = `${installation.prefix}_`;
     const ids = Object.keys(this.hass.states).filter(id => id.startsWith(`sensor.${stem}`)).sort();
     const prefix = this.config?.name_prefix || commonEntityPrefix(ids, this.hass.states);
     return ids.map(id => ({ value: id, label: `${probeDisplayName(rawProbeName(id, this.hass!.states[id]), prefix)} · ${id}` }));
@@ -303,9 +315,11 @@ class FlowioGraphCardEditor extends LitElement {
 
   render() {
     if (!this.config || !this.hass) return nothing;
+    if (this.installation.error) return html`<p role=alert>${this.installation.error}</p>`;
+    const installation = this.installation.value;
+    if (!installation) return html`<p>Chargement des réglages de l’intégration Flow.io…</p>`;
     const labels: Record<string, string> = {
       title: 'Titre',
-      entity_prefix: 'Préfixe firmware',
       name_prefix: 'Texte à retirer devant les noms (vide = automatique)',
       hours_to_show: 'Période affichée (heures)',
       chart_type: 'Type de graphique',
@@ -315,7 +329,6 @@ class FlowioGraphCardEditor extends LitElement {
     };
     const schema = [
       { name: 'title', selector: { text: {} } },
-      { name: 'entity_prefix', selector: { text: {} } },
       { name: 'name_prefix', selector: { text: {} } },
       { name: 'hours_to_show', selector: { number: { min: 1, max: 168, step: 1, mode: 'box', unit_of_measurement: 'h' } } },
       { name: 'chart_type', selector: { select: { mode: 'dropdown', options: [{ value: 'line', label: 'Courbe' }, { value: 'bar', label: 'Barres' }] } } },
@@ -326,7 +339,7 @@ class FlowioGraphCardEditor extends LitElement {
     const entities = this.config.entities;
     const shades = Object.keys(this.config.shades);
     const data = { ...this.config, shade_entities: shades };
-    return html`<p>La couleur n’est portée que par le graphique. Choisir une pastille par entité ; « Auto » répartit une palette. Les « plages pdN » ombrent le graphique pendant les périodes où l’équipement est allumé.</p>${this.error ? html`<p role=alert>${this.error}</p>` : nothing}<ha-form .hass=${this.hass} .data=${data} .schema=${schema} .computeLabel=${(field: { name: string }) => labels[field.name] ?? field.name} @value-changed=${this.changed}></ha-form>${entities.length ? html`<div class=colors><h4>Couleurs des entités</h4>${entities.map(id => this.colorRow(id))}</div>` : nothing}${shades.length ? html`<div class=colors><h4>Plages (pdN) — ombrées quand allumé</h4>${shades.map(id => this.shadeRow(id))}</div>` : nothing}`;
+    return html`<p>Le préfixe est fourni par l’intégration Flow.io. La couleur n’est portée que par le graphique. Choisir une pastille par entité ; « Auto » répartit une palette. Les « plages pdN » ombrent le graphique pendant les périodes où l’équipement est allumé.</p>${this.error ? html`<p role=alert>${this.error}</p>` : nothing}<ha-form .hass=${this.hass} .data=${data} .schema=${schema} .computeLabel=${(field: { name: string }) => labels[field.name] ?? field.name} @value-changed=${this.changed}></ha-form>${entities.length ? html`<div class=colors><h4>Couleurs des entités</h4>${entities.map(id => this.colorRow(id))}</div>` : nothing}${shades.length ? html`<div class=colors><h4>Plages (pdN) — ombrées quand allumé</h4>${shades.map(id => this.shadeRow(id))}</div>` : nothing}`;
   }
 
   static styles = css`
