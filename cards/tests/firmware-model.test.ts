@@ -95,12 +95,11 @@ it('ne propose les cibles de forçage que si le sélecteur firmware les annonce'
 
 it('ajoute les valeurs calculées aux historiques sans modifier les mesures', () => {
   const config = normalizeHistoryConfig({
-    entity_prefix: 'spa',
     measurements: ['ph'],
     calculated_values: ['v00', 'v04', 'v00']
   });
   expect(config.calculated_values).toEqual(['v00', 'v04']);
-  expect(nativeHistoryConfigs(config)).toEqual([
+  expect(nativeHistoryConfigs(config, 'spa')).toEqual([
     { type: 'history-graph', entities: ['sensor.spa_io_ph'], hours_to_show: 24 },
     { type: 'history-graph', entities: ['sensor.spa_io_value_v00'], hours_to_show: 24 },
     { type: 'history-graph', entities: ['sensor.spa_io_value_v04'], hours_to_show: 24 }
