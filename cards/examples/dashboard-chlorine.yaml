@@ -1,0 +1,30 @@
+# Exemple pour une installation chlore liquide : affichage explicite, sans détection.
+title: Piscine Flow.io
+views:
+  - title: Piscine
+    path: piscine
+    icon: mdi:pool
+    type: sections
+    max_columns: 2
+    sections:
+      - type: grid
+        cards:
+          - type: custom:flowio-pool-card
+            title: Piscine
+            entity_prefix: fio
+            display:
+              measurements: [water_temperature, ph, orp, pressure]
+              setpoints: [ph_setpoint, orp_setpoint]
+              equipment: [filtration, ph_pump, disinfection_pump, lighting, robot]
+              tanks: [ph_tank, ph_tank_percent, disinfection_tank, disinfection_tank_percent]
+              information: [treatment_type, alarm_active, alarm_count, diagnostics]
+            tank_slots:
+              ph: 1
+              disinfection: 2
+      - type: grid
+        cards:
+          - type: custom:flowio-history-card
+            title: Qualité de l’eau · 24 h
+            entity_prefix: fio
+            hours_to_show: 24
+            measurements: [water_temperature, ph, orp, pressure]

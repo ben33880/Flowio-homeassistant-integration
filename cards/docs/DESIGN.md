@@ -1,0 +1,21 @@
+# Jauges, horaires et identité visuelle
+
+Les deux cartes héritent du thème HA : surfaces, textes, pictogrammes, accents par catégorie, en-têtes teintés et encadrements modernes. Aucune dépendance HACS supplémentaire ni CDN. Les éléments restent sélectionnés explicitement dans display ; les modes et commandes adaptés à la désinfection suivent le mode actif du firmware.
+
+Les jauges SVG/Lit proposent arc, indicateur d'aiguille et anneau. Les % de cuves sélectionnés utilisent des anneaux 0–100 depuis les capteurs firmware. Une donnée absente ou non numérique ne devient pas zéro. Une mesure hors échelle reste affichée avec ce statut ; seul le tracé est borné.
+
+visuals est facultatif et se règle dans l'éditeur : type tile, arc ou needle, min et max. Pour les mesures (pH, ORP, pression, températures), les bornes `min`/`max` fournies par l'entité (attributs firmware) sont utilisées en priorité ; `visuals` sert de repli lorsqu'elles sont absentes. Préréglages de présentation : pH 6–8,4, ORP 400–1000 mV, pression 0,15–1,8, eau 0–40 °C et air -10–50 °C. Les valeurs de pression sont affichées et historisées telles que reçues du firmware, sans conversion d'unité ; l'échelle de pression est numérique et ne présume pas si la source exprime des psi ou des bar. Ces échelles ne sont ni des seuils de qualité, ni des limites matérielles, ni des recommandations de traitement. Une consigne pH/ORP est marquée uniquement si elle est sélectionnée, numérique et disponible. Hors échelle, sa valeur est indiquée mais son repère n'est pas dessiné.
+
+Les équipements et modes utilisent le composant natif `ha-switch` de Home Assistant. Les boutons d’action utilisent `ha-button`, les pictogrammes `ha-icon`, et le titre s’appuie sur la carte native de titre HA. Le déclencheur du dialogue Système est un petit bouton HTML natif à cible tactile, inséré dans l’en-tête natif afin que l’interaction reste fiable sur mobile. Les styles adaptent les contrôles aux couleurs du thème HA et aux accents Flow.io. Les libellés « Démarrer » et « Arrêter » restent disponibles pour l’accessibilité. La confirmation et les commandes switch.turn_on/turn_off restent inchangées.
+
+Quand le diagnostic réseau ou système est sélectionné, un petit bouton sans libellé visible ouvre le dialogue correspondant. Il est accolé au titre « Supervision », avant les badges ; son infobulle et son nom accessible sont « Système ». Son style reste discret, avec un accent au survol et un focus clavier visible. Les valeurs du dialogue emploient les icônes `icon` publiées par les entités firmware lorsqu’elles sont disponibles.
+
+Les actions sélectionnées de remplissage pH/désinfectant sont des icônes à infobulle placées à côté des jauges de cuve correspondantes. Les actions de remise à zéro filtration/pH/désinfection sont placées sous leur durée respective dans « Horaires & durées », en bas à droite. Elles conservent leurs confirmations firmware ; leurs icônes ne remplacent pas les états et valeurs affichés.
+
+Les couleurs distinguent les catégories sans inventer de conformité chimique. Les transitions sont courtes et désactivées selon prefers-reduced-motion, y compris dans les jauges. Pas d'animation permanente prétendant confirmer la rotation physique d'une pompe. Les historiques restent natifs HA et affichent une valeur Actuel distincte de la période.
+
+Un thème peut définir flowio-water-color, flowio-air-color, flowio-ph-color, flowio-orp-color et flowio-pressure-color. Les autres couleurs viennent des variables de palette HA puis primary/accent.
+
+Les tailles de police des cartes sont multipliées par `--fio-font-scale` (1,32 par défaut). La définir dans un thème ajuste globalement la lisibilité de toutes les cartes.
+
+Voir docs/TIMING.md pour les horaires calculés et compteurs. Les tests couvrent géométrie, échelles, valeurs absentes, compteurs, sélections et actions simulées. Quatre captures clair/sombre mobile/ordinateur sont jointes au rapport CI ; leurs courbes sont explicitement simulées, pas des historiques HA réels. Aucun succès de ce lot n'est présumé avant sa CI et l'essai dans votre instance. Après réussite de check et publish-dist, installer main actualisé ou publier une nouvelle beta. Les releases et le firmware existants ne sont pas modifiés.
