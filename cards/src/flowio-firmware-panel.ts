@@ -11,7 +11,6 @@ import { InstallationController, type InstallationHass } from './installation-co
 class FlowioFirmwarePanel extends LitElement {
   static properties = {
     hass: { attribute: false },
-    mqttTopic: { type: String },
     calculatedValues: { attribute: false },
     deviceMetrics: { attribute: false },
     deviceSlot: { type: Number },
@@ -27,7 +26,6 @@ class FlowioFirmwarePanel extends LitElement {
     ready: { state: true }
   };
   declare hass?: Hass & InstallationHass;
-  mqttTopic = '';
   calculatedValues: readonly CalculatedValue[] = [];
   deviceMetrics: readonly DeviceMetric[] = [];
   deviceSlot = 0;
@@ -61,15 +59,7 @@ class FlowioFirmwarePanel extends LitElement {
     this.overrideOpened = false;
     this.maintenanceBusy = false;
   }
-  protected willUpdate(changed: PropertyValues) {
-    if (changed.has('mqttTopic')) {
-      this.overrideOpened = false;
-      this.overrideTarget = '';
-      this.overrideDuration = undefined;
-      this.overrideConfirmation = undefined;
-      this.maintenanceBusy = false;
-      this.error = '';
-    }
+  protected willUpdate(_changed: PropertyValues) {
   }
   private isActionPanelOperation(operation: Operation) {
     return !operation.startsWith('reset_') && !['timed_override', 'refill_ph', 'refill_disinfection'].includes(operation) && !this.inlineOperations.includes(operation);
@@ -211,7 +201,7 @@ class FlowioFirmwarePanel extends LitElement {
             <div class="override-content">
               <section class="maintenance-section" data-maintenance="alarms">
                 <h3><ha-icon icon="mdi:alarm-light-outline" aria-hidden="true"></ha-icon>Alarmes</h3>
-                <flowio-maintenance-alarms .hass=${h} .prefix=${installation.prefix} .mqttTopic=${this.mqttTopic}
+                <flowio-maintenance-alarms .hass=${h} .prefix=${installation.prefix} .mqttRoot=${installation.mqtt_root}
                   .active=${this.overrideOpened && this.ready}
                   .disabled=${!!this.busy || !!this.overrideConfirmation}
                   @maintenance-busy=${(event: CustomEvent<{ busy: boolean }>) => { event.stopPropagation(); this.maintenanceBusy = event.detail.busy; }}>

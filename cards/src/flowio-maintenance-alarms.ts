@@ -3,11 +3,11 @@ import { ensureHaElements } from './ha-controls';
 import { AlarmMaintenanceClient, type MaintenanceHass, type AlarmMaintenanceState, type MqttConnection } from './maintenance-mqtt';
 
 class FlowioMaintenanceAlarms extends LitElement {
-  static properties = { hass: { attribute: false }, active: { type: Boolean }, prefix: { type: String }, mqttTopic: { type: String }, disabled: { type: Boolean }, status: { state: true }, ready: { state: true }, uiError: { state: true } };
+  static properties = { hass: { attribute: false }, active: { type: Boolean }, prefix: { type: String }, mqttRoot: { type: String }, disabled: { type: Boolean }, status: { state: true }, ready: { state: true }, uiError: { state: true } };
   declare hass?: MaintenanceHass;
   active = false;
   prefix = '';
-  mqttTopic = '';
+  mqttRoot = '';
   disabled = false;
   private ready = false;
   private uiError = '';
@@ -40,20 +40,20 @@ class FlowioMaintenanceAlarms extends LitElement {
     const connection = this.hass?.connection;
     const connectionChanged = connection !== this.lastConnection;
     this.lastConnection = connection;
-    if (changed.has('active') || changed.has('mqttTopic') || changed.has('prefix') || changed.has('ready') || connectionChanged) {
+    if (changed.has('active') || changed.has('mqttRoot') || changed.has('prefix') || changed.has('ready') || connectionChanged) {
       this.client.disconnect();
-      if (this.isConnected && this.active && this.ready && this.mqttTopic.trim()) void this.client.connect(this.mqttTopic);
+      if (this.isConnected && this.active && this.ready && this.mqttRoot.trim()) void this.client.connect(this.mqttRoot);
     }
   }
 
   private commandable() {
     return this.isConnected && this.active && this.ready && !this.disabled &&
-      !!this.mqttTopic.trim() && this.status.root === this.mqttTopic && this.client.canCommand();
+      !!this.mqttRoot.trim() && this.status.root === this.mqttRoot && this.client.canCommand();
   }
 
   private read() {
-    if (!this.isConnected || !this.active || !this.ready || this.disabled || this.status.pending !== undefined || !this.mqttTopic.trim()) return;
-    void this.client.connect(this.mqttTopic);
+    if (!this.isConnected || !this.active || !this.ready || this.disabled || this.status.pending !== undefined || !this.mqttRoot.trim()) return;
+    void this.client.connect(this.mqttRoot);
   }
 
   private toggle(event: Event) {
@@ -72,13 +72,13 @@ class FlowioMaintenanceAlarms extends LitElement {
   }
 
   render() {
-    const state = this.status, pending = state.pending !== undefined, configured = !!this.mqttTopic.trim();
+    const state = this.status, pending = state.pending !== undefined, configured = !!this.mqttRoot.trim();
     const label = state.enabled === undefined ? 'État inconnu' : state.enabled ? 'Évaluation activée' : 'Évaluation désactivée';
     return html`
       <p class=note>Commande globale du moteur d’alarmes. La désactivation suspend son évaluation ; elle n’acquitte pas les alarmes mémorisées.</p>
-      ${configured ? html`<p class=note>Topic configuré : <code data-mqtt-topic>${this.mqttTopic}</code></p>`
-        : html`<ha-alert alert-type=warning>Configurer mqtt_topic dans les paramètres de la carte pour piloter les alarmes. Le forçage reste disponible.</ha-alert>`}
-      <p class=note>Le topic vient de la configuration de la carte. La lecture MQTT exige un compte administrateur Home Assistant.</p>
+      ${configured ? html`<p class=note>Topic configuré : <code data-mqtt-topic>${this.mqttRoot}</code></p>`
+        : html`<ha-alert alert-type=warning>Le topic MQTT n’est pas configuré dans l’intégration Flow.io. Le forçage reste disponible.</ha-alert>`}
+      <p class=note>Le topic est fourni par l’intégration Flow.io. La lecture MQTT exige un compte administrateur Home Assistant.</p>
       <ha-button data-read-alarms appearance=outlined .accessibleLabel=${'Relire l’état MQTT'}
         .disabled=${!this.active || !this.ready || this.disabled || pending || state.loading || !configured}
         @click=${this.read}>Relire l’état MQTT</ha-button>
