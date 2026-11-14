@@ -5,7 +5,7 @@ from time import monotonic
 from homeassistant.const import EVENT_CALL_SERVICE
 from homeassistant.core import callback
 from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.helpers.event import async_call_later, async_track_state_change_event
 from homeassistant.util import dt as dt_util
 
 from .const import (
@@ -22,6 +22,9 @@ _LOGGER = logging.getLogger(__name__)
 DEVICE_CHANNEL = "Flow.io équipements"
 COMMAND_WINDOW = 120  # secondes : délai max entre une commande Home Assistant et le changement d'état
 RELIABLE_AFTER = 120  # secondes : une durée n'est fiable que si le démarrage a été observé après ce délai
+# Suivi en direct : la carte n'est créée qu'après ce délai de marche. iOS limite les démarrages d'activités
+# par notification ; les marches très courtes (pompes doseuses) épuiseraient ce quota pour rien.
+LIVE_START_DELAY = 60
 # Services de l'intégration qui pilotent un équipement (refill_tank et reset_uptime n'en pilotent aucun).
 EQUIPMENT_SERVICES = {"force_equipment", "release_override"}
 
@@ -54,9 +57,18 @@ def async_setup_device_notifications(rt):
 
     hass = rt.hass
     watched = set(entities)
+    live_on = bool(rt.conf.get(CONF_NOTIFY_LIVE, False))
+    pending: dict = {}  # entité -> annulation du démarrage différé du suivi en direct
     # Commandes du forçage du firmware : elles agissent sur n'importe quel équipement.
     generic = tuple(f"{d}.{rt.prefix}_" for d in ("select", "number", "button"))
     commands: deque = deque(maxlen=20)
+
+    def _tag(entity_id: str) -> str:
+        return f"device_{entity_id.split('.', 1)[1]}"
+
+    def _clear_live(entity_id: str) -> None:
+        if live_on:
+            hass.async_create_task(rt.async_clear_live(_tag(entity_id)))
 
     @callback
     def _on_call(event) -> None:
@@ -82,6 +94,19 @@ def async_setup_device_notifications(rt):
                 fallback = context
         return fallback
 
+    def _schedule_live(new, title: str, tag: str, icon, url: str) -> None:
+        """Crée la carte en direct si l'équipement tourne toujours après LIVE_START_DELAY."""
+        entity_id = new.entity_id
+
+        async def _fire(_now) -> None:
+            pending.pop(entity_id, None)
+            current = hass.states.get(entity_id)
+            if current is None or current.state != "on" or current.last_changed != new.last_changed:
+                return
+            await rt.async_send_live(title, tag, started=new.last_changed, color=COLOR_OK, icon=icon, url=url)
+
+        pending[entity_id] = async_call_later(hass, LIVE_START_DELAY, _fire)
+
     async def _notify(old, new, running: bool, context) -> None:
         name = new.attributes.get("friendly_name") or new.entity_id
         who = await _who(hass, context) if context else "le contrôleur"
@@ -97,16 +122,15 @@ def async_setup_device_notifications(rt):
             else:
                 title += ", durée inconnue"
         _LOGGER.debug("Notification %s : %s", new.entity_id, title)
-        tag = f"device_{new.entity_id.split('.', 1)[1]}"
+        tag = _tag(new.entity_id)
         icon = _icon(hass, new)
         # Toucher la notification ouvre la fiche de l'équipement.
         url = f"/?more-info-entity-id={new.entity_id}"
-        live = rt.conf.get(CONF_NOTIFY_LIVE, False)
-        if live and running:
-            # Le suivi en direct remplace la notification de démarrage.
-            await rt.async_send_live(title, tag, started=new.last_changed, color=COLOR_OK, icon=icon, url=url)
+        if live_on and running:
+            # Le suivi en direct remplace la notification de démarrage, après un délai de marche minimal.
+            _schedule_live(new, title, tag, icon, url)
             return
-        if live:
+        if live_on:
             await rt.async_clear_live(tag)
         await rt.async_send(
             title,
@@ -122,17 +146,29 @@ def async_setup_device_notifications(rt):
     @callback
     def _changed(event) -> None:
         old, new = event.data.get("old_state"), event.data.get("new_state")
-        # Les passages par unavailable/unknown (redémarrage, perte de lien) ne sont pas des changements d'état.
-        if old is None or new is None:
+        if old is None or new is None or old.state == new.state:
             return
-        if old.state not in ("on", "off") or new.state not in ("on", "off") or old.state == new.state:
+        # Un changement d'état annule un démarrage de suivi en direct encore en attente.
+        cancel = pending.pop(new.entity_id, None)
+        if cancel:
+            cancel()
+        # Perte de lien : la carte en direct ne refléterait plus la réalité, on la retire.
+        if new.state not in ("on", "off"):
+            if old.state == "on":
+                _clear_live(new.entity_id)
+            return
+        # Retour après indisponibilité (redémarrage) : pas une marche ou un arrêt, mais une carte restée
+        # affichée pendant que l'équipement s'est arrêté serait périmée.
+        if old.state not in ("on", "off"):
             _LOGGER.debug("Changement ignoré pour %s : %s -> %s", new.entity_id, old.state, new.state)
+            if new.state == "off":
+                _clear_live(new.entity_id)
             return
         running = new.state == "on"
         if not rt.conf.get(CONF_NOTIFY_ON_START if running else CONF_NOTIFY_ON_STOP, True):
             # Suivi en direct actif mais arrêts non notifiés : on retire quand même la carte.
-            if not running and rt.conf.get(CONF_NOTIFY_LIVE, False):
-                hass.async_create_task(rt.async_clear_live(f"device_{new.entity_id.split('.', 1)[1]}"))
+            if not running:
+                _clear_live(new.entity_id)
             return
         hass.async_create_task(_notify(old, new, running, _find(new.entity_id)))
 
@@ -144,5 +180,8 @@ def async_setup_device_notifications(rt):
     def _unsub() -> None:
         for unsub in unsubs:
             unsub()
+        for cancel in pending.values():
+            cancel()
+        pending.clear()
 
     return _unsub
