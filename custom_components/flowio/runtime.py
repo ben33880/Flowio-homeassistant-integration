@@ -1,9 +1,11 @@
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from html import escape
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.util import dt as dt_util
+from homeassistant.util import slugify
 
 from .const import (
     CONF_DIS_SLOT,
@@ -18,7 +20,7 @@ from .const import (
     THRESHOLDS,
 )
 from .health import HealthMonitor
-from .quality import as_float
+from .quality import BAD, GOOD, MEDIUM, as_float, grade
 
 # Alertes de cuve basse -> cuve concernée par le bouton « Cuve remplie ».
 REFILL_ALERTS = {"ph_tank_low": "ph", "dis_tank_low": "disinfection"}
@@ -27,6 +29,9 @@ REFILL_ALERTS = {"ph_tank_low": "ph", "dis_tank_low": "disinfection"}
 COLOR_ALERT = "#F44336"
 COLOR_OK = "#4CAF50"
 COLOR_OFF = "#607D8B"
+
+# Couleur d'une valeur selon sa qualité (texte HTML Android).
+GRADE_COLORS = {GOOD: "#4CAF50", MEDIUM: "#FF9800", BAD: "#F44336"}
 
 ALERT_CHANNEL = "Flow.io alertes"
 
@@ -103,6 +108,18 @@ class FlowioRuntime:
     def is_mobile(self) -> bool:
         return (self.conf.get(CONF_NOTIFY) or "").startswith("notify.mobile_app_")
 
+    @property
+    def is_android(self) -> bool:
+        """Vrai si le service notify.mobile_app_* correspond à un appareil Android connu ; sinon texte simple."""
+        service = self.conf.get(CONF_NOTIFY) or ""
+        if not service.startswith("notify.mobile_app_"):
+            return False
+        suffix = service.removeprefix("notify.mobile_app_")
+        for entry in self.hass.config_entries.async_entries("mobile_app"):
+            if slugify(entry.data.get("device_name") or "") == suffix:
+                return entry.data.get("os_name") == "Android"
+        return False
+
     def _actions(self, key: str) -> list[dict] | None:
         # Actions dynamiques : application Android uniquement (service notify.mobile_app_*).
         if not self.is_mobile:
@@ -113,29 +130,45 @@ class FlowioRuntime:
             actions.insert(0, {"action": f"{head}refill_{key}", "title": "Cuve remplie"})
         return actions
 
-    def _reading(self, template: str, label: str, decimals: int, default_unit: str = "") -> str | None:
+    def _reading(
+        self,
+        template: str,
+        label: str,
+        decimals: int,
+        default_unit: str = "",
+        band: str | None = None,
+        html: bool = False,
+    ) -> str | None:
         state = self.hass.states.get(self.resolve(template))
         value = as_float(state)
         if value is None:
             return None
         unit = state.attributes.get("unit_of_measurement") or default_unit
-        return f"{label} {fmt(value, decimals)}" + (f" {unit}" if unit else "")
+        text = fmt(value, decimals) + (f" {unit}" if unit else "")
+        if not html:
+            return f"{label} {text}"
+        color = GRADE_COLORS.get(grade(self.values, band, value)) if band else None
+        shown = f'<span style="color: {color}">{escape(text)}</span>' if color else escape(text)
+        return f"<b>{label}</b> {shown}"
 
-    def context_line(self, about: str | None = None) -> str:
-        """Récapitulatif : pH et ORP, températures de l'eau et de l'air, pression (une ligne par groupe)."""
+    def context_line(self, about: str | None = None, html: bool = False) -> str:
+        """Récapitulatif : pH et ORP, températures de l'eau et de l'air, pression (une ligne par groupe).
+
+        En HTML (Android) : libellés en gras, pH et ORP colorés selon la qualité (vert, orange, rouge).
+        """
         groups = [
             [
-                self._reading("sensor.{p}_io_ph", "pH", 2),
-                self._reading("sensor.{p}_io_orp", "ORP", 0, "mV"),
+                self._reading("sensor.{p}_io_ph", "pH", 2, band="ph", html=html),
+                self._reading("sensor.{p}_io_orp", "ORP", 0, "mV", band="orp", html=html),
             ],
             [
-                self._reading("sensor.{p}_io_wat_tmp", "Eau", 1, "°C"),
-                self._reading("sensor.{p}_io_air_tmp", "Air", 1, "°C"),
+                self._reading("sensor.{p}_io_wat_tmp", "Eau", 1, "°C", html=html),
+                self._reading("sensor.{p}_io_air_tmp", "Air", 1, "°C", html=html),
             ],
-            [self._reading("sensor.{p}_io_psi", "Pression", 1)],
+            [self._reading("sensor.{p}_io_psi", "Pression", 1, html=html)],
         ]
         lines = [" · ".join(item for item in group if item) for group in groups]
-        return "\n".join(line for line in lines if line)
+        return ("<br>" if html else "\n").join(line for line in lines if line)
 
     async def async_notify(self, title: str, message: str, tag: str, alert_on: bool | None = None) -> None:
         """Notification d'alerte : supprimée si l'alerte est reportée ; boutons seulement au déclenchement."""
@@ -173,9 +206,13 @@ class FlowioRuntime:
             return
         domain, name = service.split(".", 1)
         if context:
-            extra = self.context_line(about)
-            if extra:
-                message = f"{message}\n{extra}"
+            html = self.is_android
+            extra = self.context_line(about, html=html)
+            if html:
+                message = escape(message)
+            message = ("<br>" if html else "\n").join(part for part in (message, extra) if part)
+        if not message:
+            message = "Flow.io"
         # Le préfixe dans le tag évite que deux installations se remplacent mutuellement.
         data = {"tag": f"flowio_{self.prefix}_{tag}"}
         if self.is_mobile:

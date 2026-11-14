@@ -13,6 +13,12 @@ Les versions antérieures sont dans l'historique Git. Dates au format JJ/MM/AAAA
 - Journal de débogage (`custom_components.flowio`) pour suivre les changements d'état reçus.
 - README, CLAUDE.md et CHANGELOG mis à jour.
 
+### Design (Android)
+
+- Dans le récapitulatif, les libellés sont en gras et les valeurs de pH et d'ORP sont colorées selon la qualité : vert (bon), orange (moyen), rouge (mauvais). Utilisé seulement si le service `notify.mobile_app_*` correspond à un appareil Android connu ; sinon texte simple.
+- Toucher une notification d'équipement ouvre la fiche de l'équipement.
+- Les notifications d'équipement ne sonnent qu'une fois quand elles en remplacent une autre (`alert_once`).
+
 ## 0.2.1 — 13/11/2026
 
 Publiée le 13/11/2026 (workflow de release et manifest modifiés par le propriétaire). Voir l'historique Git.

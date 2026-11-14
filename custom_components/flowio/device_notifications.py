@@ -80,7 +80,15 @@ def async_setup_device_notifications(rt):
         title = f"{name} : {'démarrage' if running else 'arrêt'} à {at} par {who}"
         if not running:
             title += f", durée {format_duration(new.last_changed - old.last_changed)}"
-        style = {"color": COLOR_OK if running else COLOR_OFF, "channel": DEVICE_CHANNEL}
+        # Toucher la notification ouvre la fiche de l'équipement (Android : clickAction, iOS : url).
+        target = f"/?more-info-entity-id={new.entity_id}"
+        style = {
+            "color": COLOR_OK if running else COLOR_OFF,
+            "channel": DEVICE_CHANNEL,
+            "clickAction": target,
+            "url": target,
+            "alert_once": True,
+        }
         icon = _icon(hass, new)
         if icon:
             style["notification_icon"] = icon
@@ -88,9 +96,10 @@ def async_setup_device_notifications(rt):
         # Corps : récapitulatif pH/ORP, eau/air, pression.
         await rt.async_send(
             title,
-            rt.context_line() or "Flow.io",
+            "",
             f"device_{new.entity_id.split('.', 1)[1]}",
             style=style,
+            context=True,
         )
 
     @callback
