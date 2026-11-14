@@ -12,7 +12,7 @@ it('construit les entités calculées, équipement, réseau et système document
       information: ['network', 'system']
     }
   });
-  const ids = expectedBindings(config).map(binding => binding.id);
+  const ids = expectedBindings(config, undefined, 'fio').map(binding => binding.id);
   expect(ids).toContain('sensor.fio_io_value_v02');
   expect(ids).toContain('sensor.fio_data_291');
   expect(ids).toContain('sensor.fio_data_297');
@@ -28,7 +28,7 @@ it('inclut les entités d’alimentation indépendamment du slot équipement', (
   const bindings = expectedBindings(normalizeConfig({
     device_slot: 4,
     display: { device_metrics: [], information: ['system'] }
-  }));
+  }), undefined, 'fio');
   expect(bindings).toContainEqual({ id: 'sensor.fio_io_voltage', label: 'Tension', unit: 'V' });
   expect(bindings).toContainEqual({ id: 'sensor.fio_io_current', label: 'Courant', unit: 'A' });
   expect(bindings.some(binding => binding.id === 'sensor.fio_data_328' || binding.id === 'sensor.fio_data_329')).toBe(false);
@@ -37,7 +37,7 @@ it('inclut les entités d’alimentation indépendamment du slot équipement', (
 it('expose uniquement les opérations sélectionnées et vérifie les slots', () => {
   const ids = expectedBindings(normalizeConfig({
     display: { operations: ['refill_ph', 'timed_override'] }
-  })).map(binding => binding.id);
+  }), undefined, 'fio').map(binding => binding.id);
   expect(ids).toContain('button.fio_pd_refill_ph');
   expect(ids).toContain('select.fio_pdm_ovr_target');
   expect(ids).toContain('number.fio_pdm_ovr_min');
@@ -49,9 +49,10 @@ it('expose uniquement les opérations sélectionnées et vérifie les slots', ()
 });
 
 it('redirige les actions désinfection vers les actions électrolyse selon le sélecteur firmware', () => {
+  const hass = { states: { 'select.fio_pl_modes_dis': { state: 'Electrolyse', attributes: {} } }, callService: async () => undefined };
   const bindings = expectedBindings(normalizeConfig({
     display: { operations: ['refill_disinfection', 'reset_disinfection'] }
-  }), { states: { 'select.fio_pl_modes_dis': { state: 'Electrolyse', attributes: {} } }, callService: async () => undefined }).map(binding => binding.id);
+  }), hass, 'fio').map(binding => binding.id);
   expect(bindings).toContain('button.fio_pd_reset_upt_chl_gen');
   expect(bindings).not.toContain('button.fio_pd_reset_upt_chl');
   expect(bindings).not.toContain('button.fio_pd_refill_chl');
@@ -60,7 +61,7 @@ it('redirige les actions désinfection vers les actions électrolyse selon le s�
 it('n’inclut pas les actions de désinfection si le mode firmware est inconnu', () => {
   const bindings = expectedBindings(normalizeConfig({
     display: { operations: ['refill_disinfection', 'reset_disinfection'] }
-  })).map(binding => binding.id);
+  }), undefined, 'fio').map(binding => binding.id);
   expect(bindings).toContain('select.fio_pl_modes_dis');
   expect(bindings).not.toContain('button.fio_pd_reset_upt_chl');
   expect(bindings).not.toContain('button.fio_pd_refill_chl');
@@ -69,10 +70,8 @@ it('n’inclut pas les actions de désinfection si le mode firmware est inconnu'
 it('garde les actions chimiques pour le chlore/brome et l’oxygène actif', () => {
   const config = normalizeConfig({ display: { operations: ['refill_disinfection', 'reset_disinfection'] } });
   for (const treatment of ['Chlore/Brome', 'Oxygène actif']) {
-    const bindings = expectedBindings(config, {
-      states: { 'select.fio_pl_modes_dis': { state: treatment, attributes: {} } },
-      callService: async () => undefined
-    }).map(binding => binding.id);
+    const hass = { states: { 'select.fio_pl_modes_dis': { state: treatment, attributes: {} } }, callService: async () => undefined };
+    const bindings = expectedBindings(config, hass, 'fio').map(binding => binding.id);
     expect(bindings).toContain('button.fio_pd_reset_upt_chl');
     expect(bindings).toContain('button.fio_pd_refill_chl');
     expect(bindings).not.toContain('button.fio_pd_reset_upt_chl_gen');
