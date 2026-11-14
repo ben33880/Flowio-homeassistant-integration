@@ -1,6 +1,6 @@
 # Flow.io Home Assistant Cards
 
-Cartes de supervision et de pilotage pour les entités MQTT du firmware Flow.io-Waveshare. La version 0.3.2 a été construite ; la version 0.3.3 est en préparation. Le brouillon de release et la publication restent des étapes distinctes.
+Cartes de supervision et de pilotage pour les entités MQTT du firmware Flow.io-Waveshare. Elles font partie de l'intégration Flow.io : leur code source est dans ce dossier `cards/`, et le bundle est reconstruit à chaque release de l'intégration, sans numéro de version propre.
 
 | Carte Piscine — clair | Carte Piscine — sombre |
 |---|---|
@@ -33,9 +33,7 @@ Les cartes reprennent le thème Home Assistant et les motifs visuels Flow.io dé
 
 ## Installation
 
-Après publication d'une release vérifiée, ajouter `ben33880/flowio-home-assistant-cards` aux dépôts personnalisés HACS, catégorie Dashboard. Le dépôt n'est pas ajouté automatiquement au catalogue HACS par défaut.
-
-Ressource attendue : `/hacsfiles/flowio-home-assistant-cards/flowio-home-assistant-cards.js`, type module JavaScript. Ne pas charger simultanément une ancienne copie manuelle. Voir [installation HACS et manuelle](docs/HACS.md).
+Les cartes sont embarquées dans l'intégration Flow.io (HACS, catégorie Intégration) et chargées automatiquement : il n'y a rien d'autre à installer, ni dépôt HACS séparé, ni ressource Dashboard. Ne pas charger en plus une ancienne copie manuelle, sinon les cartes seraient chargées deux fois.
 
 ## Synthèse
 
@@ -339,12 +337,12 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Le lockfile est versionné et utilisé par la CI et les releases avec `npm ci`. Pour toute modification volontaire des dépendances, mettre à jour le lockfile via le workflow manuel de préparation, puis revoir et fusionner sa PR. Les tests unitaires incluent `tests/` et `src/`.
+Le lockfile est versionné et utilisé par le workflow de release avec `npm ci`. Pour modifier les dépendances, lancer `npm install` dans ce dossier puis commiter `package.json` et `package-lock.json`. Les tests unitaires incluent `tests/` et `src/`.
 
 La démo utilise des données fictives et un substitut de `ha-switch` limité à `demo/`. Elle ne valide ni le véritable frontend HA ni le matériel. Les tests ne commandent aucun équipement réel.
 
-Voir [procédure de release](docs/RELEASE.md) et [notes 0.3.3](docs/releases/v0.3.3.md). Le workflow stable crée uniquement un brouillon après validation ; la publication reste une action manuelle distincte.
+Le bundle est construit par `.github/workflows/release.yml`, à la racine du dépôt, au tag de l'intégration : tests, build, mentions de licences, puis brouillon de release. La publication reste une action manuelle distincte.
 
 ## Licence
 
-Le code du projet est distribué sous [licence MIT](LICENSE). Les dépendances conservent leurs propres licences. La préparation de release copie leurs mentions depuis les paquets effectivement inclus dans le build et les joint au bundle.
+Le code du projet est distribué sous [licence MIT](LICENSE). Les dépendances conservent leurs propres licences. Le workflow de release copie leurs mentions depuis les paquets de production installés et les joint au bundle.
