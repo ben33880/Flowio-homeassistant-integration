@@ -43,6 +43,7 @@ def _installation(rt: FlowioRuntime) -> dict:
         "prefix": rt.prefix,
         "ph_slot": rt.ph_slot,
         "disinfection_slot": rt.dis_slot,
+        "filtration_slot": rt.filtration_slot,
         "mqtt_root": (rt.conf.get(CONF_MQTT_ROOT) or "").strip().strip("/"),
         "thresholds": dict(rt.values),
         "entities": entities,
@@ -98,5 +99,6 @@ async def async_unload_entry(hass: HomeAssistant, entry) -> bool:
     return ok
 
 
-async def _reload(hass: HomeAssistant, entry) -> None:
+async def _reload(hass: HomeAssistant, entry) -> bool:
     await hass.config_entries.async_reload(entry.entry_id)
+    return True
