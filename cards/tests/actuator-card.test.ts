@@ -10,11 +10,11 @@ it('ne conserve aucun préfixe local et rejette les anciennes options', () => {
   }
 });
 it('identifie les rôles et les boutons de remise à zéro', () => {
-  expect(actuatorRole('fio', 'switch.fio_filtration')).toBe('filtration');
-  expect(actuatorRole('fio', 'switch.fio_light')).toBeUndefined();
+  expect(actuatorRole('fio', 'switch.fio_io_flt_pmp')).toBe('filtration');
+  expect(actuatorRole('fio', 'switch.fio_io_lights')).toBeUndefined();
   expect(actuatorGlobalReset('fio')).toBe('button.fio_pd_reset_upt_all');
-  expect(actuatorResetEntity({ type: 'custom:flowio-actuator-card', title: '', subtitle: '', name_prefix: '', entities: [], runtime_keys: { day: 'day', week: 'week', month: 'month', total: 'total' }, resets: {} }, 'switch.fio_filtration', 'fio')).toBe('button.fio_pd_reset_upt_filtration');
-  expect(actuatorResetEntity({ type: 'custom:flowio-actuator-card', title: '', subtitle: '', name_prefix: '', entities: [], runtime_keys: { day: 'day', week: 'week', month: 'month', total: 'total' }, resets: { 'switch.fio_light': 'button.custom_reset' } }, 'switch.fio_light', 'fio')).toBe('button.custom_reset');
+  expect(actuatorResetEntity({ type: 'custom:flowio-actuator-card', title: '', subtitle: '', name_prefix: '', entities: [], runtime_keys: { day: 'day', week: 'week', month: 'month', total: 'total' }, resets: {} }, 'switch.fio_io_flt_pmp', 'fio')).toBe('button.fio_pd_reset_upt_flt');
+  expect(actuatorResetEntity({ type: 'custom:flowio-actuator-card', title: '', subtitle: '', name_prefix: '', entities: [], runtime_keys: { day: 'day', week: 'week', month: 'month', total: 'total' }, resets: { 'switch.fio_io_lights': 'button.custom_reset' } }, 'switch.fio_io_lights', 'fio')).toBe('button.custom_reset');
 });
 it('lit les durées dans les attributs', () => {
   const state = { state: 'on', attributes: { uptime_day_s: 3600, uptime_week_s: '7200' } };
