@@ -37,5 +37,5 @@ Les captures d'écran des cartes sont dans `cards/docs/*.png`.
 
 ## Échelles des jauges
 
-- Les cartes « sondes » et « sonde » reprennent les bornes `min` et `max` de l'entité, c'est-à-dire la plage d'affichage réglée dans le firmware, sauf si la configuration de la carte en donne d'autres.
-- La carte piscine utilise une échelle par défaut (pH 6 à 8,4 ; ORP 400 à 1 000), réglable avec `visuals`.
+- Les cartes « sondes » et « sonde » reprennent les bornes `min` et `max` de l'entité, c'est-à-dire la plage d'affichage réglée dans le firmware.
+- La carte piscine n'utilise aucune échelle par défaut : les jauges pH, ORP et pression utilisent les bornes du firmware ; sans bornes, la jauge reste vide.
