@@ -8,13 +8,14 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.util import dt as dt_util
 
-from .const import CONF_NOTIFY_DEVICES, DOMAIN
+from .const import CONF_NOTIFY_DEVICES, CONF_NOTIFY_ON_START, CONF_NOTIFY_ON_STOP, DOMAIN
 from .runtime import COLOR_OFF, COLOR_OK, format_duration
 
 _LOGGER = logging.getLogger(__name__)
 
 DEVICE_CHANNEL = "Flow.io équipements"
 COMMAND_WINDOW = 120  # secondes : délai max entre une commande Home Assistant et le changement d'état
+RELIABLE_AFTER = 120  # secondes : une durée n'est fiable que si le démarrage a été observé après ce délai
 # Services de l'intégration qui pilotent un équipement (refill_tank et reset_uptime n'en pilotent aucun).
 EQUIPMENT_SERVICES = {"force_equipment", "release_override"}
 
@@ -82,26 +83,24 @@ def async_setup_device_notifications(rt):
         # Première ligne (titre) : équipement, action, heure, auteur, et durée à l'arrêt seulement.
         title = f"{name} : {'démarrage' if running else 'arrêt'} à {at} par {who}"
         if not running:
-            title += f", durée {format_duration(new.last_changed - old.last_changed)}"
-        # Toucher la notification ouvre la fiche de l'équipement (Android : clickAction, iOS : url).
-        target = f"/?more-info-entity-id={new.entity_id}"
-        style = {
-            "color": COLOR_OK if running else COLOR_OFF,
-            "channel": DEVICE_CHANNEL,
-            "clickAction": target,
-            "url": target,
-        }
-        icon = _icon(hass, new)
-        if icon:
-            style["notification_icon"] = icon
+            # Durée fiable seulement si le démarrage a été observé après le chargement de l'intégration
+            # (après un redémarrage, l'état restauré porte l'heure du redémarrage, pas celle du démarrage).
+            reliable = (old.last_changed - rt.loaded_at).total_seconds() > RELIABLE_AFTER
+            if reliable:
+                title += f", durée {format_duration(new.last_changed - old.last_changed)}"
+            else:
+                title += ", durée inconnue"
         _LOGGER.debug("Notification %s : %s", new.entity_id, title)
-        # Corps : récapitulatif pH/ORP, eau/air, pression.
         await rt.async_send(
             title,
             "",
             f"device_{new.entity_id.split('.', 1)[1]}",
-            style=style,
-            context=True,
+            color=COLOR_OK if running else COLOR_OFF,
+            icon=_icon(hass, new),
+            # Toucher la notification ouvre la fiche de l'équipement.
+            url=f"/?more-info-entity-id={new.entity_id}",
+            channel=DEVICE_CHANNEL,
+            recap=True,
         )
 
     @callback
@@ -113,7 +112,10 @@ def async_setup_device_notifications(rt):
         if old.state not in ("on", "off") or new.state not in ("on", "off") or old.state == new.state:
             _LOGGER.debug("Changement ignoré pour %s : %s -> %s", new.entity_id, old.state, new.state)
             return
-        hass.async_create_task(_notify(old, new, new.state == "on", _find(new.entity_id)))
+        running = new.state == "on"
+        if not rt.conf.get(CONF_NOTIFY_ON_START if running else CONF_NOTIFY_ON_STOP, True):
+            return
+        hass.async_create_task(_notify(old, new, running, _find(new.entity_id)))
 
     unsubs = [
         async_track_state_change_event(hass, entities, _changed),

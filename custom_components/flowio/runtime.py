@@ -1,18 +1,24 @@
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from html import escape
 
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.util import dt as dt_util
 from homeassistant.util import slugify
 
 from .const import (
     CONF_DIS_SLOT,
-    CONF_NOTIFY,
+    CONF_IOS_LEVEL,
+    CONF_MOBILE_DEVICES,
+    CONF_NOTIFY_RECAP,
     CONF_PH_SLOT,
     CONF_PREFIX,
     DEFAULT_DIS_SLOT,
+    DEFAULT_IOS_LEVEL,
     DEFAULT_PH_SLOT,
     DOMAIN,
     SIGNAL_PUMPS,
@@ -21,6 +27,8 @@ from .const import (
 )
 from .health import HealthMonitor
 from .quality import BAD, GOOD, MEDIUM, as_float, grade
+
+_LOGGER = logging.getLogger(__name__)
 
 # Alertes de cuve basse -> cuve concernée par le bouton « Cuve remplie ».
 REFILL_ALERTS = {"ph_tank_low": "ph", "dis_tank_low": "disinfection"}
@@ -61,6 +69,13 @@ class PumpModel:
     last_ml: float | None = None
 
 
+@dataclass(frozen=True)
+class MobileTarget:
+    name: str  # nom de l'appareil, pour les journaux
+    service: str  # service notify (sans le « notify. »)
+    android: bool  # sinon iPhone ou autre : texte natif
+
+
 class FlowioRuntime:
     def __init__(self, hass: HomeAssistant, entry):
         self.hass, self.entry = hass, entry
@@ -72,6 +87,7 @@ class FlowioRuntime:
         self.pumps = {"ph": PumpModel(), "dis": PumpModel()}
         self.restarts: list[datetime] = []
         self.snoozed: dict[str, datetime] = {}  # alerte -> fin du report (en mémoire)
+        self.loaded_at = dt_util.utcnow()  # début de l'observation : avant, les durées ne sont pas fiables
         self.signal = SIGNAL_UPDATE.format(entry_id=entry.entry_id)
         self.signal_pumps = SIGNAL_PUMPS.format(entry_id=entry.entry_id)
         self.health = HealthMonitor(self)
@@ -104,26 +120,36 @@ class FlowioRuntime:
         until = self.snoozed.get(key)
         return until is not None and dt_util.utcnow() < until
 
-    @property
-    def is_mobile(self) -> bool:
-        return (self.conf.get(CONF_NOTIFY) or "").startswith("notify.mobile_app_")
+    def resolve_targets(self) -> tuple[list[MobileTarget], list[str]]:
+        """Appareils mobiles choisis : (joignables, noms des injoignables)."""
+        registry = dr.async_get(self.hass)
+        found: list[MobileTarget] = []
+        missing: list[str] = []
+        for device_id in self.conf.get(CONF_MOBILE_DEVICES) or []:
+            device = registry.async_get(device_id)
+            entry = None
+            if device is not None:
+                for entry_id in device.config_entries:
+                    candidate = self.hass.config_entries.async_get_entry(entry_id)
+                    if candidate is not None and candidate.domain == "mobile_app":
+                        entry = candidate
+                        break
+            if entry is None:
+                missing.append(device.name if device and device.name else "appareil supprimé")
+                continue
+            raw_name = entry.data.get("device_name") or device.name or ""
+            service = f"mobile_app_{slugify(raw_name)}"
+            if not raw_name or not self.hass.services.has_service("notify", service):
+                missing.append(raw_name or device_id)
+                continue
+            found.append(MobileTarget(raw_name, service, entry.data.get("os_name") == "Android"))
+        return found, missing
 
-    @property
-    def is_android(self) -> bool:
-        """Vrai si le service notify.mobile_app_* correspond à un appareil Android connu ; sinon texte simple."""
-        service = self.conf.get(CONF_NOTIFY) or ""
-        if not service.startswith("notify.mobile_app_"):
-            return False
-        suffix = service.removeprefix("notify.mobile_app_")
-        for entry in self.hass.config_entries.async_entries("mobile_app"):
-            if slugify(entry.data.get("device_name") or "") == suffix:
-                return entry.data.get("os_name") == "Android"
-        return False
+    def unreachable_targets(self) -> list[str]:
+        return self.resolve_targets()[1]
 
-    def _actions(self, key: str) -> list[dict] | None:
-        # Boutons : application mobile Android ou iPhone (iOS 2021.5 ou plus récent), service notify.mobile_app_*.
-        if not self.is_mobile:
-            return None
+    def _actions(self, key: str) -> list[dict]:
+        # Boutons : Android et iPhone (actions intégrées à la notification, iOS 2021.5 ou plus récent).
         head = f"flowio_{self.prefix}_"
         actions = [{"action": f"{head}snooze_{key}", "title": "Reporter 24 h"}]
         if key in REFILL_ALERTS:
@@ -151,9 +177,10 @@ class FlowioRuntime:
         shown = f'<span style="color: {color}">{escape(text)}</span>' if color else escape(text)
         return f"<b>{label}</b> {shown}"
 
-    def context_line(self, about: str | None = None, html: bool = False) -> str:
+    def context_line(self, html: bool = False) -> str:
         """Récapitulatif : pH et ORP, températures de l'eau et de l'air, pression (une ligne par groupe).
 
+        Filtration arrêtée : une ligne prévient que le pH et l'ORP sont peu fiables.
         En HTML (Android) : libellés en gras, pH et ORP colorés selon la qualité (vert, orange, rouge).
         """
         groups = [
@@ -168,37 +195,42 @@ class FlowioRuntime:
             [self._reading("sensor.{p}_io_psi", "Pression", 1, html=html)],
         ]
         lines = [" · ".join(item for item in group if item) for group in groups]
+        flt = self.hass.states.get(self.resolve("switch.{p}_io_flt_pmp"))
+        if flt is not None and flt.state == "off":
+            note = "Filtration arrêtée : pH et ORP peu fiables"
+            lines.append(f"<i>{note}</i>" if html else note)
         return ("<br>" if html else "\n").join(line for line in lines if line)
 
     async def async_notify(self, title: str, message: str, tag: str, alert_on: bool | None = None) -> None:
         """Notification d'alerte : supprimée si l'alerte est reportée ; boutons seulement au déclenchement."""
         if self.is_snoozed(tag):
             return
-        level = None
         if alert_on is True:
-            style = {
-                "color": COLOR_ALERT,
-                "notification_icon": "mdi:alert-circle",
-                "channel": ALERT_CHANNEL,
-                "importance": "high",
-                "priority": "high",
-                "ttl": 0,
-            }
-            level = "time-sensitive"  # iPhone : traverse le mode Concentration
+            await self.async_send(
+                title,
+                message,
+                tag,
+                self._actions(tag),
+                color=COLOR_ALERT,
+                icon="mdi:alert-circle",
+                channel=ALERT_CHANNEL,
+                urgent=True,
+                level=self.conf.get(CONF_IOS_LEVEL, DEFAULT_IOS_LEVEL),
+                recap=True,
+            )
         elif alert_on is False:
-            style = {"color": COLOR_OK, "notification_icon": "mdi:check-circle", "channel": ALERT_CHANNEL}
-            level = "passive"  # iPhone : retour à la normale, sans réveiller l'écran
+            await self.async_send(
+                title,
+                message,
+                tag,
+                color=COLOR_OK,
+                icon="mdi:check-circle",
+                channel=ALERT_CHANNEL,
+                level="passive",
+                recap=True,
+            )
         else:
-            style = None
-        await self.async_send(
-            title,
-            message,
-            tag,
-            self._actions(tag) if alert_on else None,
-            style=style,
-            context=True,
-            level=level,
-        )
+            await self.async_send(title, message, tag, recap=True)
 
     async def async_send(
         self,
@@ -206,34 +238,59 @@ class FlowioRuntime:
         message: str,
         tag: str,
         actions: list[dict] | None = None,
-        style: dict | None = None,
-        context: bool = False,
-        about: str | None = None,
+        *,
+        color: str | None = None,
+        icon: str | None = None,
+        url: str | None = None,
+        channel: str | None = None,
+        urgent: bool = False,
         level: str | None = None,
+        recap: bool = False,
     ) -> None:
-        service = self.conf.get(CONF_NOTIFY)
-        if not service or "." not in service:
+        """Envoie la notification à chaque appareil choisi, avec le format de sa plateforme.
+
+        Android : HTML (gras, couleurs), canal, priorité, clickAction. iPhone : texte natif, url, niveau
+        d'interruption. Un échec sur un appareil n'empêch pas les autres.
+        """
+        targets, _missing = self.resolve_targets()
+        if not targets:
             return
-        domain, name = service.split(".", 1)
-        if context:
-            html = self.is_android
-            extra = self.context_line(about, html=html)
-            if html:
-                message = escape(message)
-            message = ("<br>" if html else "\n").join(part for part in (message, extra) if part)
-        if not message:
-            message = "Flow.io"
-        # Le préfixe dans le tag évite que deux installations se remplacent mutuellement.
-        data = {"tag": f"flowio_{self.prefix}_{tag}"}
-        if self.is_mobile:
-            data["group"] = f"flowio_{self.prefix}"
-            if style:
-                data.update(style)
-            # Niveau d'interruption : propre à iOS, donc pas envoyé à un appareil Android connu.
-            if level and not self.is_android:
-                data["push"] = {"interruption-level": level}
-        if actions:
-            data["actions"] = actions
-        await self.hass.services.async_call(
-            domain, name, {"title": title, "message": message, "data": data}
-        )
+        show_recap = recap and self.conf.get(CONF_NOTIFY_RECAP, True)
+        plain = self.context_line(html=False) if show_recap else ""
+        rich = self.context_line(html=True) if show_recap else ""
+        for target in targets:
+            # Le préfixe dans le tag évite que deux installations se remplacent mutuellement.
+            data: dict = {"tag": f"flowio_{self.prefix}_{tag}", "group": f"flowio_{self.prefix}"}
+            if color:
+                data["color"] = color
+            if icon:
+                data["notification_icon"] = icon
+            if target.android:
+                body, extra, sep = escape(message), rich, "<br>"
+                if channel:
+                    data["channel"] = channel
+                if urgent:
+                    data.update({"importance": "high", "priority": "high", "ttl": 0})
+                if url:
+                    data["clickAction"] = url
+            else:
+                body, extra, sep = message, plain, "\n"
+                if url:
+                    data["url"] = url
+                if level:
+                    data["push"] = {"interruption-level": level}
+            if actions:
+                data["actions"] = actions
+            text = sep.join(part for part in (body, extra) if part) or "Flow.io"
+            await self._deliver(target, title, text, data)
+
+    async def _deliver(self, target: MobileTarget, title: str, message: str, data: dict) -> None:
+        try:
+            await self.hass.services.async_call(
+                "notify",
+                target.service,
+                {"title": title, "message": message, "data": data},
+                blocking=True,
+            )
+        except HomeAssistantError as err:
+            _LOGGER.warning("Notification vers %s impossible : %s", target.name, err)

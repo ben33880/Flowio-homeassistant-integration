@@ -35,6 +35,15 @@ async def async_setup(hass: HomeAssistant, config) -> bool:
     return True
 
 
+async def async_migrate_entry(hass: HomeAssistant, entry) -> bool:
+    """Version 2 : le service de notification est remplacé par une liste d'appareils mobiles."""
+    if entry.version < 2:
+        data = {k: v for k, v in entry.data.items() if k != "notify_service"}
+        options = {k: v for k, v in entry.options.items() if k != "notify_service"}
+        hass.config_entries.async_update_entry(entry, data=data, options=options, version=2)
+    return True
+
+
 async def async_setup_entry(hass: HomeAssistant, entry) -> bool:
     rt = FlowioRuntime(hass, entry)
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = rt

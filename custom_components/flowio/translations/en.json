@@ -5,13 +5,14 @@
         "title": "Flow.io",
         "data": {
           "entity_prefix": "Entity prefix",
-          "notify_service": "Notification service (e.g. notify.mobile_app_xxx)",
+          "mobile_devices": "Phones to notify (Home Assistant app)",
           "mqtt_root": "Controller MQTT root (optional, e.g. flowio/ESP32-XXXXXX)",
           "ph_slot": "pH pump slot",
           "disinfection_slot": "Disinfectant pump slot",
           "notify_medium": "Also notify for 'to watch' levels"
         },
         "data_description": {
+          "mobile_devices": "Android phones and iPhones each get a layout suited to their platform. Leave empty to receive no notification.",
           "mqtt_root": "Lets the integration read the volume actually injected, measured by the firmware. Leave empty to keep the estimate (run time x configured flow)."
         }
       }
@@ -29,22 +30,37 @@
       "init": {
         "data": {
           "entity_prefix": "Entity prefix",
-          "notify_service": "Notification service (e.g. notify.mobile_app_xxx)",
+          "mobile_devices": "Phones to notify (Home Assistant app)",
           "mqtt_root": "Controller MQTT root (optional, e.g. flowio/ESP32-XXXXXX)",
           "ph_slot": "pH pump slot",
           "disinfection_slot": "Disinfectant pump slot",
           "notify_medium": "Also notify for 'to watch' levels",
-          "notify_devices": "Equipment to notify when it starts or stops"
+          "notify_devices": "Equipment to notify when it starts or stops",
+          "notify_on_start": "Notify when equipment starts",
+          "notify_on_stop": "Notify when equipment stops",
+          "notify_recap": "Add the pH, ORP, temperature and pressure summary",
+          "ios_alert_level": "iPhone interruption level for alerts"
         },
         "data_description": {
+          "mobile_devices": "Android phones and iPhones each get a layout suited to their platform. Leave empty to receive no notification.",
           "mqtt_root": "Lets the integration read the volume actually injected, measured by the firmware. Leave empty to keep the estimate (run time x configured flow).",
-          "notify_devices": "Tick the equipment (pumps, relays...) published by the controller. Nothing ticked means no start/stop notification. Only equipment already known to Home Assistant is listed."
+          "notify_devices": "Tick the equipment (pumps, relays...) published by the controller. Nothing ticked means no start/stop notification. Only equipment already known to Home Assistant is listed.",
+          "ios_alert_level": "Time sensitive can break through Focus modes if allowed in the app's iPhone settings. Passive delivers without waking the screen."
         }
       }
     },
     "error": {
       "invalid_prefix": "Invalid prefix: lowercase letters, digits and underscores only, not empty (e.g. fio).",
       "invalid_mqtt_root": "Invalid MQTT root: no wildcards (+ #), spaces or empty segments."
+    }
+  },
+  "selector": {
+    "ios_level": {
+      "options": {
+        "passive": "Passive (no screen wake)",
+        "active": "Active (default)",
+        "time-sensitive": "Time sensitive (can break through Focus)"
+      }
     }
   },
   "entity": {
@@ -63,22 +79,9 @@
       "title": "Flow.io: expected entities not found",
       "description": "{count} entities expected for prefix \"{prefix}\" are missing: {entities}. Check the prefix, the pump slots and the firmware's MQTT discovery. Tank and data_* values are only published to Home Assistant when enabled in the firmware. Entities separated by | are alternatives: one of them is enough."
     },
-    "notify_service_missing": {
-      "title": "Flow.io: notification service not found",
-      "fix_flow": {
-        "step": {
-          "confirm": {
-            "title": "Notification service",
-            "description": "The service {service} does not exist. Enter an existing notify service (for example notify.mobile_app_xxx).",
-            "data": {
-              "notify_service": "Notification service"
-            }
-          }
-        },
-        "error": {
-          "service_not_found": "This service does not exist."
-        }
-      }
+    "mobile_device_unreachable": {
+      "title": "Flow.io: mobile device unreachable",
+      "description": "Flow.io cannot send notifications to: {devices}. The phone may have been removed from Home Assistant, or its notification service is not available. Check the selection in Configure."
     },
     "frequent_restarts": {
       "title": "Flow.io: controller restarting often",

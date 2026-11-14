@@ -5,7 +5,7 @@ from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.event import async_call_later, async_track_time_interval
 from homeassistant.util import dt as dt_util
 
-from .const import ALERTS, CONF_NOTIFY, DOMAIN
+from .const import ALERTS, DOMAIN
 
 STARTUP_DELAY = 120  # secondes : laisse le temps à MQTT et aux notifications de se charger
 CHECK_INTERVAL = timedelta(minutes=15)
@@ -36,8 +36,10 @@ class HealthMonitor:
         eid = rt.entry.entry_id
         self._ids = {
             key: f"{key}_{eid}"
-            for key in ("missing_entities", "notify_service_missing", "frequent_restarts")
+            for key in ("missing_entities", "mobile_device_unreachable", "frequent_restarts")
         }
+        # Réparation des versions 0.2.x (service de notification), supprimée en 0.3.0.
+        self._stale = f"notify_service_missing_{eid}"
 
     def required_groups(self) -> list[list[str]]:
         rt = self._rt
@@ -64,6 +66,7 @@ class HealthMonitor:
 
     def start(self) -> None:
         hass = self._rt.hass
+        ir.async_delete_issue(hass, DOMAIN, self._stale)
         self._unsubs.append(async_call_later(hass, STARTUP_DELAY, self.evaluate))
         self._unsubs.append(async_track_time_interval(hass, self.evaluate, CHECK_INTERVAL))
 
@@ -102,15 +105,12 @@ class HealthMonitor:
             placeholders={"prefix": rt.prefix, "count": str(len(missing)), "entities": listed},
         )
 
-        service = rt.conf.get(CONF_NOTIFY) or ""
-        domain, _, name = service.partition(".")
-        found = bool(name) and rt.hass.services.has_service(domain, name)
+        # Appareils mobiles choisis mais supprimés ou sans service de notification.
+        unreachable = rt.unreachable_targets()
         self._issue(
-            "notify_service_missing",
-            not found,
-            fixable=True,
-            placeholders={"service": service or "(vide)"},
-            data={"entry_id": rt.entry.entry_id},
+            "mobile_device_unreachable",
+            bool(unreachable),
+            placeholders={"devices": ", ".join(unreachable)},
         )
 
         recent = self.recent_restarts()

@@ -8,13 +8,18 @@ from homeassistant.helpers import selector
 
 from .const import (
     CONF_DIS_SLOT,
+    CONF_IOS_LEVEL,
+    CONF_MOBILE_DEVICES,
     CONF_MQTT_ROOT,
-    CONF_NOTIFY,
     CONF_NOTIFY_DEVICES,
     CONF_NOTIFY_MEDIUM,
+    CONF_NOTIFY_ON_START,
+    CONF_NOTIFY_ON_STOP,
+    CONF_NOTIFY_RECAP,
     CONF_PH_SLOT,
     CONF_PREFIX,
     DEFAULT_DIS_SLOT,
+    DEFAULT_IOS_LEVEL,
     DEFAULT_PH_SLOT,
     DOMAIN,
 )
@@ -24,27 +29,46 @@ _SLOT = selector.NumberSelector(
     selector.NumberSelectorConfig(min=0, max=15, step=1, mode=selector.NumberSelectorMode.BOX)
 )
 
+# Appareils de l'application mobile Home Assistant (plusieurs possibles).
+_MOBILE = selector.DeviceSelector(
+    selector.DeviceSelectorConfig(integration="mobile_app", multiple=True)
+)
+
 # Même règle que les cartes : minuscules, chiffres et underscores, non vide.
 _PREFIX_RE = re.compile(r"^[a-z0-9]+(?:_[a-z0-9]+)*$")
+
+IOS_LEVELS = ["passive", "active", "time-sensitive"]
 
 
 def _schema(d: dict, equipment: list[dict] | None = None) -> vol.Schema:
     fields = {
         vol.Required(CONF_PREFIX, default=d.get(CONF_PREFIX, "fio")): str,
-        vol.Required(CONF_NOTIFY, default=d.get(CONF_NOTIFY, "notify.notify")): str,
+        vol.Optional(CONF_MOBILE_DEVICES, default=list(d.get(CONF_MOBILE_DEVICES) or [])): _MOBILE,
         vol.Optional(CONF_MQTT_ROOT, default=d.get(CONF_MQTT_ROOT, "")): str,
         vol.Required(CONF_PH_SLOT, default=d.get(CONF_PH_SLOT, DEFAULT_PH_SLOT)): _SLOT,
         vol.Required(CONF_DIS_SLOT, default=d.get(CONF_DIS_SLOT, DEFAULT_DIS_SLOT)): _SLOT,
         vol.Required(CONF_NOTIFY_MEDIUM, default=d.get(CONF_NOTIFY_MEDIUM, False)): bool,
     }
     if equipment is not None:
-        # Liste des équipements du contrôleur (switch), cases à cocher ; aucune cochée = aucune notification.
+        # Options de notification, dans Configurer seulement (les équipements doivent déjà exister).
         fields[vol.Optional(CONF_NOTIFY_DEVICES, default=list(d.get(CONF_NOTIFY_DEVICES) or []))] = (
             selector.SelectSelector(
                 selector.SelectSelectorConfig(
                     options=equipment,
                     multiple=True,
                     mode=selector.SelectSelectorMode.LIST,
+                )
+            )
+        )
+        fields[vol.Required(CONF_NOTIFY_ON_START, default=d.get(CONF_NOTIFY_ON_START, True))] = bool
+        fields[vol.Required(CONF_NOTIFY_ON_STOP, default=d.get(CONF_NOTIFY_ON_STOP, True))] = bool
+        fields[vol.Required(CONF_NOTIFY_RECAP, default=d.get(CONF_NOTIFY_RECAP, True))] = bool
+        fields[vol.Required(CONF_IOS_LEVEL, default=d.get(CONF_IOS_LEVEL, DEFAULT_IOS_LEVEL))] = (
+            selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=IOS_LEVELS,
+                    translation_key="ios_level",
+                    mode=selector.SelectSelectorMode.DROPDOWN,
                 )
             )
         )
@@ -58,6 +82,7 @@ def _clean(user_input: dict) -> dict:
     for key in (CONF_PH_SLOT, CONF_DIS_SLOT):
         data[key] = int(data[key])
     data[CONF_MQTT_ROOT] = (data.get(CONF_MQTT_ROOT) or "").strip().strip("/")
+    data[CONF_MOBILE_DEVICES] = list(data.get(CONF_MOBILE_DEVICES) or [])
     if CONF_NOTIFY_DEVICES in data:
         data[CONF_NOTIFY_DEVICES] = list(data[CONF_NOTIFY_DEVICES] or [])
     return data
@@ -78,7 +103,7 @@ def _validate(data: dict) -> dict:
 
 
 class FlowioConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    VERSION = 1
+    VERSION = 2
 
     async def async_step_user(self, user_input=None):
         errors = {}

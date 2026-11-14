@@ -1,8 +1,8 @@
 from homeassistant.components.diagnostics import async_redact_data
 
-from .const import CONF_NOTIFY, DOMAIN
+from .const import CONF_MOBILE_DEVICES, DOMAIN
 
-TO_REDACT = {CONF_NOTIFY}
+TO_REDACT = {CONF_MOBILE_DEVICES}
 
 
 async def async_get_config_entry_diagnostics(hass, entry):
@@ -15,8 +15,14 @@ async def async_get_config_entry_diagnostics(hass, entry):
             if state is None
             else {"state": state.state, "unit": state.attributes.get("unit_of_measurement")}
         )
+    reachable, unreachable = rt.resolve_targets()
     return {
         "config": async_redact_data({**entry.data, **entry.options}, TO_REDACT),
+        "mobile_devices": {
+            "selected": len(rt.conf.get(CONF_MOBILE_DEVICES) or []),
+            "reachable": len(reachable),
+            "unreachable": len(unreachable),
+        },
         "thresholds": dict(rt.values),
         "pumps": {
             key: {"history_ml": pump.history, "last_ml": pump.last_ml}

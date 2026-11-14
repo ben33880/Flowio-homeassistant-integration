@@ -5,13 +5,14 @@
         "title": "Flow.io",
         "data": {
           "entity_prefix": "Préfixe des entités",
-          "notify_service": "Service de notification (ex. notify.mobile_app_xxx)",
+          "mobile_devices": "Téléphones à notifier (application Home Assistant)",
           "mqtt_root": "Racine MQTT du contrôleur (optionnel, ex. flowio/ESP32-XXXXXX)",
           "ph_slot": "Slot de la pompe pH",
           "disinfection_slot": "Slot de la pompe désinfectant",
           "notify_medium": "Notifier aussi les niveaux « à surveiller »"
         },
         "data_description": {
+          "mobile_devices": "Chaque téléphone Android ou iPhone reçoit une présentation adaptée à sa plateforme. Laisser vide pour ne recevoir aucune notification.",
           "mqtt_root": "Permet de lire le volume réellement injecté, mesuré par le firmware. Laisser vide pour garder l'estimation (temps de marche x débit configuré)."
         }
       }
@@ -29,22 +30,37 @@
       "init": {
         "data": {
           "entity_prefix": "Préfixe des entités",
-          "notify_service": "Service de notification (ex. notify.mobile_app_xxx)",
+          "mobile_devices": "Téléphones à notifier (application Home Assistant)",
           "mqtt_root": "Racine MQTT du contrôleur (optionnel, ex. flowio/ESP32-XXXXXX)",
           "ph_slot": "Slot de la pompe pH",
           "disinfection_slot": "Slot de la pompe désinfectant",
           "notify_medium": "Notifier aussi les niveaux « à surveiller »",
-          "notify_devices": "Équipements à notifier au démarrage et à l'arrêt"
+          "notify_devices": "Équipements à notifier au démarrage et à l'arrêt",
+          "notify_on_start": "Notifier quand un équipement démarre",
+          "notify_on_stop": "Notifier quand un équipement s'arrête",
+          "notify_recap": "Ajouter le récapitulatif pH, ORP, températures et pression",
+          "ios_alert_level": "Niveau d'interruption iPhone des alertes"
         },
         "data_description": {
+          "mobile_devices": "Chaque téléphone Android ou iPhone reçoit une présentation adaptée à sa plateforme. Laisser vide pour ne recevoir aucune notification.",
           "mqtt_root": "Permet de lire le volume réellement injecté, mesuré par le firmware. Laisser vide pour garder l'estimation (temps de marche x débit configuré).",
-          "notify_devices": "Cochez les équipements (pompes, relais...) publiés par le contrôleur. Aucune case cochée : aucune notification de marche ou d'arrêt. Seuls les équipements déjà connus de Home Assistant sont listés."
+          "notify_devices": "Cochez les équipements (pompes, relais...) publiés par le contrôleur. Aucune case cochée : aucune notification de marche ou d'arrêt. Seuls les équipements déjà connus de Home Assistant sont listés.",
+          "ios_alert_level": "« Urgent » peut traverser les modes Concentration si les réglages de l'application sur l'iPhone l'autorisent. « Discret » arrive sans réveiller l'écran."
         }
       }
     },
     "error": {
       "invalid_prefix": "Préfixe invalide : minuscules, chiffres et underscores uniquement, non vide (ex. fio).",
       "invalid_mqtt_root": "Racine MQTT invalide : ni joker (+ #), ni espace, ni segment vide."
+    }
+  },
+  "selector": {
+    "ios_level": {
+      "options": {
+        "passive": "Discret (sans réveiller l'écran)",
+        "active": "Normal (par défaut)",
+        "time-sensitive": "Urgent (peut traverser Concentration)"
+      }
     }
   },
   "entity": {
@@ -63,22 +79,9 @@
       "title": "Flow.io : entités attendues introuvables",
       "description": "{count} entité(s) attendue(s) pour le préfixe « {prefix} » sont absentes : {entities}. Vérifiez le préfixe, les slots des pompes et la découverte MQTT du firmware. Les valeurs des cuves et les data_* ne sont publiées dans Home Assistant que si elles sont activées dans le firmware. Les entités séparées par | sont des alternatives : une seule suffit."
     },
-    "notify_service_missing": {
-      "title": "Flow.io : service de notification introuvable",
-      "fix_flow": {
-        "step": {
-          "confirm": {
-            "title": "Service de notification",
-            "description": "Le service {service} n'existe pas. Saisissez un service notify existant (par exemple notify.mobile_app_xxx).",
-            "data": {
-              "notify_service": "Service de notification"
-            }
-          }
-        },
-        "error": {
-          "service_not_found": "Ce service n'existe pas."
-        }
-      }
+    "mobile_device_unreachable": {
+      "title": "Flow.io : téléphone injoignable",
+      "description": "Flow.io ne peut pas envoyer de notification à : {devices}. Le téléphone a peut-être été supprimé de Home Assistant, ou son service de notification n'est pas disponible. Vérifiez la sélection dans Configurer."
     },
     "frequent_restarts": {
       "title": "Flow.io : le contrôleur redémarre souvent",
