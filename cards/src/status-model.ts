@@ -1,4 +1,3 @@
-import { normalizePrefix } from './entities';
 import { powerBindings, systemBindings } from './firmware-model';
 import { numericValue } from './gauge-model';
 import { available, type EntityState } from './model';
@@ -9,7 +8,6 @@ export type StatusItem = typeof STATUS_ITEMS[number];
 export interface StatusConfig {
   type: string;
   title: string;
-  entity_prefix: string;
   items: StatusItem[];
   grid_options?: Record<string, unknown>;
 }
@@ -29,28 +27,22 @@ const LABELS: Record<StatusItem, string> = {
 export function normalizeStatusConfig(input: unknown): StatusConfig {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Configuration objet attendue');
   const raw = input as Record<string, unknown>;
+  if ('entity_prefix' in raw) throw new Error('entity_prefix supprimé : le préfixe vient de l’intégration Flow.io. Retirer ce champ.');
   const title = raw.title ?? 'État système';
   if (typeof title !== 'string' || !title.trim()) throw new Error('Titre invalide');
   const supplied = raw.items === undefined ? ['wifi_ip', 'sys_hp_free', 'sys_upt_mn'] : raw.items;
   if (!Array.isArray(supplied) || supplied.some(value => typeof value !== 'string' || !(STATUS_ITEMS as readonly string[]).includes(value))) {
     throw new Error('Choisir les informations proposées');
   }
-  const grid_options = raw.grid_options === undefined ? undefined : raw.grid_options;
-  if (grid_options !== undefined && (!grid_options || typeof grid_options !== 'object' || Array.isArray(grid_options))) {
-    throw new Error('grid_options doit être un objet');
-  }
+  const grid_options = raw.grid_options;
+  if (grid_options !== undefined && (!grid_options || typeof grid_options !== 'object' || Array.isArray(grid_options))) throw new Error('grid_options doit être un objet');
   return {
-    type: 'custom:flowio-status-card',
-    title,
-    entity_prefix: normalizePrefix(raw.entity_prefix),
-    items: [...new Set(supplied)] as StatusItem[],
+    type: 'custom:flowio-status-card', title, items: [...new Set(supplied)] as StatusItem[],
     ...(grid_options ? { grid_options: grid_options as Record<string, unknown> } : {})
   };
 }
 
-export function statusLabel(item: StatusItem): string {
-  return LABELS[item];
-}
+export function statusLabel(item: StatusItem): string { return LABELS[item]; }
 
 export function statusBindings(prefix: string, items: readonly StatusItem[]): { item: StatusItem; id: string; label: string }[] {
   const system = systemBindings(prefix, ['network', 'system']);

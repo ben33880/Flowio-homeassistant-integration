@@ -115,6 +115,8 @@ it('configure et formate la carte état système', () => {
   const config = normalizeStatusConfig({});
   expect(config.items).toEqual(['wifi_ip', 'sys_hp_free', 'sys_upt_mn']);
   expect(() => normalizeStatusConfig({ items: ['inconnu'] })).toThrow();
+  expect(() => normalizeStatusConfig({ entity_prefix: 'fio' })).toThrow();
+  expect(() => normalizeStatusConfig({ entity_prefix: '' })).toThrow();
   expect(formatUptime(30)).toBe('30 min');
   expect(formatUptime(120)).toBe('2.0 h');
   expect(formatUptime(2880)).toBe('2.0 j');
