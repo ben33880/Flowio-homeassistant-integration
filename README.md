@@ -6,7 +6,7 @@ Elle ne pilote jamais le dosage. Les services ne font que déclencher des comman
 
 ## Ce que l'intégration ajoute
 
-- Les cartes Lovelace Flow.io ([flowio-home-assistant-cards](https://github.com/christophebelmont/flowio-home-assistant-cards)), embarquées dans la release et servies automatiquement.
+- Les cartes Lovelace Flow.io, dont le code source est dans le dossier [`cards/`](cards/) de ce dépôt (index de leur documentation : [docs/CARTES.md](docs/CARTES.md)). Elles sont embarquées dans la release et servies automatiquement.
 - Des capteurs : qualité du pH, de l'ORP et de l'eau, volumes injectés du jour, autonomie des cuves, redémarrages du contrôleur.
 - Des alertes (`binary_sensor`) avec notifications, boutons d'action et seuils réglables (`number`).
 - Des notifications de marche et d'arrêt des équipements que tu choisis, adaptées à Android et à iPhone, avec un suivi en direct facultatif de la filtration.
@@ -22,6 +22,8 @@ Elle ne pilote jamais le dosage. Les services ne font que déclencher des comman
 Prérequis : l'intégration MQTT de Home Assistant, et le contrôleur Flow.io qui publie ses entités par découverte MQTT. Pour les notifications : l'application mobile Home Assistant sur au moins un téléphone.
 
 Mise à jour : HACS propose chaque version publiée. Après une mise à jour, redémarre Home Assistant.
+
+Les cartes sont incluses dans l'intégration : il ne faut pas les ajouter en plus comme dépôt HACS ou comme ressource Dashboard, sinon elles seraient chargées deux fois.
 
 L'icône et le logo Flow.io viennent du dossier `custom_components/flowio/brand/`, pris en compte par Home Assistant 2026.3 ou plus récent.
 
@@ -82,7 +84,7 @@ Plages par défaut, bornes incluses, réglables dans les entités `number` de l'
 | pH | 7,0 à 7,4 | 6,8 à 7,6 | hors plage moyenne |
 | ORP (mV) | 650 à 750 | 600 à 800 | hors plage moyenne |
 
-Les valeurs du pH et la cible ORP viennent de `docs/CHEMISTRY.md` des cartes. Les bornes « moyen » de l'ORP sont un choix par défaut à adapter à ton installation.
+Les valeurs du pH et la cible ORP viennent de [`cards/docs/CHEMISTRY.md`](cards/docs/CHEMISTRY.md). Les bornes « moyen » de l'ORP sont un choix par défaut à adapter à ton installation.
 
 Capteurs : `Qualité pH`, `Qualité ORP` et `Qualité de l'eau` (le pire des deux). Ils sont évalués en permanence.
 
@@ -235,8 +237,10 @@ Pour dépanner, utilise Appareils et services → Flow.io → Télécharger les 
 | Pas de couleur sur iPhone | La couleur est le fond de l'icône d'une notification de communication ; elle exige une icône et un titre. Le texte lui-même n'est jamais coloré sur iPhone |
 | « durée inconnue » à l'arrêt | L'équipement a démarré dans les 2 minutes qui suivent un redémarrage de Home Assistant |
 | Aucun équipement dans la liste à cocher | Le contrôleur n'a pas encore publié ses `switch` dans Home Assistant, ou le préfixe est faux |
+| Erreur de modèle `value_json.tank.remaining_ml` dans le journal | Capteurs `pd_ph_tnk_rem` et `pd_chl_tnk_rem` issus d'un ancien firmware, encore enregistrés dans Home Assistant. Supprime-les, et efface leur configuration retenue sur le broker. Les volumes de cuve utilisés par l'intégration sont les `data_*` |
 
 ## Documentation du projet et release
 
 - [CLAUDE.md](CLAUDE.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/DECISIONS.md](docs/DECISIONS.md) et [CHANGELOG.md](CHANGELOG.md) décrivent le code, les choix faits et l'historique.
-- Un tag `vX.Y.Z`, identique à la version de `custom_components/flowio/manifest.json`, lance `.github/workflows/release.yml`. Il récupère les cartes au commit épinglé par `CARDS_REF`, lance leurs tests et leur `release:prepare` (notices de licences incluses), copie le bundle dans l'intégration, crée `flowio.zip` et ouvre une release en brouillon, à publier à la main. Pour changer la version des cartes, modifie `CARDS_REF` dans ce fichier.
+- [docs/CARTES.md](docs/CARTES.md) indexe la documentation des cartes, dont les fichiers restent dans [`cards/`](cards/).
+- Un tag `vX.Y.Z`, identique à la version de `custom_components/flowio/manifest.json`, lance `.github/workflows/release.yml`. Il lance les tests des cartes (`cards/`) et leur `release:prepare` (notices de licences incluses), copie le bundle dans l'intégration, crée `flowio.zip` et ouvre une release en brouillon, à publier à la main. Le code des cartes est dans ce dépôt : il n'y a plus de commit à épingler ailleurs.

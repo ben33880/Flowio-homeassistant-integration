@@ -4,6 +4,12 @@ Les versions antérieures sont dans l'historique Git. Dates au format JJ/MM/AAAA
 
 Les tags `v0.3.0` et `v0.3.4` ont été créés par le propriétaire. Les versions 0.3.1, 0.3.2, 0.3.3, 0.3.5 et 0.3.6 n'ont pas de tag à la date du 14/11/2026.
 
+## Non publié — 14/11/2026
+
+- Cartes Lovelace intégrées au dépôt : le code source est dans `cards/`, copie du commit `9977463` du dépôt `christophebelmont/flowio-home-assistant-cards` (cartes 0.3.5, licence MIT). Ce dépôt d'origine n'est pas modifié.
+- Workflow de release : le bundle est construit depuis `cards/` (`b8f226a`). Les variables `CARDS_REPO` et `CARDS_REF` et l'étape qui récupérait le dépôt externe sont supprimées. Le build n'a pas encore été exécuté ; le prochain tag le vérifiera.
+- Documentation : nouvel index `docs/CARTES.md`. README, CLAUDE.md, ARCHITECTURE et DECISIONS mis à jour. Le README ajoute le dépannage de l'erreur `value_json.tank.remaining_ml`.
+
 ## 0.3.6 — 14/11/2026
 
 - Suivi en direct limité à la filtration. L'éclairage et les autres équipements reçoivent leur notification de démarrage tout de suite, sans le délai de 60 secondes. La filtration doit être cochée dans les équipements à notifier.
