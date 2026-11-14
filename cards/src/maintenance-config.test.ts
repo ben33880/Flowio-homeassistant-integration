@@ -2,14 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { normalizeConfig } from './model';
 
 describe('paramètre persistant mqtt_topic', () => {
-  it('conserve les anciennes configurations sans inventer de topic', () => {
-    expect(normalizeConfig({ entity_prefix: 'fio' }).mqtt_topic).toBeUndefined();
+  it('rejette entity_prefix supprimé et ne crée pas de topic', () => {
+    expect(() => normalizeConfig({ entity_prefix: 'fio' })).toThrow('entity_prefix supprimé');
+    expect(normalizeConfig({}).mqtt_topic).toBeUndefined();
     expect(normalizeConfig({ mqtt_topic: '' }).mqtt_topic).toBeUndefined();
     expect(normalizeConfig({ mqtt_topic: '  ' }).mqtt_topic).toBeUndefined();
   });
   it('conserve le topic et reste indépendant du préfixe HA', () => {
-    const config = normalizeConfig({ entity_prefix: 'fio', mqtt_topic: ' pool/controller/ ' });
-    expect(config.entity_prefix).toBe('fio');
+    const config = normalizeConfig({ mqtt_topic: ' pool/controller/ ' });
     expect(config.mqtt_topic).toBe('pool/controller');
     expect(normalizeConfig(JSON.parse(JSON.stringify(config))).mqtt_topic).toBe('pool/controller');
   });
