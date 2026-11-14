@@ -2,15 +2,16 @@
 
 Les versions antérieures sont dans l'historique Git. Dates au format JJ/MM/AAAA.
 
-## Non publié
+## 0.2.2 — 14/11/2026
 
-### 14/11/2026 — Notifications plus lisibles
+### Notifications plus lisibles
 
 - Notifications d'équipement : titre « nom : démarrage » ou « nom : arrêt », puis une première ligne avec l'heure, l'auteur (« par Benoît », « par une automatisation ou un script », « par Home Assistant » ou « par le contrôleur ») et, à l'arrêt seulement, la durée de fonctionnement.
 - L'icône de la notification est celle de l'entité (attribut `icon`, sinon icône du registre d'entités). Plus d'emoji dans ces titres.
 - Chronomètre Android retiré : c'était la seule différence entre les notifications de démarrage et d'arrêt, et les démarrages n'arrivaient pas.
 - Récapitulatif sous le message, pour les équipements et pour les alertes : pH et ORP, eau et air, pression. La ligne de filtration est supprimée.
 - Journal de débogage (`custom_components.flowio`) pour suivre les changements d'état reçus.
+- README, CLAUDE.md et CHANGELOG mis à jour.
 
 ## 0.2.1 — 13/11/2026
 

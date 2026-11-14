@@ -1,7 +1,7 @@
 {
   "domain": "flowio",
   "name": "Flow.io Piscine",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "config_flow": true,
   "dependencies": ["http", "frontend", "mqtt"],
   "after_dependencies": ["recorder", "history"],

@@ -31,7 +31,7 @@ Intégration Home Assistant (HACS) pour le contrôleur de piscine Flow.io (firmw
 ## État au 14/11/2026
 
 - Versions publiées : 0.1.0 (11/11), 0.1.1 (12/11), 0.2.0 (12/11), 0.2.1 (13/11).
-- Code non publié : refonte des notifications du 14/11/2026 (voir CHANGELOG).
+- Version préparée dans le code : 0.2.2 (refonte des notifications), tag `v0.2.2` à créer par le propriétaire.
 - `strings.json` non synchronisé avec les traductions `en.json` / `fr.json`. À vérifier.
 - `notification_actions.py` n'a pas été relu après le changement de signature de `FlowioRuntime.async_send` (arguments ajoutés en fin, anciens appels théoriquement compatibles).
 - Problème signalé le 14/11/2026 : aucune notification de démarrage d'équipement. Cause non confirmée ; le chronomètre Android a été retiré (seule différence avec l'arrêt). À revérifier avec les journaux si cela persiste.
