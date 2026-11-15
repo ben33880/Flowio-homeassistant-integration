@@ -12,12 +12,14 @@ from homeassistant.util import slugify
 
 from .const import (
     CONF_DIS_SLOT,
+    CONF_FILTRATION_SLOT,
     CONF_IOS_LEVEL,
     CONF_MOBILE_DEVICES,
     CONF_NOTIFY_RECAP,
     CONF_PH_SLOT,
     CONF_PREFIX,
     DEFAULT_DIS_SLOT,
+    DEFAULT_FILTRATION_SLOT,
     DEFAULT_IOS_LEVEL,
     DEFAULT_PH_SLOT,
     DOMAIN,
@@ -97,6 +99,9 @@ class FlowioRuntime:
         self.prefix = self.conf[CONF_PREFIX]
         self.ph_slot = int(self.conf.get(CONF_PH_SLOT, DEFAULT_PH_SLOT))
         self.dis_slot = int(self.conf.get(CONF_DIS_SLOT, DEFAULT_DIS_SLOT))
+        self.filtration_slot = int(
+            self.conf.get(CONF_FILTRATION_SLOT, DEFAULT_FILTRATION_SLOT)
+        )
         self.values = {t.key: t.default for t in THRESHOLDS}
         self.pumps = {"ph": PumpModel(), "dis": PumpModel()}
         self.restarts: list[datetime] = []
@@ -125,6 +130,7 @@ class FlowioRuntime:
             dis_pct=113 + 2 * self.dis_slot,
             ph_rt=144 + self.ph_slot,
             dis_rt=144 + self.dis_slot,
+            flt_rt=144 + self.filtration_slot,
         )
 
     def snooze(self, key: str, hours: float) -> None:
@@ -402,6 +408,8 @@ class FlowioRuntime:
         Un téléphone qui ne gère pas la fonction affiche une notification normale.
         """
         targets, _missing = self.resolve_targets()
+        if not targets:
+            return
         recap = self.context_line(html=False) if self.conf.get(CONF_NOTIFY_RECAP, True) else ""
         data: dict = {"tag": self._live_tag(tag), "live_update": True}
         if progress is not None:
