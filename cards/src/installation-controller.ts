@@ -44,6 +44,7 @@ export class InstallationController implements ReactiveController {
       this.value = selectInstallation(items);
       this.host.requestUpdate();
     }).catch(error => {
+      console.error('[flowio] Lecture des réglages Flow.io impossible', error);
       if (!this.active || token !== this.generation) return;
       this.error = error instanceof Error ? error.message : 'Lecture des réglages Flow.io impossible.';
       this.host.requestUpdate();
