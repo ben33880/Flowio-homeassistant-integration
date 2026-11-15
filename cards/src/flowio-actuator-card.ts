@@ -2,7 +2,7 @@ import { LitElement, html, css, nothing } from 'lit';
 import './order-list';
 import { ensureHaElements } from './ha-controls';
 import { available, type Hass } from './model';
-import { displayName, entityName } from './names';
+import { displayName, entityName, commonEntityPrefix } from './names';
 import { mergeOrder, orderItems } from './order-list';
 import { stateIcon } from './state-history-model';
 import { toneFor } from './visual';
@@ -35,7 +35,7 @@ class FlowioActuatorCard extends LitElement {
   private namePrefix(): string {
     const config = this.config, hass = this.hass;
     if (!config || !hass) return '';
-    return config.name_prefix;
+    return config.name_prefix || commonEntityPrefix(config.entities, hass.states);
   }
   private more(entityId: string) {
     if (this.hass?.states[entityId]) this.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId }, bubbles: true, composed: true }));
@@ -50,13 +50,13 @@ class FlowioActuatorCard extends LitElement {
     catch { this.error = 'Commande refusée ou échouée. Vérifier les droits et la disponibilité.'; }
     finally { this.busy = ''; }
   }
-  private row(id: string, prefix: string) {
+  private row(id: string, prefix: string, entityPrefix: string) {
     const config = this.config!, hass = this.hass!, state = hass.states[id];
     const name = displayName(entityName(id, state), prefix);
-    const role = actuatorRole(prefix, id);
+    const role = actuatorRole(entityPrefix, id);
     const icon = stateIcon(id, state);
     const tone = role ? toneFor(role) : 'water';
-    const reset = actuatorResetEntity(config, id, prefix);
+    const reset = actuatorResetEntity(config, id, entityPrefix);
     const canReset = !!reset && !!hass.states[reset] && !['unavailable', ''].includes(hass.states[reset].state);
     const active = state?.state === 'on';
     return html`<div class=row data-entity=${id} data-available=${state ? 'true' : 'false'}>
@@ -76,6 +76,7 @@ class FlowioActuatorCard extends LitElement {
     const installation = this.installation.value;
     if (!installation) return html`<ha-card><div class=body>Chargement des réglages de l’intégration Flow.io…</div></ha-card>`;
     const prefix = this.namePrefix();
+    const entityPrefix = installation.prefix;
     const active = actuatorActiveCount(hass, config.entities);
     const total = config.entities.length;
     const globalReset = actuatorGlobalReset(installation.prefix);
@@ -85,7 +86,7 @@ class FlowioActuatorCard extends LitElement {
       ${this.error ? html`<p class=error role=alert>${this.error}</p>` : nothing}
       ${!total ? html`<p class=empty>Choisir les équipements dans l’éditeur.</p>` : html`<div class=table-scroll><div class=table>
         <div class="row head" aria-hidden=true><span class=c-name>Équipement</span>${RUNTIME_PERIODS.map(period => html`<span class=c-time>${RUNTIME_LABELS[period]}</span>`)}<span class=c-actions>Actions</span></div>
-        ${config.entities.map(id => this.row(id, prefix))}
+        ${config.entities.map(id => this.row(id, prefix, entityPrefix))}
       </div></div>`}
     </div></ha-card>`;
   }
@@ -160,7 +161,7 @@ class FlowioActuatorCardEditor extends LitElement {
   private options(): { value: string; label: string }[] {
     if (!this.hass || !this.config) return [];
     const ids = Object.keys(this.hass.states).filter(id => id.startsWith('switch.')).sort();
-    const prefix = this.config.name_prefix;
+    const prefix = this.config.name_prefix || commonEntityPrefix(ids, this.hass.states);
     return ids.map(id => ({ value: id, label: `${displayName(entityName(id, this.hass!.states[id]), prefix)} · ${id}` }));
   }
   render() {
@@ -173,7 +174,7 @@ class FlowioActuatorCardEditor extends LitElement {
     const entitySchema = [{ name: 'entities', selector: { select: { multiple: true, mode: 'list', options: this.options() } } }];
     const labels: Record<string, string> = { title: 'Titre', subtitle: 'Sous-titre', name_prefix: 'Texte à retirer devant les noms (vide = automatique)', entities: 'Actionneurs affichés' };
     const computeLabel = (field: { name: string }) => labels[field.name] ?? field.name;
-    const prefix = this.config.name_prefix;
+    const prefix = this.config.name_prefix || commonEntityPrefix(this.config.entities, this.hass.states);
     const items = orderItems(this.config.entities, this.hass.states, prefix);
     return html`<p>Le préfixe est fourni par l’intégration Flow.io. Durées de fonctionnement lues dans les attributs de chaque entité (<code>${Object.values(this.config.runtime_keys).join(', ')}</code>). Le bouton de remise à zéro cible <code>button.&lt;préfixe&gt;_pd_reset_upt_*</code> ; l’ordre se règle par glisser-déposer.</p>${this.error ? html`<p role=alert>${this.error}</p>` : nothing}<ha-form .hass=${this.hass} .data=${this.config} .schema=${schema} .computeLabel=${computeLabel} @value-changed=${this.changed}></ha-form><flowio-order-list .items=${items} @order-changed=${(event: CustomEvent) => this.reorder(event.detail.order)}></flowio-order-list><ha-form .hass=${this.hass} .data=${this.config} .schema=${entitySchema} .computeLabel=${computeLabel} @value-changed=${this.changed}></ha-form>`;
   }

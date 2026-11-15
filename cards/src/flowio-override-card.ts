@@ -1,6 +1,7 @@
-import { LitElement, html, css, nothing } from 'lit';
+import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
 import { available, type Hass } from './model';
 import { InstallationController, type InstallationHass } from './installation-controller';
+import type { Installation } from './integration-config';
 import {
   DEFAULT_DURATIONS, normalizeOverrideConfig, overrideAvailable, overrideDevices, overrideForced,
   overrideRemainingMinutes, overrideTargetEntity, type OverrideConfig
@@ -17,11 +18,20 @@ class FlowioOverrideCard extends LitElement {
   private confirmation?: 'on' | 'off' | 'release';
   private duration?: number;
   private target = '';
+  private lastInstallation?: Installation;
   static getConfigElement() { return document.createElement('flowio-override-card-editor'); }
   static getStubConfig(): OverrideConfig { return normalizeOverrideConfig({}); }
   setConfig(input: unknown) { this.config = normalizeOverrideConfig(input); }
   getCardSize() { return 3; }
   connectedCallback() { super.connectedCallback(); this.refresh(); }
+  protected updated(changed: PropertyValues) {
+    super.updated(changed);
+    const installation = this.installation.value;
+    if (installation && installation !== this.lastInstallation) {
+      this.lastInstallation = installation;
+      this.refresh();
+    }
+  }
   private refresh() {
     const installation = this.installation.value;
     if (!installation) return;

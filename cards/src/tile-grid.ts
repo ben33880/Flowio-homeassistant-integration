@@ -1,7 +1,7 @@
 import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
 import './order-list';
 import type { Hass } from './model';
-import { displayName, entityName } from './names';
+import { displayName, entityName, commonEntityPrefix } from './names';
 import { mergeOrder, orderItems } from './order-list';
 import { InstallationController, type InstallationHass } from './installation-controller';
 
@@ -101,7 +101,7 @@ export abstract class FlowioTileGridCard extends LitElement {
       if (!load) throw new Error('Helpers Home Assistant indisponibles');
       const helpers = await load();
       if (token !== this.generation || !this.isConnected) return;
-      const prefix = config.name_prefix;
+      const prefix = config.name_prefix || commonEntityPrefix(config.entities, this.hass?.states);
       this.slots = [];
       this.overlays = [];
       this.tiles = config.entities.map(entity => {
@@ -185,7 +185,7 @@ export abstract class FlowioTileGridEditor extends LitElement {
   private options(): { value: string; label: string }[] {
     if (!this.hass) return [];
     const ids = Object.keys(this.hass.states).filter(id => id.startsWith('switch.')).sort();
-    const prefix = this.config?.name_prefix || '';
+    const prefix = this.config?.name_prefix || commonEntityPrefix(ids, this.hass.states);
     return ids.map(id => ({ value: id, label: `${displayName(entityName(id, this.hass!.states[id]), prefix)} · ${id}` }));
   }
   render() {
@@ -197,7 +197,7 @@ export abstract class FlowioTileGridEditor extends LitElement {
     ];
     const entitySchema = [{ name: 'entities', selector: { select: { multiple: true, mode: 'list', options: this.options() } } }];
     const labels: Record<string, string> = { title: 'Nom', columns: 'Colonnes', name_prefix: 'Texte à retirer devant les noms (vide = automatique)', entities: 'Entités' };
-    const prefix = this.config.name_prefix;
+    const prefix = this.config.name_prefix || commonEntityPrefix(this.config.entities, this.hass.states);
     const items = orderItems(this.config.entities, this.hass.states, prefix);
     const computeLabel = (field: { name: string }) => labels[field.name] ?? field.name;
     return html`<p>Le préfixe est fourni par l’intégration Flow.io. Tuiles standard Home Assistant : cliquer sur l’icône bascule l’entité, cliquer ailleurs ouvre l’entité.</p>${this.error ? html`<p role=alert>${this.error}</p>` : nothing}<ha-form .hass=${this.hass} .data=${this.config} .schema=${schema} .computeLabel=${computeLabel} @value-changed=${this.changed}></ha-form><flowio-order-list .items=${items} @order-changed=${(event: CustomEvent) => this.reorder(event.detail.order)}></flowio-order-list><ha-form .hass=${this.hass} .data=${this.config} .schema=${entitySchema} .computeLabel=${computeLabel} @value-changed=${this.changed}></ha-form>`;
