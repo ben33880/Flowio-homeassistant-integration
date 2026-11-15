@@ -115,8 +115,9 @@ class FlowioAlarmDetailCard extends LitElement {
 }
 class FlowioAlarmDetailCardEditor extends LitElement {
   static properties = { hass: { attribute: false }, config: { state: true }, error: { state: true } };
-  declare hass?: Hass;
+  declare hass?: Hass & InstallationHass;
   private config?: AlarmDetailConfig;
+  private installation = new InstallationController(this, () => this.hass);
   private error = '';
   setConfig(input: unknown) { this.config = normalizeAlarmDetailConfig(input); this.error = ''; }
   private commit(config: AlarmDetailConfig) {
@@ -140,7 +141,9 @@ class FlowioAlarmDetailCardEditor extends LitElement {
   }
   private options(): { value: string; label: string }[] {
     if (!this.hass || !this.config) return [];
-    const ids = detectedAlarmIds(this.hass, '');
+    const installation = this.installation.value;
+    if (!installation) return [];
+    const ids = detectedAlarmIds(this.hass, installation.prefix);
     const prefix = alarmNamePrefix(this.config, this.hass, ids);
     return ids.map(id => ({ value: id, label: `${displayName(entityName(id, this.hass!.states[id]), prefix)} · ${id}` }));
   }

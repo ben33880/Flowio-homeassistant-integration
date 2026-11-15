@@ -1,6 +1,6 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { alarmEntries, alarmSummary, normalizeAlarmsConfig, type AlarmsConfig } from './alarms-model';
-import { displayName } from './names';
+import { displayName, commonEntityPrefix } from './names';
 import type { Hass } from './model';
 import { InstallationController, type InstallationHass } from './installation-controller';
 
@@ -24,7 +24,7 @@ class FlowioAlarmsCard extends LitElement {
     if (!installation) return html`<ha-card><div class=body>Chargement des réglages de l’intégration Flow.io…</div></ha-card>`;
     const summary = alarmSummary(hass, installation.prefix);
     const entries = alarmEntries(hass, installation.prefix);
-    const prefix = config.name_prefix;
+    const prefix = config.name_prefix || commonEntityPrefix(entries.map(entry => entry.entityId), hass.states);
     const active = entries.filter(entry => entry.active);
     const icon = summary.tone === 'alert' ? 'mdi:alert-circle' : summary.tone === 'ok' ? 'mdi:check-circle' : 'mdi:help-circle';
     const count = summary.total > 0 ? `${summary.total} alarme${summary.total > 1 ? 's' : ''} surveillée${summary.total > 1 ? 's' : ''}` : 'Alarmes non détectées';
