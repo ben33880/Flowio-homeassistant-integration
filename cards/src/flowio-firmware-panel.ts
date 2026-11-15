@@ -11,6 +11,7 @@ import { InstallationController, type InstallationHass } from './installation-co
 class FlowioFirmwarePanel extends LitElement {
   static properties = {
     hass: { attribute: false },
+    prefix: { type: String },
     calculatedValues: { attribute: false },
     deviceMetrics: { attribute: false },
     deviceSlot: { type: Number },
@@ -26,6 +27,7 @@ class FlowioFirmwarePanel extends LitElement {
     ready: { state: true }
   };
   declare hass?: Hass & InstallationHass;
+  prefix = '';
   calculatedValues: readonly CalculatedValue[] = [];
   deviceMetrics: readonly DeviceMetric[] = [];
   deviceSlot = 0;
