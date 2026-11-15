@@ -88,9 +88,29 @@ export abstract class FlowioTileGridCard extends LitElement {
   private async syncTiles() {
     const config = this.config;
     if (!config) return;
-    if (this.installation.error) { this.error = this.installation.error; this.synced = false; this.tiles = []; this.slots = []; this.overlays = []; this.requestUpdate(); return; }
+    if (this.installation.error) {
+      if (this.error !== this.installation.error || this.synced || this.tiles.length) {
+        this.error = this.installation.error;
+        this.synced = false;
+        this.tiles = [];
+        this.slots = [];
+        this.overlays = [];
+        this.requestUpdate();
+      }
+      return;
+    }
     const installation = this.installation.value;
-    if (!installation) { this.error = ''; this.synced = false; this.tiles = []; this.slots = []; this.overlays = []; this.requestUpdate(); return; }
+    if (!installation) {
+      if (this.error || this.synced || this.tiles.length) {
+        this.error = '';
+        this.synced = false;
+        this.tiles = [];
+        this.slots = [];
+        this.overlays = [];
+        this.requestUpdate();
+      }
+      return;
+    }
     const key = JSON.stringify({ columns: config.columns, entities: config.entities, name_prefix: config.name_prefix, prefix: installation.prefix });
     if (key === this.key && this.synced) { this.mount(); return; }
     if (this.loading) return;
