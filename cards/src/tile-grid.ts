@@ -61,7 +61,7 @@ export abstract class FlowioTileGridCard extends LitElement {
   setConfig(input: unknown) { this.config = this.normalizeConfig(input); this.error = ''; void this.syncTiles(); }
   getCardSize() { return 2 + Math.ceil((this.config?.entities.length ?? 0) / (this.config?.columns ?? 2)); }
   connectedCallback() { super.connectedCallback(); void this.syncTiles(); }
-  disconnectedCallback() { super.disconnectedCallback(); this.generation++; }
+  disconnectedCallback() { super.disconnectedCallback(); this.generation++; this.loading = false; }
   protected updated(_changed: PropertyValues) { void this.syncTiles(); this.mount(); }
 
   private mount() {
@@ -82,37 +82,37 @@ export abstract class FlowioTileGridCard extends LitElement {
       return slot;
     });
     if (grid.children.length !== slots.length || slots.some((slot, index) => grid.children[index] !== slot)) grid.replaceChildren(...slots);
-    for (const tile of this.tiles) tile.hass = this.hass;
+    for (const tile of this.tiles) if (tile.hass !== this.hass) tile.hass = this.hass;
+  }
+
+  private clearTiles(error: string) {
+    const changed = this.error !== error || this.synced || this.tiles.length > 0 || this.slots.length > 0 || this.overlays.length > 0 || this.key !== '' || this.loading;
+    if (!changed) return;
+    this.generation++;
+    this.loading = false;
+    this.error = error;
+    this.synced = false;
+    this.key = '';
+    this.tiles = [];
+    this.slots = [];
+    this.overlays = [];
+    this.requestUpdate();
   }
 
   private async syncTiles() {
     const config = this.config;
-    if (!config) return;
+    if (!config || !this.isConnected) return;
     if (this.installation.error) {
-      if (this.error !== this.installation.error || this.synced || this.tiles.length) {
-        this.error = this.installation.error;
-        this.synced = false;
-        this.tiles = [];
-        this.slots = [];
-        this.overlays = [];
-        this.requestUpdate();
-      }
+      this.clearTiles(this.installation.error);
       return;
     }
     const installation = this.installation.value;
     if (!installation) {
-      if (this.error || this.synced || this.tiles.length) {
-        this.error = '';
-        this.synced = false;
-        this.tiles = [];
-        this.slots = [];
-        this.overlays = [];
-        this.requestUpdate();
-      }
+      this.clearTiles('');
       return;
     }
     const key = JSON.stringify({ columns: config.columns, entities: config.entities, name_prefix: config.name_prefix, prefix: installation.prefix });
-    if (key === this.key && this.synced) { this.mount(); return; }
+    if (key === this.key && this.synced) return;
     if (this.loading) return;
     this.loading = true;
     const token = ++this.generation;
@@ -121,6 +121,10 @@ export abstract class FlowioTileGridCard extends LitElement {
       if (!load) throw new Error('Helpers Home Assistant indisponibles');
       const helpers = await load();
       if (token !== this.generation || !this.isConnected) return;
+      if (this.config !== config || this.installation.value !== installation || this.installation.error) {
+        this.requestUpdate();
+        return;
+      }
       const prefix = config.name_prefix || commonEntityPrefix(config.entities, this.hass?.states);
       this.slots = [];
       this.overlays = [];
