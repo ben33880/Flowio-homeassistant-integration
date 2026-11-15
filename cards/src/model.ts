@@ -96,6 +96,8 @@ export function normalizeConfig(input: unknown): PoolConfig {
   const raw = configObject(input);
   if ('entity_prefix' in raw) throw new Error('entity_prefix supprimé : le préfixe vient de l’intégration Flow.io. Retirer ce champ.');
   if ('mqtt_topic' in raw) throw new Error('mqtt_topic supprimé : le topic vient de l’intégration Flow.io. Retirer ce champ.');
+  if ('tank_slots' in raw) throw new Error('tank_slots supprimé : les cuves viennent de l’intégration Flow.io. Retirer ce champ.');
+  if ('runtime_slots' in raw) throw new Error('runtime_slots supprimé : les slots viennent de l’intégration Flow.io. Retirer ce champ.');
   for (const key of ['features', 'show_tanks', 'treatment', 'measurements']) {
     if (key in raw) throw new Error(`Le champ ${key} est supprimé de la synthèse. Utiliser display ; recréer la configuration.`);
   }
@@ -128,14 +130,9 @@ export function normalizeConfig(input: unknown): PoolConfig {
     operations: selection(d.operations, OPERATIONS, OPERATIONS)
   };
 
-  const supplied = raw.tank_slots === undefined ? {} : configObject(raw.tank_slots);
   const tank_slots = {} as TankSlots;
   for (const key of ['ph', 'disinfection'] as const) {
-    const n = supplied[key] ?? (key === 'ph' ? 1 : 2);
-    if (typeof n !== 'number' || !Number.isInteger(n) || n < 0 || n > 15) {
-      throw new Error('Slot de cuve attendu entre 0 et 15');
-    }
-    tank_slots[key] = n;
+    tank_slots[key] = key === 'ph' ? 1 : 2;
   }
 
   return {
@@ -144,7 +141,7 @@ export function normalizeConfig(input: unknown): PoolConfig {
     ...(grid_options ? { grid_options } : {}),
     display,
     tank_slots,
-    runtime_slots: normalizeRuntimeSlots(raw.runtime_slots),
+    runtime_slots: normalizeRuntimeSlots(undefined),
     visuals: normalizeVisuals(raw.visuals)
   };
 }
