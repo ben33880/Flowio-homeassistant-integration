@@ -235,6 +235,17 @@ def async_setup_device_notifications(rt):
             _LOGGER.debug("Changement ignoré pour %s : %s -> %s", new.entity_id, old.state, new.state)
             if new.state == "off":
                 _clear_live(new.entity_id)
+            elif _is_live(new.entity_id):
+                # Redémarrage pendant la marche : le suivi en direct reprend sans notification de démarrage.
+                _schedule_live(
+                    new,
+                    _equipment_title(
+                        new.entity_id, new, True, localize(hass, "notifications.equipment.controller")
+                    ),
+                    _tag(new.entity_id),
+                    _icon(hass, new),
+                    f"/?more-info-entity-id={new.entity_id}",
+                )
             return
         running = new.state == "on"
         live = _is_live(new.entity_id)

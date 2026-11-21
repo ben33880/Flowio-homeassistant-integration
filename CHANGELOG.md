@@ -4,6 +4,10 @@ Les versions antérieures sont dans l'historique Git. Dates au format JJ/MM/AAAA
 
 Les versions publiées depuis 0.3.0 comportent un tag et une release GitHub. Les tags `v0.3.7` et `v0.3.8` ont eux aussi produit un `flowio.zip` depuis le workflow de release intégré.
 
+## Non publié
+
+- Notifications persistantes : après un redémarrage de Home Assistant pendant la marche, le suivi de filtration reprend dès que l’interrupteur repasse de indisponible à en marche (auparavant ce retour était ignoré, la carte n’apparaissait qu’au cycle suivant).
+
 ## 0.4.1 — 21/11/2026
 
 - Notifications persistantes : le suivi de filtration est désormais reprogrammé si Home Assistant ou l’intégration redémarre pendant la marche, et reste compatible lorsque les notifications de démarrage ordinaires sont désactivées.
