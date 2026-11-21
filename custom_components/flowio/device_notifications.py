@@ -11,6 +11,7 @@ from homeassistant.helpers.event import (
     async_track_state_change_event,
     async_track_time_interval,
 )
+from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .const import (
@@ -81,9 +82,29 @@ def async_setup_device_notifications(rt):
     # Commandes du forçage du firmware : elles agissent sur n'importe quel équipement.
     generic = tuple(f"{d}.{rt.prefix}_" for d in ("select", "number", "button"))
     commands: deque = deque(maxlen=20)
+    # Heure et auteur du vrai démarrage, conservés au redémarrage : last_changed repart de zéro à ce moment.
+    store = Store(hass, 1, f"{DOMAIN}.{rt.entry.entry_id}.equipment_starts")
+    starts: dict = {}
+    closed = False
 
     def _tag(entity_id: str) -> str:
         return f"device_{entity_id.split('.', 1)[1]}"
+
+    def _remember(entity_id: str, start, author: str) -> None:
+        starts[entity_id] = {"start": start.isoformat(), "author": author}
+        store.async_delay_save(lambda: starts, 1)
+
+    def _forget(entity_id: str) -> None:
+        if starts.pop(entity_id, None) is not None:
+            store.async_delay_save(lambda: starts, 1)
+
+    def _started(entity_id: str):
+        """(heure, auteur) du démarrage en cours, ou None."""
+        saved = starts.get(entity_id)
+        start = dt_util.parse_datetime(saved.get("start", "")) if isinstance(saved, dict) else None
+        if start is None:
+            return None
+        return start, saved.get("author") or localize(hass, "notifications.equipment.controller")
 
     def _is_live(entity_id: str) -> bool:
         return live_on and entity_id == filtration
@@ -122,13 +143,22 @@ def async_setup_device_notifications(rt):
                 fallback = context
         return fallback
 
-    def _schedule_live(new, title: str, tag: str, icon, url: str) -> None:
+    def _schedule_live(new, start) -> None:
         """Crée la carte en direct de la filtration si elle tourne toujours après LIVE_START_DELAY.
 
-        Plage horaire connue : barre de progression rafraîchie toutes les 15 minutes. Sinon : chronomètre
-        depuis le démarrage.
+        Plage horaire connue : barre de progression rafraîchie à l'intervalle choisi. Sinon : chronomètre
+        depuis le démarrage. `start` est l'heure du vrai démarrage, qui peut précéder new.last_changed.
         """
         entity_id = new.entity_id
+        tag, icon = _tag(entity_id), _icon(hass, new)
+        url = f"/?more-info-entity-id={entity_id}"
+        name = firmware_name(hass, entity_id, new.attributes.get("friendly_name") or entity_id)
+        title = localize(
+            hass,
+            "notifications.equipment.running_since",
+            name=name,
+            time=dt_util.as_local(start).strftime("%H:%M"),
+        )
 
         def _still_running() -> bool:
             current = hass.states.get(entity_id)
@@ -138,7 +168,7 @@ def async_setup_device_notifications(rt):
             await rt.async_send_live(
                 title,
                 tag,
-                started=new.last_changed,
+                started=start,
                 color=COLOR_OK,
                 icon=icon,
                 url=url,
@@ -160,6 +190,9 @@ def async_setup_device_notifications(rt):
                 return
             progress = rt.filtration_progress()
             await _send(progress, False)
+            # La carte en direct remplace la notification de démarrage envoyée immédiatement.
+            if rt.conf.get(CONF_NOTIFY_ON_START, True):
+                await rt.async_clear(tag)
             if progress is not None:
                 refreshing[entity_id] = async_track_time_interval(hass, _tick, refresh)
 
@@ -189,38 +222,53 @@ def async_setup_device_notifications(rt):
         return title
 
     async def _notify(old, new, running: bool, context) -> None:
+        entity_id = new.entity_id
         who = await _who(hass, context) if context else localize(hass, "notifications.equipment.controller")
-        # Durée fiable seulement si le démarrage a eu lieu bien après le démarrage de Home Assistant.
-        reliable = (old.last_changed - PROCESS_START).total_seconds() > RELIABLE_AFTER
-        title = _equipment_title(
-            new.entity_id,
-            new,
-            running,
-            who,
-            old.last_changed if reliable else None,
-        )
-        _LOGGER.debug("Notification %s : %s", new.entity_id, title)
-        tag = _tag(new.entity_id)
-        icon = _icon(hass, new)
-        # Toucher la notification ouvre la fiche de l'équipement.
-        url = f"/?more-info-entity-id={new.entity_id}"
-        live = _is_live(new.entity_id)
+        saved = None if running else _started(entity_id)
+        if running:
+            _remember(entity_id, new.last_changed, who)
+            duration_start = None
+        elif saved and saved[0] <= new.last_changed:
+            # Heure réelle du démarrage, même si Home Assistant a redémarré depuis.
+            duration_start = saved[0]
+        else:
+            # Durée fiable seulement si le démarrage a eu lieu bien après le démarrage de Home Assistant.
+            reliable = (old.last_changed - PROCESS_START).total_seconds() > RELIABLE_AFTER
+            duration_start = old.last_changed if reliable else None
+        if not running:
+            _forget(entity_id)
+        title = _equipment_title(entity_id, new, running, who, duration_start)
+        _LOGGER.debug("Notification %s : %s", entity_id, title)
+        tag = _tag(entity_id)
+        live = _is_live(entity_id)
         if live and running:
-            # Le suivi en direct remplace la notification de démarrage, après un délai de marche minimal.
-            _schedule_live(new, title, tag, icon, url)
-            return
-        if live:
+            # La carte en direct remplace cette notification après un délai de marche minimal.
+            _schedule_live(new, new.last_changed)
+            if not rt.conf.get(CONF_NOTIFY_ON_START, True):
+                return
+        if live and not running:
             await rt.async_clear_live(tag)
         await rt.async_send(
             title,
             "",
             tag,
             color=COLOR_OK if running else COLOR_OFF,
-            icon=icon,
-            url=url,
+            icon=_icon(hass, new),
+            # Toucher la notification ouvre la fiche de l'équipement.
+            url=f"/?more-info-entity-id={entity_id}",
             channel=localize(hass, "notifications.channels.equipment"),
             recap=True,
         )
+
+    def _resume(state) -> None:
+        """Reprend le suivi en direct d'une filtration déjà en marche (redémarrage ou rechargement)."""
+        saved = _started(state.entity_id)
+        if saved:
+            start = saved[0]
+        else:
+            start = state.last_changed
+            _remember(state.entity_id, start, localize(hass, "notifications.equipment.controller"))
+        _schedule_live(state, start)
 
     @callback
     def _changed(event) -> None:
@@ -239,18 +287,11 @@ def async_setup_device_notifications(rt):
         if old.state not in ("on", "off"):
             _LOGGER.debug("Changement ignoré pour %s : %s -> %s", new.entity_id, old.state, new.state)
             if new.state == "off":
+                _forget(new.entity_id)
                 _clear_live(new.entity_id)
             elif _is_live(new.entity_id):
                 # Redémarrage pendant la marche : le suivi en direct reprend sans notification de démarrage.
-                _schedule_live(
-                    new,
-                    _equipment_title(
-                        new.entity_id, new, True, localize(hass, "notifications.equipment.controller")
-                    ),
-                    _tag(new.entity_id),
-                    _icon(hass, new),
-                    f"/?more-info-entity-id={new.entity_id}",
-                )
+                _resume(new)
             return
         running = new.state == "on"
         live = _is_live(new.entity_id)
@@ -259,6 +300,7 @@ def async_setup_device_notifications(rt):
         ):
             # Suivi en direct actif mais arrêts non notifiés : on retire quand même la carte.
             if not running:
+                _forget(new.entity_id)
                 _clear_live(new.entity_id)
             return
         hass.async_create_task(_notify(old, new, running, _find(new.entity_id)))
@@ -268,25 +310,27 @@ def async_setup_device_notifications(rt):
         hass.bus.async_listen(EVENT_CALL_SERVICE, _on_call),
     ]
 
-    # Une reprise après redémarrage/rechargement ne produit pas de transition off -> on.
-    # Reprogrammer explicitement le suivi si la filtration était déjà en marche.
-    current = hass.states.get(filtration)
-    if current is not None and current.state == "on" and live_on:
-        title = _equipment_title(
-            filtration,
-            current,
-            True,
-            localize(hass, "notifications.equipment.controller"),
-        )
-        _schedule_live(
-            current,
-            title,
-            _tag(filtration),
-            _icon(hass, current),
-            f"/?more-info-entity-id={filtration}",
-        )
+    async def _restore() -> None:
+        # Une reprise après redémarrage/rechargement ne produit pas de transition off -> on.
+        # Reprogrammer explicitement le suivi si la filtration était déjà en marche.
+        saved = await store.async_load()
+        if closed:
+            return
+        if isinstance(saved, dict):
+            starts.update(saved)
+        for entity_id in list(starts):
+            state = hass.states.get(entity_id)
+            if state is not None and state.state == "off":
+                _forget(entity_id)
+        current = hass.states.get(filtration)
+        if current is not None and current.state == "on" and live_on:
+            _resume(current)
+
+    hass.async_create_task(_restore())
 
     def _unsub() -> None:
+        nonlocal closed
+        closed = True
         for unsub in unsubs:
             unsub()
         for entity_id in {*pending, *refreshing}:

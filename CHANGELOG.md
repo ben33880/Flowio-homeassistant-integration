@@ -4,6 +4,12 @@ Les versions antérieures sont dans l'historique Git. Dates au format JJ/MM/AAAA
 
 Les versions publiées depuis 0.3.0 comportent un tag et une release GitHub. Les tags `v0.3.7` et `v0.3.8` ont eux aussi produit un `flowio.zip` depuis le workflow de release intégré.
 
+## Non publié
+
+- Notifications persistantes : la notification de démarrage de la filtration est envoyée tout de suite, puis remplacée par la carte en direct après 1 minute de marche (auparavant, rien pendant cette minute, et aucune notification de démarrage si la filtration s'arrêtait avant).
+- Titre de la carte en direct : « Filtration : en marche depuis HH:MM » au lieu de « démarrage à HH:MM par … » figé.
+- L'heure et l'auteur du vrai démarrage sont conservés sur disque : après un redémarrage de Home Assistant, la carte, le chronomètre et la durée à l'arrêt ne repartent plus de l'heure du redémarrage.
+
 ## 0.5.0 — 21/11/2026
 
 - Nouvelle alerte « Filtration non démarrée » : prévient quand la filtration reste arrêtée alors que la plage prévue par le firmware est en cours. Délai réglable (15 min par défaut) par une nouvelle entité `number`.

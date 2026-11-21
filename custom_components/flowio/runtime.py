@@ -449,6 +449,14 @@ class FlowioRuntime:
                 target_data["sticky"] = True
             await self._deliver(target, title, message, target_data)
 
+    async def async_clear(self, tag: str) -> None:
+        """Retire une notification ordinaire envoyée avec async_send."""
+        targets, _missing = self.resolve_targets()
+        for target in targets:
+            await self._deliver(
+                target, "", "clear_notification", {"tag": f"flowio_{self.prefix}_{tag}"}
+            )
+
     async def async_clear_live(self, tag: str) -> None:
         """Termine le suivi en direct et retire la notification correspondante."""
         targets, _missing = self.resolve_targets()

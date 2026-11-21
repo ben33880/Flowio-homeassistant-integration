@@ -173,7 +173,7 @@ Au démarrage, la première ligne est par exemple « Filtration : démarrage à 
 
 - La première ligne (le titre) donne l'équipement, l'action, l'heure, l'auteur et, à l'arrêt seulement, la durée de fonctionnement.
 - L'auteur vient d'une commande Home Assistant passée dans les 2 minutes qui précèdent le changement : le nom de l'utilisateur, « une automatisation ou un script », ou « Home Assistant ». Sans commande de ce genre, le changement vient du contrôleur (programmation ou commande locale) et la ligne indique « par le contrôleur ».
-- La durée n'est affichée que si l'équipement a démarré plus de 2 minutes après le démarrage de Home Assistant. Sinon (arrêt peu après un redémarrage de Home Assistant), la ligne indique « durée inconnue », car l'état restauré porte l'heure du redémarrage et non celle de la marche. Enregistrer les options ne remet pas ce repère à zéro.
+- La durée est calculée depuis l'heure du vrai démarrage, conservée sur disque et donc exacte même après un redémarrage de Home Assistant. Sans démarrage enregistré (équipement démarré avant cette fonction), elle n'est affichée que si l'équipement a démarré plus de 2 minutes après le démarrage de Home Assistant ; sinon la ligne indique « durée inconnue », car l'état restauré porte l'heure du redémarrage et non celle de la marche.
 - Chaque changement se signale de nouveau, même s'il remplace la notification précédente.
 - Les passages par `unavailable` ou `unknown` (redémarrage, perte de lien) ne notifient pas.
 - Les cases « Notifier quand un équipement démarre » et « s'arrête » permettent de ne garder que l'un des deux.
@@ -188,7 +188,8 @@ Les pastilles 🟢🟠🔴 du pH et de l'ORP suivent les plages de la section Qu
 
 Option **Suivre la filtration en direct** (désactivée par défaut). La filtration doit être cochée dans les équipements à notifier.
 
-- Elle remplace la notification de démarrage de la filtration, envoyée seulement si elle tourne encore après 1 minute, par une carte en direct sur l'écran verrouillé (Live Activity sur iPhone, Live Update sur Android).
+- La notification de démarrage (si « démarre » est coché) est envoyée tout de suite. Si la filtration tourne encore après 1 minute, la carte en direct la remplace sur l'écran verrouillé (Live Activity sur iPhone, Live Update sur Android). Le titre de la carte est « Filtration : en marche depuis HH:MM ».
+- L'heure du vrai démarrage et son auteur sont conservés sur disque : après un redémarrage de Home Assistant, la carte, le chronomètre et la durée de la notification d'arrêt repartent de cette heure, pas de l'heure du redémarrage.
 - Si le firmware publie une plage de filtration (`pl_flt_start`, `pl_flt_stop`), la carte affiche une barre de progression de cette plage et le temps restant, rafraîchis à l'intervalle choisi dans l'option **Intervalle de rafraîchissement du suivi en direct** (de 1 à 60 minutes, 15 par défaut). Sinon, elle affiche un chronomètre depuis le démarrage. Les deux ne se combinent pas.
 - Pas de barre pour une filtration continue (1 440 minutes) ou quand le début égale la fin. La plage peut franchir minuit.
 - La carte est retirée à l'arrêt, quand l'équipement devient indisponible, et quand il revient arrêté après un redémarrage de Home Assistant. Elle est suivie de la notification d'arrêt habituelle.
@@ -249,9 +250,9 @@ Pour dépanner, utilise Appareils et services → Flow.io → Télécharger les 
 | Le volume injecté reste en `estimation` | La racine MQTT est vide ou fausse, ou le topic n'est pas publié ; vérifie `flowio/ESP32-XXXXXX` avec un explorateur MQTT |
 | Aucune notification | Vérifie qu'un téléphone est coché dans Configurer (après la 0.3, aucun ne l'est), la réparation « téléphone injoignable » et, sur Android, le canal du téléphone ; sur iPhone, les réglages de notifications de l'application |
 | Pas de notification d'équipement | Vérifie que l'équipement est coché, que « démarre » et « s'arrête » sont cochés, et active le niveau debug pour voir les changements d'état reçus |
-| Pas de notification au démarrage de la filtration | Avec le suivi en direct activé, elle arrive après 1 minute de marche et seulement si la filtration tourne toujours |
+| Pas de carte en direct au démarrage de la filtration | Avec le suivi en direct activé, la carte remplace la notification de démarrage après 1 minute de marche, seulement si la filtration tourne toujours |
 | Pas de couleur sur iPhone | La couleur est le fond de l'icône d'une notification de communication ; elle exige une icône et un titre. Le texte lui-même n'est jamais coloré sur iPhone |
-| « durée inconnue » à l'arrêt | L'équipement a démarré dans les 2 minutes qui suivent un redémarrage de Home Assistant |
+| « durée inconnue » à l'arrêt | Le démarrage n'a pas été enregistré (équipement démarré avant la mise à jour) et a eu lieu dans les 2 minutes qui suivent un redémarrage de Home Assistant |
 | Aucun équipement dans la liste à cocher | Le contrôleur n'a pas encore publié ses `switch` dans Home Assistant, ou le préfixe est faux |
 | Erreur de modèle `value_json.tank.remaining_ml` dans le journal | Capteurs `pd_ph_tnk_rem` et `pd_chl_tnk_rem` issus d'un ancien firmware, encore enregistrés dans Home Assistant. Supprime-les, et efface leur configuration retenue sur le broker. Les volumes de cuve utilisés par l'intégration sont les `data_*` |
 
