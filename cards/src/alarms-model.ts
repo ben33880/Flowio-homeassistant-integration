@@ -1,4 +1,5 @@
 import { available, type Hass } from './model';
+import { entityName } from './names';
 
 export interface AlarmsConfig {
   type: string;
@@ -27,7 +28,7 @@ export function alarmEntries(hass: Hass | undefined, prefix: string): AlarmEntry
     if (!entityId.startsWith(start) || !entityId.endsWith('_active')) return [];
     const id = entityId.slice(start.length, -7);
     if (!/^[0-9]+$/.test(id)) return [];
-    const title = typeof state.attributes.friendly_name === 'string' ? state.attributes.friendly_name : `Alarme #${id}`;
+    const title = entityName(entityId, state);
     return [{ id, entityId, title, resetEntity: `button.${stem}alm_${id}_reset`, active: state.state === 'on' }];
   }).sort((a, b) => Number(a.id) - Number(b.id));
 }

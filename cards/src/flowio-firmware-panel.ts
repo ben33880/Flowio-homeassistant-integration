@@ -7,6 +7,7 @@ import {
 import { ensureHaElements } from './ha-controls';
 import './flowio-maintenance-alarms';
 import { InstallationController, type InstallationHass } from './installation-controller';
+import { entityName } from './names';
 
 class FlowioFirmwarePanel extends LitElement {
   static properties = {
@@ -289,7 +290,7 @@ class FlowioFirmwarePanel extends LitElement {
   private valueTile(entityId: string, label: string) {
     const state = this.hass?.states[entityId];
     const unit = typeof state?.attributes.unit_of_measurement === 'string' ? state.attributes.unit_of_measurement : '';
-    const name = typeof state?.attributes.friendly_name === 'string' ? state.attributes.friendly_name : label;
+    const name = state ? entityName(entityId, state) : label;
     return html`<button type="button" class="value-tile" data-entity=${entityId}
       data-available=${available(state) ? 'true' : 'false'} ?disabled=${!state}
       @click=${() => this.more(entityId)}>

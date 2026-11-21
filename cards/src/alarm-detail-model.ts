@@ -78,7 +78,7 @@ export function alarmDetailEntries(hass: Hass | undefined, config: AlarmDetailCo
     const resetEntity = alarmResetEntity(prefix, entityId);
     const resetState = hass?.states[resetEntity];
     const resettable = alarmResettable(state);
-    const name = typeof state?.attributes.friendly_name === 'string' && state.attributes.friendly_name ? state.attributes.friendly_name : `Alarme ${alarmId(entityId)}`;
+    const name = state ? entityName(entityId, state) : `Alarme ${alarmId(entityId)}`;
     return {
       id: alarmId(entityId), entityId, resetEntity, name,
       active: state?.state === 'on', condition: alarmCondition(state), present: !!state,

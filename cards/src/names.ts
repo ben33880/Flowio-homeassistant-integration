@@ -1,8 +1,63 @@
 import type { EntityState } from './model';
 
+const FIRMWARE_ENTITY_NAMES: Array<[string, string, string]> = [
+  ['io_flt_pmp', 'Filtration Pump', 'Filtration'],
+  ['io_ph_pmp', 'pH Pump', 'Pompe pH'],
+  ['io_chl_pmp', 'Chlorine Pump', 'Pompe désinfectant'],
+  ['io_fill_pmp', 'Fill Pump', 'Remplissage'],
+  ['io_chl_gen', 'Chlorine Generator', 'Électrolyseur'],
+  ['io_lights', 'Lights', 'Éclairage'],
+  ['io_wat_htr', 'Water Heater', 'Chauffage'],
+  ['io_wat_tmp', 'Water Temperature', 'Eau'],
+  ['io_air_tmp', 'Air Temperature', 'Air'],
+  ['io_psi', 'PSI', 'Pression'],
+  ['pl_modes_auto', 'Pool Auto-regulation', 'Régulation automatique'],
+  ['pl_modes_winter', 'Winter Mode', 'Hivernage'],
+  ['pl_ph_auto_mode', 'pH Auto-regulation', 'Régulation pH'],
+  ['pl_dis_auto', 'Orp Auto-regulation', 'Régulation désinfection'],
+  ['pl_heat_auto', 'Heater Auto-regulation', 'Régulation chauffage'],
+  ['pl_ph_dose_plus', 'pH Dosing uses pH+', 'Utiliser pH+'],
+  ['pl_o2_temp_comp', 'O2 Temperature Compensation', 'Compensation température O₂'],
+  ['pl_modes_dis', 'Disinfection Type', 'Type de désinfection'],
+  ['pl_swg_ctrl', 'SWG Control Mode', 'Pilotage électrolyseur'],
+  ['pl_o2_hour', 'O2 Dosing Hour', 'Heure de dosage O₂']
+];
+
+const FIRMWARE_ALARM_NAMES: Record<string, string> = {
+  'low pressure': 'Pression basse',
+  'high pressure': 'Pression haute',
+  'ph tank low': 'Cuve pH basse',
+  'chlorine tank low': 'Cuve désinfectant basse',
+  'ph pump max uptime reached': 'Durée maximale de la pompe pH atteinte',
+  'chlorine pump max uptime reached': 'Durée maximale de la pompe désinfectant atteinte',
+  'pool water level low': 'Niveau d’eau du bassin bas'
+};
+
+function localizedFirmwareName(id: string, name: string): string {
+  const lowerName = name.toLocaleLowerCase('en');
+  for (const [original, localized] of Object.entries(FIRMWARE_ALARM_NAMES)) {
+    if (lowerName === original) return localized;
+    if (lowerName.endsWith(` ${original}`)) {
+      const prefix = name.slice(0, -original.length);
+      if (/^flow\.io(?: waveshare)? /i.test(prefix)) return prefix + localized;
+    }
+  }
+  const suffix = id.split('.', 2)[1] ?? id;
+  for (const [entitySuffix, original, localized] of FIRMWARE_ENTITY_NAMES) {
+    if (!suffix.endsWith(entitySuffix)) continue;
+    const lowerOriginal = original.toLocaleLowerCase('en');
+    if (lowerName === lowerOriginal) return localized;
+    if (lowerName.endsWith(` ${lowerOriginal}`)) {
+      const prefix = name.slice(0, -original.length);
+      if (/^flow\.io(?: waveshare)? /i.test(prefix)) return prefix + localized;
+    }
+  }
+  return name;
+}
+
 export function entityName(id: string, state?: EntityState): string {
   const name = state?.attributes.friendly_name;
-  return typeof name === 'string' && name ? name : id;
+  return typeof name === 'string' && name ? localizedFirmwareName(id, name) : id;
 }
 
 export function commonNamePrefix(names: string[]): string {
