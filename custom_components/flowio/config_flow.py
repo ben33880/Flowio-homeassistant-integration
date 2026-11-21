@@ -43,41 +43,44 @@ _PREFIX_RE = re.compile(r"^[a-z0-9]+(?:_[a-z0-9]+)*$")
 IOS_LEVELS = ["passive", "active", "time-sensitive"]
 
 
-def _schema(d: dict, equipment: list[dict] | None = None) -> vol.Schema:
-    fields = {
+def _controller_schema(d: dict) -> vol.Schema:
+    return vol.Schema({
         vol.Required(CONF_PREFIX, default=d.get(CONF_PREFIX, "fio")): str,
-        vol.Optional(CONF_MOBILE_DEVICES, default=list(d.get(CONF_MOBILE_DEVICES) or [])): _MOBILE,
         vol.Optional(CONF_MQTT_ROOT, default=d.get(CONF_MQTT_ROOT, "")): str,
         vol.Required(CONF_FILTRATION_SLOT, default=d.get(CONF_FILTRATION_SLOT, DEFAULT_FILTRATION_SLOT)): _SLOT,
         vol.Required(CONF_PH_SLOT, default=d.get(CONF_PH_SLOT, DEFAULT_PH_SLOT)): _SLOT,
         vol.Required(CONF_DIS_SLOT, default=d.get(CONF_DIS_SLOT, DEFAULT_DIS_SLOT)): _SLOT,
+    })
+
+
+def _notification_schema(d: dict) -> vol.Schema:
+    return vol.Schema({
+        vol.Optional(CONF_MOBILE_DEVICES, default=list(d.get(CONF_MOBILE_DEVICES) or [])): _MOBILE,
         vol.Required(CONF_NOTIFY_MEDIUM, default=d.get(CONF_NOTIFY_MEDIUM, False)): bool,
-    }
-    if equipment is not None:
-        # Options de notification, dans Configurer seulement (les équipements doivent déjà exister).
-        fields[vol.Optional(CONF_NOTIFY_DEVICES, default=list(d.get(CONF_NOTIFY_DEVICES) or []))] = (
-            selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=equipment,
-                    multiple=True,
-                    mode=selector.SelectSelectorMode.LIST,
-                )
+        vol.Required(CONF_NOTIFY_ON_START, default=d.get(CONF_NOTIFY_ON_START, True)): bool,
+        vol.Required(CONF_NOTIFY_ON_STOP, default=d.get(CONF_NOTIFY_ON_STOP, True)): bool,
+        vol.Required(CONF_NOTIFY_RECAP, default=d.get(CONF_NOTIFY_RECAP, True)): bool,
+        vol.Required(CONF_NOTIFY_LIVE, default=d.get(CONF_NOTIFY_LIVE, False)): bool,
+        vol.Required(CONF_IOS_LEVEL, default=d.get(CONF_IOS_LEVEL, DEFAULT_IOS_LEVEL)): selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=IOS_LEVELS,
+                translation_key="ios_level",
+                mode=selector.SelectSelectorMode.DROPDOWN,
+            )
+        ),
+    })
+
+
+def _equipment_schema(d: dict, equipment: list[dict]) -> vol.Schema:
+    return vol.Schema({
+        vol.Optional(CONF_NOTIFY_DEVICES, default=list(d.get(CONF_NOTIFY_DEVICES) or [])): selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=equipment,
+                multiple=True,
+                mode=selector.SelectSelectorMode.LIST,
             )
         )
-        fields[vol.Required(CONF_NOTIFY_ON_START, default=d.get(CONF_NOTIFY_ON_START, True))] = bool
-        fields[vol.Required(CONF_NOTIFY_ON_STOP, default=d.get(CONF_NOTIFY_ON_STOP, True))] = bool
-        fields[vol.Required(CONF_NOTIFY_RECAP, default=d.get(CONF_NOTIFY_RECAP, True))] = bool
-        fields[vol.Required(CONF_NOTIFY_LIVE, default=d.get(CONF_NOTIFY_LIVE, False))] = bool
-        fields[vol.Required(CONF_IOS_LEVEL, default=d.get(CONF_IOS_LEVEL, DEFAULT_IOS_LEVEL))] = (
-            selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=IOS_LEVELS,
-                    translation_key="ios_level",
-                    mode=selector.SelectSelectorMode.DROPDOWN,
-                )
-            )
-        )
-    return vol.Schema(fields)
+    })
 
 
 def _clean(user_input: dict) -> dict:
@@ -85,9 +88,12 @@ def _clean(user_input: dict) -> dict:
     data = dict(user_input)
     data[CONF_PREFIX] = (data.get(CONF_PREFIX) or "").strip().lower().rstrip("_")
     for key in (CONF_FILTRATION_SLOT, CONF_PH_SLOT, CONF_DIS_SLOT):
-        data[key] = int(data[key])
-    data[CONF_MQTT_ROOT] = (data.get(CONF_MQTT_ROOT) or "").strip().strip("/")
-    data[CONF_MOBILE_DEVICES] = list(data.get(CONF_MOBILE_DEVICES) or [])
+        if key in data:
+            data[key] = int(data[key])
+    if CONF_MQTT_ROOT in data:
+        data[CONF_MQTT_ROOT] = data[CONF_MQTT_ROOT].strip().strip("/")
+    if CONF_MOBILE_DEVICES in data:
+        data[CONF_MOBILE_DEVICES] = list(data[CONF_MOBILE_DEVICES] or [])
     if CONF_NOTIFY_DEVICES in data:
         data[CONF_NOTIFY_DEVICES] = list(data[CONF_NOTIFY_DEVICES] or [])
     return data
@@ -120,7 +126,7 @@ class FlowioConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(title=f"Flow.io ({data[CONF_PREFIX]})", data=data)
         return self.async_show_form(
-            step_id="user", data_schema=_schema(user_input or {}), errors=errors
+            step_id="user", data_schema=_controller_schema(user_input or {}), errors=errors
         )
 
     @staticmethod
@@ -130,6 +136,11 @@ class FlowioConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class FlowioOptionsFlow(config_entries.OptionsFlow):
+    def _current(self) -> dict:
+        if not hasattr(self, "_draft"):
+            self._draft = {**self.config_entry.data, **self.config_entry.options}
+        return self._draft
+
     def _equipment(self, selected: list[str]) -> list[dict]:
         """Interrupteurs (switch) du contrôleur déjà connus de Home Assistant, plus ceux déjà choisis."""
         conf = {**self.config_entry.data, **self.config_entry.options}
@@ -147,14 +158,37 @@ class FlowioOptionsFlow(config_entries.OptionsFlow):
         ]
 
     async def async_step_init(self, user_input=None):
+        return await self.async_step_controller(user_input)
+
+    async def async_step_controller(self, user_input=None):
         errors = {}
         if user_input is not None:
             data = _clean(user_input)
             errors = _validate(data)
             if not errors:
-                return self.async_create_entry(data=data)
-        current = user_input or {**self.config_entry.data, **self.config_entry.options}
-        equipment = self._equipment(list(current.get(CONF_NOTIFY_DEVICES) or []))
+                self._current().update(data)
+                return await self.async_step_notifications()
+        current = user_input or self._current()
         return self.async_show_form(
-            step_id="init", data_schema=_schema(current, equipment), errors=errors
+            step_id="controller", data_schema=_controller_schema(current), errors=errors
+        )
+
+    async def async_step_notifications(self, user_input=None):
+        if user_input is not None:
+            self._current().update(user_input)
+            return await self.async_step_equipment()
+        return self.async_show_form(
+            step_id="notifications", data_schema=_notification_schema(self._current())
+        )
+
+    async def async_step_equipment(self, user_input=None):
+        if user_input is not None:
+            self._current().update(user_input)
+            return self.async_create_entry(data=self._current())
+        current = self._current()
+        return self.async_show_form(
+            step_id="equipment",
+            data_schema=_equipment_schema(
+                current, self._equipment(list(current.get(CONF_NOTIFY_DEVICES) or []))
+            ),
         )
