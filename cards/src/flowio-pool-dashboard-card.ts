@@ -22,6 +22,7 @@ import {
   type PoolConfig,
   type Role
 } from './model';
+import { configObject } from './entities';
 
 const CARD_TYPE = 'custom:flowio-pool-dashboard-card';
 
@@ -33,12 +34,32 @@ class FlowioPoolDashboardCard extends FlowioPoolCard {
   }
 
   static getStubConfig(): Record<string, unknown> {
-    return { ...super.getStubConfig(), type: CARD_TYPE };
+    const config = super.getStubConfig();
+    const display = config.display as Record<string, unknown>;
+    return {
+      ...config,
+      type: CARD_TYPE,
+      display: {
+        ...display,
+        values_telemetry: false,
+        calculated_values: [],
+        device_metrics: []
+      }
+    };
   }
 
   setConfig(input: unknown) {
     super.setConfig(input);
-    if (this.config) this.config.type = CARD_TYPE;
+    if (!this.config) return;
+    const raw = configObject(input);
+    const rawDisplay = raw.display === undefined ? {} : configObject(raw.display);
+    if (rawDisplay.values_telemetry === undefined && rawDisplay.calculated_values === undefined &&
+        rawDisplay.device_metrics === undefined) {
+      this.config.display.values_telemetry = false;
+      this.config.display.calculated_values = [];
+      this.config.display.device_metrics = [];
+    }
+    this.config.type = CARD_TYPE;
   }
 
   protected renderCard(c: PoolConfig, h: Hass, prefix: string, filtrationSlot: number) {
@@ -179,7 +200,7 @@ class FlowioPoolDashboardCard extends FlowioPoolCard {
       .dashboard-hero{padding:0 0 10px}
       flowio-header-status{display:block;width:100%}
       .dashboard-shell{display:grid;gap:var(--dashboard-gap);padding-top:2px}
-      .dashboard-columns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--dashboard-gap);align-items:stretch}
+      .dashboard-columns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--dashboard-gap);align-items:start}
       .dashboard-panel,.modes-strip,.timing-panel{box-sizing:border-box;min-width:0;border:1px solid color-mix(in srgb,var(--divider-color) 82%,var(--primary-color));border-radius:18px;background:linear-gradient(145deg,color-mix(in srgb,var(--primary-color) 4%,var(--card-background-color)),var(--card-background-color));box-shadow:0 3px 16px color-mix(in srgb,var(--primary-text-color) 7%,transparent)}
       .dashboard-panel{padding:16px;overflow:hidden}
       .dashboard-panel>.section-heading{margin:0 0 14px}
@@ -234,13 +255,24 @@ class FlowioPoolDashboardCard extends FlowioPoolCard {
       .dashboard-error{margin:0 0 12px}
       .dashboard-diagnostics{margin-top:12px}
       @container(max-width:1100px){
-        .dashboard-columns{grid-template-columns:repeat(2,minmax(0,1fr))}
-        .treatment-panel{grid-column:1/-1}
-        .dashboard-tanks{max-width:620px;margin:auto}
+        .dashboard-columns{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+        .quality-panel{grid-column:1;grid-row:1/span 2}
+        .equipment-panel{grid-column:2;grid-row:1}
+        .treatment-panel{grid-column:2;grid-row:2}
+        .dashboard-tanks{max-width:none;margin:0}
+        .quality-panel .quality-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+        .quality-panel .quality-stack .measure{min-height:190px;padding:6px}
+        .quality-panel .quality-stack flowio-gauge{max-width:170px}
+        .quality-panel .measures-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+        .quality-panel .measures-primary .measure,.quality-panel .measures-temps .measure{min-height:70px}
+        .dashboard-panel{padding:12px}
+        .dashboard-equipment .control{min-height:50px}
+        .dashboard-tanks .measure{min-height:190px}
+        .dashboard-tanks flowio-gauge{max-width:170px}
       }
       @container(max-width:700px){
         .dashboard-columns{grid-template-columns:minmax(0,1fr)}
-        .treatment-panel{grid-column:auto}
+        .quality-panel,.equipment-panel,.treatment-panel{grid-column:auto;grid-row:auto}
         .quality-panel .measures-grid{grid-template-columns:1fr}
         .quality-panel .quality-stack .measure{min-height:230px}
         .dashboard-panel,.modes-strip,.timing-panel{border-radius:14px}

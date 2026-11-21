@@ -8,7 +8,7 @@ Les versions publiées depuis 0.3.0 comportent un tag et une release GitHub. Les
 
 - Notifications persistantes : le suivi de filtration est désormais reprogrammé si Home Assistant ou l’intégration redémarre pendant la marche, et reste compatible lorsque les notifications de démarrage ordinaires sont désactivées.
 - Configuration : options regroupées en trois écrans guidés — contrôleur, notifications et équipements surveillés — avec les réglages existants conservés entre les étapes.
-- Cartes : nouvelle `custom:flowio-pool-dashboard-card`, utilisant les mêmes données, options, commandes et éditeur que la carte Piscine, avec une présentation trois colonnes plus aérée.
+- Cartes : nouvelle `custom:flowio-pool-dashboard-card`, utilisant les mêmes données, options, commandes et éditeur que la carte Piscine, avec une présentation compacte adaptée aux largeurs Home Assistant ; la télémétrie détaillée est masquée par défaut et reste activable.
 
 ## 0.4.0 — 21/11/2026
 
