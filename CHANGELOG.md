@@ -4,13 +4,20 @@ Les versions antérieures sont dans l'historique Git. Dates au format JJ/MM/AAAA
 
 Les versions publiées depuis 0.3.0 comportent un tag et une release GitHub. Les tags `v0.3.7` et `v0.3.8` ont eux aussi produit un `flowio.zip` depuis le workflow de release intégré.
 
-## Non publié
+## 0.4.0 — 21/11/2026
 
-- Cartes : démos, tests E2E, exemples et documentation alignés sur la configuration partagée `flowio/config` ; les anciens champs `entity_prefix`, `mqtt_topic`, `tank_slots` et `runtime_slots` ne figurent plus dans les configurations livrées.
-- Cartes : bornes de jauge exposées correctement, libellés pH/ORP conservés pour l’accessibilité et état réel de la pompe désinfectant maintenu visible même si le mode de traitement est indisponible.
+- Cartes : démos, tests E2E, exemples et documentation alignés sur la configuration partagée `flowio/config` ; les anciens champs `entity_prefix`, `mqtt_topic`, `tank_slots` et `runtime_slots` sont rejetés et retirés des configurations livrées.
+- Cartes : bornes de jauge exposées correctement, libellés pH/ORP conservés pour l’accessibilité, configuration d’éditeur nettoyée avant réémission et `device_slot` configurable sans fuite des slots internes.
+- Carte Piscine : l’état réel de la pompe désinfectant reste visible même si le type de traitement est absent, indisponible ou désactivé ; sa commande reste bloquée tant que la cible ne peut pas être déterminée.
 - CI : tests Playwright et audit des dépendances de production ajoutés aux workflows de contrôle et de release.
 - Notifications : présentation plus aérée, avec une valeur par ligne, couleurs/icônes conservées et même récapitulatif dans les notifications persistantes.
 - Outillage : version racine du `package-lock.json` synchronisée avec `cards/package.json`.
+
+## 0.3.8 — 15/11/2026
+
+- Correction du blocage potentiel de la grille de tuiles, notamment dans la carte Modes.
+- Réinitialisation du chargement des tuiles après déconnexion et rejet des résultats de création obsolètes.
+- Synchronisation native des tuiles stabilisée, sans double montage ni réaffectation identique de `hass`.
 
 ## 0.3.7 — 15/11/2026
 
@@ -18,7 +25,7 @@ Les versions publiées depuis 0.3.0 comportent un tag et une release GitHub. Les
 - Cartes Lovelace intégrées au dépôt : le code source est dans `cards/`, copie du commit `9977463` du dépôt `christophebelmont/flowio-home-assistant-cards` (licence MIT). Ce dépôt d'origine n'est pas modifié.
 - Les cartes n'ont plus de version propre : `cards/package.json` est figé à `1.0.0` et le bundle est reconstruit à chaque release de l'intégration, avec la version de l'intégration.
 - Nettoyage de `cards/` (commit `91428a2`) : retrait de `hacs.json`, du changelog et des notes de release des cartes, de leurs workflows et consignes Copilot, de `docs/RELEASE.md`, `docs/HACS.md`, `docs/HACS-TROUBLESHOOTING.md`, de `scripts/` et des fichiers `.DS_Store`.
-- Workflow de release (`b8f226a`, `75145ce`, `4fd67dc`) : le build part de `cards/` et plus d'un dépôt externe (`CARDS_REPO` et `CARDS_REF` supprimés). Le workflow génère lui-même les mentions de licences des dépendances (`THIRD_PARTY_NOTICES.txt`) et les ajoute au bundle ; le script `prepare-release.mjs` et le script `release:prepare` sont supprimés. Le workflow n'a pas encore été exécuté ; le prochain tag le vérifiera.
+- Workflow de release (`b8f226a`, `75145ce`, `4fd67dc`) : le build part de `cards/` et plus d'un dépôt externe (`CARDS_REPO` et `CARDS_REF` supprimés). Le workflow génère lui-même les mentions de licences des dépendances (`THIRD_PARTY_NOTICES.txt`) et les ajoute au bundle ; le script `prepare-release.mjs` et le script `release:prepare` sont supprimés. Le workflow a ensuite produit avec succès les archives `v0.3.7` et `v0.3.8`.
 - Documentation : nouvel index `docs/CARTES.md`. README, README des cartes, CLAUDE.md, ARCHITECTURE et DECISIONS mis à jour. Le README ajoute le dépannage de l'erreur `value_json.tank.remaining_ml`.
 
 ## 0.3.6 — 14/11/2026
