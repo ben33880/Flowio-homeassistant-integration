@@ -58,6 +58,7 @@ export type DisplayConfig = {
 export interface PoolConfig {
   type: string;
   title: string;
+  device_slot?: number;
   grid_options?: Record<string, unknown>;
   display: DisplayConfig;
   tank_slots: TankSlots;
@@ -104,6 +105,11 @@ export function normalizeConfig(input: unknown): PoolConfig {
 
   const title = raw.title ?? 'Supervision';
   if (typeof title !== 'string' || !title.trim()) throw new Error('Titre invalide');
+  const deviceSlot = raw.device_slot;
+  if (deviceSlot !== undefined &&
+      (typeof deviceSlot !== 'number' || !Number.isInteger(deviceSlot) || deviceSlot < 0 || deviceSlot > 15)) {
+    throw new Error('Slot équipement attendu entre 0 et 15');
+  }
   const grid_options = raw.grid_options === undefined ? undefined : configObject(raw.grid_options);
   const d = raw.display === undefined ? {} : configObject(raw.display);
   for (const key of Object.keys(d)) {
@@ -138,12 +144,18 @@ export function normalizeConfig(input: unknown): PoolConfig {
   return {
     type: 'custom:flowio-pool-card',
     title,
+    ...(deviceSlot !== undefined ? { device_slot: deviceSlot } : {}),
     ...(grid_options ? { grid_options } : {}),
     display,
     tank_slots,
     runtime_slots: normalizeRuntimeSlots(undefined),
     visuals: normalizeVisuals(raw.visuals)
   };
+}
+
+export function editablePoolConfig(config: PoolConfig): Record<string, unknown> {
+  const { tank_slots: ignoredTanks, runtime_slots: ignoredRuntime, ...editable } = config;
+  return editable;
 }
 
 export function firmwareOperation(c: PoolConfig, operation: Operation, treatment?: Treatment): Operation {

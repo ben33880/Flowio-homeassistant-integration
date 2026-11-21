@@ -12,8 +12,7 @@ async function setup(page: Page, topic?: string) {
       return () => { w.maintenanceListeners.delete(command.topic); };
     } };
     d.config.display.operations = ['timed_override'];
-    if (topic) d.config.mqtt_topic = topic;
-    else delete d.config.mqtt_topic;
+    d.installation.mqtt_root = topic ?? '';
     Object.assign(d.hass.states, {
       'select.fio_pdm_ovr_target': { state: 'pd0', attributes: { options: ['pd0'] } },
       'number.fio_pdm_ovr_min': { state: '15', attributes: {} },
@@ -63,7 +62,7 @@ for (const width of [390, 1100]) test(`Maintenance : topic configuré, MQTT conf
 test('sans mqtt_topic les alarmes restent bloquées mais le forçage reste disponible', async ({ page }) => {
   const dialog = await setup(page);
   const alarm = dialog.locator('flowio-maintenance-alarms');
-  await expect(alarm).toContainText('Configurer mqtt_topic');
+  await expect(alarm).toContainText('Le topic MQTT n’est pas configuré');
   await expect(alarm.locator('[data-alarm-enabled]')).toHaveJSProperty('disabled', true);
   await expect(dialog.locator('[data-override=on]')).toHaveJSProperty('disabled', false);
   expect(await page.evaluate(() => (window as any).maintenanceListeners.size)).toBe(0);
@@ -76,31 +75,32 @@ test('changer ou retirer mqtt_topic ferme les anciennes souscriptions sans accep
   await page.evaluate(() => {
     const w = window as any, d = w.demo;
     w.oldMaintenanceListener = w.maintenanceListeners.get('pool/controller/cfg/alarms');
-    d.config.mqtt_topic = 'other/controller'; d.apply();
+    d.installation.mqtt_root = 'other/controller'; d.apply();
   });
   await expect(alarm.locator('[data-mqtt-topic]')).toHaveText('other/controller');
+  await page.locator('flowio-timing [data-open-maintenance]').click();
   await expect.poll(() => page.evaluate(() => [...(window as any).maintenanceListeners.keys()].sort())).toEqual(['other/controller/cfg/alarms', 'other/controller/status']);
   await page.evaluate(() => (window as any).oldMaintenanceListener({ topic: 'pool/controller/cfg/alarms', payload: '{"enabled":false}' }));
   await expect(alarm.locator('[data-alarm-enabled]')).toHaveJSProperty('checked', true);
-  await page.evaluate(() => { const d = (window as any).demo; delete d.config.mqtt_topic; d.apply(); });
-  await expect(alarm).toContainText('Configurer mqtt_topic');
+  await page.evaluate(() => { const d = (window as any).demo; d.installation.mqtt_root = ''; d.apply(); });
+  await expect(alarm).toContainText('Le topic MQTT n’est pas configuré');
   await expect(alarm.locator('[data-alarm-enabled]')).toHaveJSProperty('disabled', true);
   await expect.poll(() => page.evaluate(() => (window as any).maintenanceListeners.size)).toBe(0);
 });
 
-test('éditeur : mqtt_topic est enregistré dans config-changed', async ({ page }) => {
+test('éditeur : le préfixe et le topic viennent de l’intégration', async ({ page }) => {
   await setup(page, 'pool/controller');
   const result = await page.evaluate(async () => {
     const d = (window as any).demo, editor = document.createElement('flowio-pool-card-editor') as any;
     editor.setConfig(d.config); editor.hass = d.card.hass; document.body.append(editor);
     await editor.updateComplete;
     const form = editor.shadowRoot.querySelector('ha-form');
-    const hasField = form.schema.some((field: any) => field.name === 'mqtt_topic');
+    const removedFields = ['mqtt_topic', 'entity_prefix'].filter(field => form.schema.some((item: any) => item.name === field));
     let emitted: any;
     editor.addEventListener('config-changed', (event: any) => { emitted = event.detail.config; });
-    form.dispatchEvent(new CustomEvent('value-changed', { detail: { value: { ...d.config, mqtt_topic: 'other/controller' } }, bubbles: true, composed: true }));
+    form.dispatchEvent(new CustomEvent('value-changed', { detail: { value: d.config }, bubbles: true, composed: true }));
     editor.remove();
-    return { hasField, topic: emitted?.mqtt_topic, prefix: emitted?.entity_prefix };
+    return { removedFields, topic: emitted?.mqtt_topic, prefix: emitted?.entity_prefix };
   });
-  expect(result).toEqual({ hasField: true, topic: 'other/controller', prefix: 'fio' });
+  expect(result).toEqual({ removedFields: [], topic: undefined, prefix: undefined });
 });

@@ -40,7 +40,6 @@ Les cartes sont embarquées dans l'intégration Flow.io (HACS, catégorie Intég
 ```yaml
 type: custom:flowio-pool-card
 title: Supervision
-entity_prefix: fio
 grid_options:
   columns: full
 display:
@@ -55,20 +54,13 @@ display:
   calculated_values: [v00, v01]
   device_metrics: [water_in, water_out, current]
   information: [treatment_type, alarm_active, alarm_count, diagnostics, network, system]
-tank_slots:
-  ph: 1
-  disinfection: 2
-runtime_slots:
-  filtration: 0
-  ph: 1
-  disinfection: 2
 ```
 
 Toutes les options disponibles sont cochées par défaut dans les paramètres des deux cartes ; retirer celles qui ne sont pas utiles. La mesure dans « Qualité de l’eau » conserve le libellé ORP. Le traitement actif est déduit de l’entité firmware « Type de désinfection » ; le choix « Commande · type de désinfection » permet de le modifier. Le switch « Pompe désinfectant » pilote l’électrolyseur en mode électrolyse, ou la pompe désinfectant pour le chlore/brome et l’oxygène actif. En mode inconnu ou désactivé, les commandes dépendantes du traitement sont indisponibles. Le switch autonome de l’électrolyseur n’est plus affiché. Une liste vide masque le groupe. Les modes sont filtrés selon les équipements cochés et le mode firmware actif, sans effacer la sélection `display.modes`. « Valeurs et télémétrie » est contrôlable avec `display.values_telemetry`, occupe toute la largeur, s’aligne à gauche avec « Qualité de l’eau » et apparaît après les horaires.
 
 Dans une vue Sections, `grid_options: { columns: full }` fait occuper à la carte toute la largeur de sa section par défaut lors de son ajout.
 
-Le préfixe vaut `fio` par défaut : `piscine` construit `sensor.piscine_io_ph`. Un préfixe vide est accepté. Les noms métier du firmware sont conservés ; aucun choix automatique d'une entité suffixée `_2`.
+Le préfixe, la racine MQTT et les slots proviennent de la configuration de l’intégration Flow.io via `flowio/config`. Les noms métier du firmware sont conservés ; aucun choix automatique d'une entité suffixée `_2`.
 
 Les anciens champs `entities`, `features`, `show_tanks`, `treatment` et `measurements` au premier niveau de la synthèse sont rejetés. Recréer les anciennes configurations avec `display`. Pour les historiques, `measurements` reste au premier niveau.
 
@@ -81,7 +73,6 @@ Pour compatibilité, l’ancien champ `display.treatment` n’empêche pas le ch
 ```yaml
 type: custom:flowio-header-card
 title: État du bassin
-entity_prefix: fio
 design: standard
 measurements: [water_temperature, orp, air_temperature]
 status: true
@@ -98,7 +89,6 @@ Le statut vient des alarmes firmware (`sensor.<préfixe>_alm_active_count` et `b
 ```yaml
 type: custom:flowio-filtration-card
 title: Filtration
-entity_prefix: fio
 ```
 
 La carte affiche la plage de filtration calculée par Flow.io depuis `sensor.<préfixe>_pl_flt_start` et `sensor.<préfixe>_pl_flt_stop` : frise sur 24 h, repère de l’heure courante, début, fin et durée prévue. C’est une fenêtre prévue, distincte des compteurs journaliers. `title` et `description` sont personnalisables.
@@ -109,7 +99,6 @@ La carte affiche la plage de filtration calculée par Flow.io depuis `sensor.<pr
 
 ```yaml
 type: custom:flowio-treatment-card
-entity_prefix: fio
 ```
 
 La carte lit le type de traitement depuis `select.<préfixe>_pl_modes_dis` et affiche uniquement les informations du traitement actif ; elle ne permet pas de le modifier. Chlore/Brome : `switch.<préfixe>_pl_dis_auto`, `number.<préfixe>_pl_dis_setpoint`, `number.<préfixe>_pl_dis_window`. Électrolyse : `select.<préfixe>_pl_swg_ctrl`, `number.<préfixe>_pl_swg_dly_elec`, `number.<préfixe>_pl_swg_min_temp`. Oxygène actif : `number.<préfixe>_pl_o2_vol`, `number.<préfixe>_pl_o2_dose`, `number.<préfixe>_pl_o2_split`, `sensor.<préfixe>_pl_o2_pending`. Une entité absente est signalée explicitement, jamais remplacée par zéro.
@@ -121,7 +110,6 @@ La carte lit le type de traitement depuis `select.<préfixe>_pl_modes_dis` et af
 ```yaml
 type: custom:flowio-equipment-card
 title: Équipements
-entity_prefix: fio
 columns: 2
 entities: [switch.fio_io_flt_pmp, switch.fio_io_ph_pmp, switch.fio_io_chl_pmp]
 ```
@@ -135,7 +123,6 @@ Carte encadrée contenant une grille de tuiles standard Home Assistant. Le nom, 
 ```yaml
 type: custom:flowio-modes-card
 title: Modes
-entity_prefix: fio
 columns: 2
 entities: [switch.fio_pl_modes_auto, switch.fio_pl_modes_winter, switch.fio_pl_ph_auto_mode]
 ```
@@ -149,7 +136,6 @@ Même modèle que la carte Équipements : grille de tuiles standard, nom, colonn
 ```yaml
 type: custom:flowio-probes-card
 title: Sondes
-entity_prefix: fio
 columns: 2
 entities: [sensor.fio_io_wat_tmp, sensor.fio_io_orp]
 name_prefix: ''
@@ -166,7 +152,6 @@ items:
 
 ```yaml
 type: custom:flowio-probe-card
-entity_prefix: fio
 entity: sensor.fio_io_ph
 name_prefix: ''
 item:
@@ -184,7 +169,6 @@ Même modèle que la carte Sondes, pour une seule entité. Le titre de la carte 
 ```yaml
 type: custom:flowio-alarms-card
 title: Alarmes
-entity_prefix: fio
 ```
 
 Synthèse des alarmes surveillées (`binary_sensor.<préfixe>_alm_*_active`) : nombre total et état, puis liste des alarmes actives. `name_prefix` retire un texte devant les noms (vide = détection automatique). Aucune alarme n’est acquittée par cette carte.
@@ -196,7 +180,6 @@ Synthèse des alarmes surveillées (`binary_sensor.<préfixe>_alm_*_active`) : n
 ```yaml
 type: custom:flowio-status-card
 title: État système
-entity_prefix: fio
 items: [wifi_ip, sys_hp_free, sys_upt_mn]
 ```
 
@@ -209,7 +192,6 @@ Informations réseau et système du contrôleur : adresse IP/MAC, signal Wi-Fi, 
 ```yaml
 type: custom:flowio-override-card
 title: Forçage temporaire
-entity_prefix: fio
 device: Filtration
 durations: [5, 15, 30, 60]
 ```
@@ -225,7 +207,6 @@ Force l’équipement choisi en marche ou à l’arrêt pendant une durée séle
 ```yaml
 type: custom:flowio-graph-card
 title: Température de l’eau
-entity_prefix: fio
 entities: [sensor.fio_io_wat_tmp]
 hours_to_show: 12
 chart_type: line
@@ -241,7 +222,6 @@ Un seul graphique ApexCharts, en courbe (`line`) ou en barres (`bar`). `entities
 
 ```yaml
 type: custom:flowio-history-card
-entity_prefix: fio
 hours_to_show: 24
 measurements: [water_temperature, ph, orp, pressure]
 calculated_values: [v00, v01]
@@ -254,7 +234,6 @@ Le Recorder doit fournir les historiques des entités choisies. Les valeurs calc
 ```yaml
 type: custom:flowio-state-history-card
 title: Historique
-entity_prefix: fio
 name_prefix: Flow.io Waveshare
 entities:
   - switch.fio_io_flt_pmp
@@ -272,7 +251,6 @@ Une frise par entité couvre les 24 heures de la journée en cours : la piste re
 type: custom:flowio-actuator-card
 title: Équipements du bassin
 subtitle: Contrôle et suivi de consommation
-entity_prefix: fio
 entities:
   - switch.fio_io_flt_pmp
   - switch.fio_io_ph_pmp
@@ -284,7 +262,7 @@ resets:
   switch.fio_io_robot: button.fio_pd_reset_upt_robot
 ```
 
-Tableau des actionneurs sans interrupteur : nom, icône et durées de fonctionnement **jour / semaine / mois / total**, lues dans les attributs de chaque entité de commutation (`uptime_day_s`, `uptime_week_s`, `uptime_month_s`, `uptime_total_s` — en secondes — par défaut, modifiables via `runtime_keys`). L'icône prend la couleur d'activation quand l'actionneur est en marche (`on`), sinon elle reste neutre. Les durées nulles sont grisées. Un bouton ↺ en fin de ligne remet à zéro les compteurs de l'actionneur (`button.<préfixe>_pd_reset_upt_*`), et « Tout remettre à zéro » cible `button.<préfixe>_pd_reset_upt_all`. Le mapping rôle → remise à zéro couvre filtration, pompe pH, désinfection, électrolyseur et remplissage ; les autres actionneurs se règlent via `resets[<entité>]`. Les commandes demandent confirmation. L'éditeur permet de choisir le titre, le sous-titre, le préfixe, le texte à retirer devant les noms et la liste des actionneurs, et l'ordre se règle par glisser-déposer.
+Tableau des actionneurs sans interrupteur : nom, icône et durées de fonctionnement **jour / semaine / mois / total**, lues dans les attributs de chaque entité de commutation (`uptime_day_s`, `uptime_week_s`, `uptime_month_s`, `uptime_total_s` — en secondes — par défaut, modifiables via `runtime_keys`). L'icône prend la couleur d'activation quand l'actionneur est en marche (`on`), sinon elle reste neutre. Les durées nulles sont grisées. Un bouton ↺ en fin de ligne remet à zéro les compteurs de l'actionneur (`button.<préfixe>_pd_reset_upt_*`), et « Tout remettre à zéro » cible `button.<préfixe>_pd_reset_upt_all`. Le mapping rôle → remise à zéro couvre filtration, pompe pH, désinfection, électrolyseur et remplissage ; les autres actionneurs se règlent via `resets[<entité>]`. Les commandes demandent confirmation. L'éditeur permet de choisir le titre, le sous-titre, le texte à retirer devant les noms et la liste des actionneurs, et l'ordre se règle par glisser-déposer. Le préfixe vient de l'intégration.
 
 ## Gestion des alarmes
 
@@ -293,7 +271,6 @@ Tableau des actionneurs sans interrupteur : nom, icône et durées de fonctionne
 ```yaml
 type: custom:flowio-alarm-detail-card
 title: Gestion des alarmes
-entity_prefix: fio
 alarms:
   - binary_sensor.fio_alm_1_active
   - binary_sensor.fio_alm_2_active

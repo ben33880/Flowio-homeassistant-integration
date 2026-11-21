@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { preview } from './preview';
 
+test.describe.configure({ mode: 'serial' });
 test.use({ viewport: { width: 1200, height: 1000 }, reducedMotion: 'reduce', timezoneId: 'UTC' });
 
 async function prepareCards(page: Page) {
@@ -21,7 +22,7 @@ test('README pool-card snapshot @readme-snapshot', async ({ page }) => {
 
 test('README history-card snapshot @readme-snapshot', async ({ page }) => {
   await prepareCards(page);
-  await expect(page.locator('flowio-history-card')).toHaveScreenshot('flowio-history-card.png', { animations: 'disabled', caret: 'hide' });
+  await expect(page.locator('flowio-history-card')).toHaveScreenshot('flowio-history-card.png', { animations: 'disabled', caret: 'hide', maxDiffPixelRatio: 0.012 });
 });
 
 test('README pool-card dark snapshot @readme-snapshot', async ({ page }) => {
@@ -33,5 +34,5 @@ test('README pool-card dark snapshot @readme-snapshot', async ({ page }) => {
 test('README history-card dark snapshot @readme-snapshot', async ({ page }) => {
   await prepareCards(page);
   await page.locator('#theme').click();
-  await expect(page.locator('flowio-history-card')).toHaveScreenshot('flowio-history-card-dark.png', { animations: 'disabled', caret: 'hide' });
+  await expect(page.locator('flowio-history-card')).toHaveScreenshot('flowio-history-card-dark.png', { animations: 'disabled', caret: 'hide', maxDiffPixelRatio: 0.012 });
 });

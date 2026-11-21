@@ -41,7 +41,7 @@ test('carte historique des états : ordre et texte retiré devant les noms', asy
   await expect(card.locator('.board')).toBeVisible();
   await page.evaluate(() => {
     const el = document.querySelector('flowio-state-history-card') as any;
-    el.setConfig({ entity_prefix: 'fio', name_prefix: 'Flow.io Waveshare ', entities: ['switch.fio_io_lights', 'switch.fio_io_flt_pmp'] });
+    el.setConfig({ name_prefix: 'Flow.io Waveshare ', entities: ['switch.fio_io_lights', 'switch.fio_io_flt_pmp'] });
   });
   await expect(card.locator('.row-name')).toHaveCount(2);
   await expect(card.locator('.row-name').nth(0)).toHaveText('Éclairage');
@@ -55,7 +55,7 @@ test('carte historique des états : nom et couleur d’activation par entité', 
   await expect(card.locator('.board')).toBeVisible();
   await page.evaluate(() => {
     const el = document.querySelector('flowio-state-history-card') as any;
-    el.setConfig({ entity_prefix: 'fio', entities: ['switch.fio_io_flt_pmp', 'switch.fio_io_lights'], items: { 'switch.fio_io_lights': { name: 'Éclairage jardin', color: '#ff00aa' } } });
+    el.setConfig({ entities: ['switch.fio_io_flt_pmp', 'switch.fio_io_lights'], items: { 'switch.fio_io_lights': { name: 'Éclairage jardin', color: '#ff00aa' } } });
   });
   await expect(card.locator('.row-name')).toHaveCount(2);
   await expect(card.locator('.row-name').nth(0)).toHaveText('Filtration');

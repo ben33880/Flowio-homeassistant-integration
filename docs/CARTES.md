@@ -17,7 +17,7 @@ Au tag `vX.Y.Z`, le workflow `.github/workflows/release.yml` :
 
 L'intégration enregistre ce fichier JavaScript automatiquement. Il ne faut donc pas ajouter en plus les cartes comme ressource Dashboard ou comme dépôt HACS séparé. Le bundle n'est pas dans le dépôt : `cards/dist/` est généré à la release.
 
-Les tests des cartes (`npm test`) ne tournent qu'à la release : il n'y a plus de workflow de tests au push.
+Les tests des cartes (`npm run check`, `npm test`, 139 tests Playwright), ainsi que l'audit des dépendances de production, tournent sur chaque push vers `main`/`config-unifiee`, sur les pull requests et manuellement via `.github/workflows/cards-tests.yml`. Le workflow de release relance ces validations avant le build.
 
 ## Documents des cartes
 
@@ -25,12 +25,12 @@ Les tests des cartes (`npm test`) ne tournent qu'à la release : il n'y a plus d
 |---|---|
 | [cards/README.md](../cards/README.md) | Catalogue des cartes (`custom:flowio-*`), exemples YAML, commandes et limites, développement. |
 | [cards/docs/CHEMISTRY.md](../cards/docs/CHEMISTRY.md) | Valeurs de référence du pH et cible ORP, reprises par l'intégration pour ses seuils par défaut. |
-| [cards/docs/DESIGN.md](../cards/docs/DESIGN.md) | Conception visuelle. Contenu non relu par l'assistant. |
-| [cards/docs/DEVELOPMENT.md](../cards/docs/DEVELOPMENT.md) | Développement des cartes. Contenu non relu par l'assistant ; il peut encore parler de versions ou de release séparées. |
-| [cards/docs/DISPLAY.md](../cards/docs/DISPLAY.md) | Affichage. Contenu non relu par l'assistant. |
-| [cards/docs/INJECTIONS.md](../cards/docs/INJECTIONS.md) | Injections. Contenu non relu par l'assistant. |
-| [cards/docs/MAINTENANCE.md](../cards/docs/MAINTENANCE.md) | Maintenance. Contenu non relu par l'assistant. |
-| [cards/docs/TIMING.md](../cards/docs/TIMING.md) | Horaires et durees. Contenu non relu par l'assistant. |
+| [cards/docs/DESIGN.md](../cards/docs/DESIGN.md) | Conception visuelle et règles d’échelle. |
+| [cards/docs/DEVELOPMENT.md](../cards/docs/DEVELOPMENT.md) | Développement, validation et intégration du bundle. |
+| [cards/docs/DISPLAY.md](../cards/docs/DISPLAY.md) | Options d’affichage et configuration partagée. |
+| [cards/docs/INJECTIONS.md](../cards/docs/INJECTIONS.md) | Estimation des volumes injectés. |
+| [cards/docs/MAINTENANCE.md](../cards/docs/MAINTENANCE.md) | Dialogue de maintenance et pilotage des alarmes. |
+| [cards/docs/TIMING.md](../cards/docs/TIMING.md) | Horaires et durées de fonctionnement. |
 | [cards/examples/](../cards/examples/) | Exemples de tableaux de bord (`dashboard-chlorine.yaml`, `pool.yaml`). |
 
 Les captures d'écran des cartes sont dans `cards/docs/*.png`.

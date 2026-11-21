@@ -2,7 +2,15 @@
 
 Les versions antérieures sont dans l'historique Git. Dates au format JJ/MM/AAAA.
 
-Les tags `v0.3.0` et `v0.3.4` ont été créés par le propriétaire. Les versions 0.3.1, 0.3.2, 0.3.3, 0.3.5, 0.3.6 et 0.3.7 n'ont pas de tag à la date du 15/11/2026.
+Les versions publiées depuis 0.3.0 comportent un tag et une release GitHub. Les tags `v0.3.7` et `v0.3.8` ont eux aussi produit un `flowio.zip` depuis le workflow de release intégré.
+
+## Non publié
+
+- Cartes : démos, tests E2E, exemples et documentation alignés sur la configuration partagée `flowio/config` ; les anciens champs `entity_prefix`, `mqtt_topic`, `tank_slots` et `runtime_slots` ne figurent plus dans les configurations livrées.
+- Cartes : bornes de jauge exposées correctement, libellés pH/ORP conservés pour l’accessibilité et état réel de la pompe désinfectant maintenu visible même si le mode de traitement est indisponible.
+- CI : tests Playwright et audit des dépendances de production ajoutés aux workflows de contrôle et de release.
+- Notifications : présentation plus aérée, avec une valeur par ligne, couleurs/icônes conservées et même récapitulatif dans les notifications persistantes.
+- Outillage : version racine du `package-lock.json` synchronisée avec `cards/package.json`.
 
 ## 0.3.7 — 15/11/2026
 

@@ -1,6 +1,6 @@
 # Volumes injectés estimés et températures compactes
 
-Les deux indicateurs sont dans Mesures > Qualité de l’eau, sous les jauges. Ils sont indépendants des mesures physiques et désactivés par défaut pour ne pas réactiver un groupe sur les cartes existantes. Les cocher dans l’éditeur, groupe Volumes injectés, ou ajouter à display :
+Les deux indicateurs sont dans Mesures > Qualité de l’eau, sous les jauges. Ils sont indépendants des mesures physiques et sélectionnés par défaut comme les autres groupes. Pour les choisir explicitement, utiliser l’éditeur, groupe Volumes injectés, ou ajouter à display :
 
 ```yaml
 injections: [ph_injected, disinfection_injected]
@@ -17,7 +17,7 @@ Sources par défaut avec le préfixe fio :
 
 Le catalogue actuel du firmware utilise data_(144 + slot) pour les temps de marche journaliers. Le nom pd_chl_pmp_upt donné dans l’exemple d’un ancien tableau n’est pas utilisé comme alias automatique.
 
-runtime_slots.ph et runtime_slots.disinfection choisissent les compteurs physiques, par défaut 1 et 2. Les entités pd1_flow et pd2_flow sont des identités métier stables : PoolRoleHaDiscovery.h les relie aux affectations effectives des pompes au démarrage du firmware. Ne pas remplacer ces noms par le numéro du slot de compteur. Vérifier que les slots choisis correspondent à l’installation et que leurs compteurs sont publiés dans Home Assistant.
+Les slots des compteurs viennent de l’intégration Flow.io (`ph_slot` et `disinfection_slot`). Les entités pd1_flow et pd2_flow sont des identités métier stables : PoolRoleHaDiscovery.h les relie aux affectations effectives des pompes au démarrage du firmware. Ne pas remplacer ces noms par le numéro du slot de compteur. Vérifier que les slots configurés correspondent à l’installation et que leurs compteurs sont publiés dans Home Assistant.
 
 Une source manquante, non numérique, négative ou avec une unité incompatible affiche Indisponible, pas 0 mL. Un compteur réellement nul reste 0 mL. Le clic ouvre les informations du compteur, ou du débit si seul ce dernier existe.
 

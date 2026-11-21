@@ -1,6 +1,6 @@
 # Choix d'affichage explicites
 
-La carte principale utilise entity_prefix et display. L'utilisateur sélectionne ses mesures, consignes, équipements, valeurs de cuve et informations ; le mode firmware actif détermine les modes et commandes adaptés au traitement.
+La carte principale utilise `display`. Le préfixe, la racine MQTT et les slots viennent de la configuration partagée de l’intégration. L'utilisateur sélectionne ses mesures, consignes, équipements, valeurs de cuve et informations ; le mode firmware actif détermine les modes et commandes adaptés au traitement.
 
 Le titre d'entête vient du champ `title`, utilisé tel quel ; sa valeur par défaut est `Supervision`. Par défaut, toutes les options de chaque groupe sont cochées dans les paramètres, y compris les actions. Retirer les choix qui ne sont pas utiles à l'installation. La carte d'historiques sélectionne également toutes les mesures et valeurs calculées par défaut.
 
@@ -26,7 +26,7 @@ Sélectionner seulement ph_tank_percent affiche le pourcentage pH et sa jauge, s
 
 Changer les listes ne modifie aucun mode firmware. L’entité du sélecteur détermine si le switch « Pompe désinfectant » commande `switch.<préfixe>_io_chl_gen` (Électrolyseur) ou `switch.<préfixe>_io_chl_pmp` (pompe désinfectant). Le switch exige la sélection de l’équipement et un état on/off disponible, puis la commande est validée par HA et Flow.io. Les démarrages sensibles demandent confirmation. Masquer un équipement ne désactive pas sa surveillance ou ses automatismes dans le contrôleur.
 
-Les litres et pourcentages utilisent les slots configurés dans tank_slots, sans calcul local de consommation ni de capacité. Vérifier les slots et la diffusion HA des quatre métriques si vous les sélectionnez.
+Les litres et pourcentages utilisent les slots fournis par l’intégration, sans calcul local de consommation ni de capacité. Vérifier la configuration des slots et la diffusion HA des quatre métriques si vous les sélectionnez.
 
 ## Entités firmware complémentaires
 
@@ -42,6 +42,6 @@ Les métriques équipement utilisent `sensor.<préfixe>_data_<176 + 32 × device
 
 ## Rupture de configuration
 
-Ne pas conserver les anciens blocs entities, features, treatment, show_tanks ou measurements au premier niveau de la synthèse. Le modèle les rejette explicitement ; aucune compatibilité n'est fournie. Le format des historiques reste distinct, avec entity_prefix et measurements au premier niveau.
+Ne pas conserver les anciens blocs `entities`, `features`, `treatment`, `show_tanks`, `measurements`, `entity_prefix`, `mqtt_topic`, `tank_slots` ou `runtime_slots` au premier niveau de la synthèse. Le modèle les rejette explicitement. Le format des historiques reste distinct, avec `measurements` et `calculated_values` au premier niveau, mais sans préfixe local.
 
 Les tests sont réécrits pour l'indépendance du traitement, la sélection séparée de chaque valeur, les états absents et indisponibles, les confirmations et le préfixe. La réussite de la nouvelle CI et le rendu dans votre instance restent à vérifier.

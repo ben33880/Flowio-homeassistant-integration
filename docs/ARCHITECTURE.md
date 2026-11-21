@@ -26,7 +26,7 @@ Résumé du code dans `custom_components/flowio/`. En cas de doute, relire le fi
 - `cards/` contient le code source des cartes Lovelace (TypeScript, Lit, ApexCharts) : `src/`, `tests/`, `e2e/`, `demo/`, `examples/`, `docs/` (captures et fiches de fonctionnement), `package.json`, `package-lock.json`, `LICENSE`. C'est une copie du commit `9977463` du dépôt d'origine, nettoyée : pas de `hacs.json`, de changelog, de notes de release, de CI ni de script de release.
 - Les cartes n'ont pas de version propre. `cards/package.json` est figé à `1.0.0`. Le bundle `flowio-home-assistant-cards.js` n'est pas dans le dépôt : il est construit à la release et porte la version de l'intégration.
 - Le workflow `.github/workflows/release.yml` fait tout : `npm ci`, `npm test`, `npm run build` dans `cards/` ; génération de `dist/THIRD_PARTY_NOTICES.txt` à partir de `npm ls --omit=dev --all --parseable` (une licence par paquet, erreur sinon) ; ajout de la licence, des mentions et du commit en pied du bundle ; copie du bundle et des mentions dans `custom_components/flowio/frontend/`. `__init__.py` enregistre le bundle.
-- Les cartes lisent les attributs `min` et `max` des entités pour l'échelle des sondes (`attributeScale` dans `gauge-model.ts`) ; ces attributs viennent de la plage d'affichage du firmware. La carte piscine a des échelles par défaut réglables avec `visuals`.
+- Les cartes lisent les attributs `min` et `max` des entités pour leurs échelles (`attributeScale` dans `gauge-model.ts`) ; ces attributs viennent de la plage d'affichage du firmware. `visuals` ne règle que le type d'affichage : sans bornes firmware, une jauge signale explicitement l'échelle indisponible.
 - Documentation : [CARTES.md](CARTES.md).
 
 ## Entités du firmware lues

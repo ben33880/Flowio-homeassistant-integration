@@ -1,18 +1,16 @@
 # Menu Maintenance
 
-Branche : `feature/maintenance-menu`.
+## Configuration partagée
 
-## Configuration permanente
-
-Le topic est un paramètre de la carte au même niveau que le préfixe HA. Exemple fictif à adapter au contrôleur :
+Le préfixe Home Assistant et la racine MQTT viennent de l’intégration Flow.io. La carte conserve uniquement son contenu affiché :
 
 ```yaml
 type: custom:flowio-pool-card
-entity_prefix: fio
-mqtt_topic: flowio/ESP32-XXXXXX
+display:
+  operations: [timed_override]
 ```
 
-`entity_prefix` identifie les entités Home Assistant ; `mqtt_topic` est la racine MQTT complète `<baseTopic>/<deviceId>`, sans `/cfg/set`. Ces valeurs sont indépendantes. Le champ Topic racine MQTT est disponible dans l’éditeur visuel et enregistré dans le YAML. Aucun topic n’est inventé ni détecté automatiquement. Les espaces extérieurs et slashs finaux sont retirés ; les jokers et segments vides sont refusés. Une valeur absente ou vide conserve la compatibilité des cartes existantes.
+La commande WebSocket `flowio/config` transmet notamment `prefix` et `mqtt_root`. Cette dernière est la racine complète `<baseTopic>/<deviceId>`, sans `/cfg/set`, configurée dans l’intégration. Aucun topic n’est inventé ni enregistré localement par la carte.
 
 ## Interface
 
@@ -20,7 +18,7 @@ Le bouton Maintenance remplace Forçage temporaire dans Filtration sous Horaires
 
 À l’ouverture, la section Alarmes lit automatiquement l’état via le topic configuré et l’affiche en lecture seule. Il n’y a plus de saisie locale du topic. Relire l’état MQTT permet une nouvelle tentative après erreur. Les souscriptions ne sont ouvertes que pendant le dialogue et sont retirées à sa fermeture, au changement de topic, de préfixe HA ou de connexion. Les callbacks d’une ancienne cible sont ignorés.
 
-Si `mqtt_topic` manque, seul le pilotage des alarmes reste indisponible avec un message invitant à configurer la carte ; le forçage reste utilisable.
+Si la racine MQTT manque dans l’intégration, seul le pilotage des alarmes reste indisponible ; le forçage reste utilisable.
 
 ## Commandes et limites
 
@@ -32,14 +30,14 @@ La fermeture du dialogue n’annule pas une commande déjà transmise. Désactiv
 
 Référence firmware : `christophebelmont/Flow.io-Waveshare`, `docs/core/mqtt-topics.md`, `docs/modules/AlarmModule.md` et `src/Modules/AlarmModule/AlarmModule.cpp`.
 
-- Lecture : `<mqtt_topic>/cfg/alarms` (`enabled`) et `<mqtt_topic>/status` (`online`).
-- Commande : `<mqtt_topic>/cfg/set`, patch `{"alarms":{"enabled":false}}` ou `true`, via `mqtt.publish`, QoS 1 et `retain: false`.
+- Lecture : `<mqtt_root>/cfg/alarms` (`enabled`) et `<mqtt_root>/status` (`online`).
+- Commande : `<mqtt_root>/cfg/set`, patch `{"alarms":{"enabled":false}}` ou `true`, via `mqtt.publish`, QoS 1 et `retain: false`.
 - Sans confirmation, l’état est invalidé et doit être relu avant une nouvelle commande.
 
 L’API WebSocket Home Assistant `mqtt/subscribe` consultée exige un compte administrateur. L’intégration MQTT et les droits de publication doivent être disponibles.
 
 ## Validation
 
-Les tests unitaires couvrent la configuration persistante et le protocole. Les scénarios `e2e/maintenance.spec.ts` couvrent la popup à 390 et 1100 px, les confirmations, l’absence du paramètre, son changement et sa suppression, l’éditeur et le nettoyage des souscriptions. Les tests utilisent des simulations et ne commandent aucun matériel réel ; ils ne sont pas annoncés comme exécutés.
+Les tests unitaires couvrent la configuration partagée et le protocole. Les scénarios `e2e/maintenance.spec.ts` couvrent la popup à 390 et 1100 px, les confirmations, l’absence de racine MQTT, son changement et sa suppression, l’éditeur et le nettoyage des souscriptions. Les tests utilisent des simulations et ne commandent aucun matériel réel.
 
-Exécuter `npm run check`, `npm test`, `npx playwright test e2e/maintenance.spec.ts`, puis la suite navigateur complète avant fusion. Vérifier ensuite dans Home Assistant réel. Aucun tag ou artefact de release n’est créé par cette modification.
+Exécuter `npm run check`, `npm test`, `npx playwright test e2e/maintenance.spec.ts`, puis la suite navigateur complète avant fusion. Vérifier ensuite dans Home Assistant réel.
