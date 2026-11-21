@@ -4,6 +4,7 @@ Mémoire du projet pour tout assistant qui reprend le travail. Les détails sont
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) : fichiers, entités lues, topics MQTT, formules, notifications, cartes.
 - [docs/DECISIONS.md](docs/DECISIONS.md) : choix validés par le propriétaire et choix refusés. Ne pas les remettre en cause sans demande.
+- Fonctionnalités à faire (tendance pH/ORP, dosage anormal, filtration non démarrée) et idées à prévoir : section « À faire » de [docs/DECISIONS.md](docs/DECISIONS.md).
 - [docs/CARTES.md](docs/CARTES.md) : index de la documentation des cartes (fichiers dans `cards/`).
 - [CHANGELOG.md](CHANGELOG.md) : historique des changements.
 
@@ -37,7 +38,7 @@ Intégration Home Assistant (HACS) pour le contrôleur de piscine Flow.io (firmw
 
 ## État au 21/11/2026
 
-- Version publiée : 0.4.1, tag `v0.4.1` sur `aea68c6`. La version 0.4.2 est préparée dans le code, sans tag tant que le propriétaire ne l'a pas créé.
+- Dernier tag : `v0.4.2` (état de publication de la release non vérifié). La version 0.5.0 est préparée dans le code (manifest, CHANGELOG), sans tag tant que le propriétaire ne l'a pas créé. Elle ajoute les alertes « Filtration non démarrée » et « Dosage anormal » (pH, désinfectant) et les capteurs de tendance pH/ORP, testés seulement dans un Home Assistant de test (2025.1.4), pas sur les appareils du propriétaire.
 - Le propriétaire a indiqué le 14/11/2026 que tout fonctionnait avec la 0.3.6, sans détail par appareil. L'assistant n'a jamais exécuté l'intégration dans un vrai Home Assistant.
 - Configuration unifiée fusionnée dans `main` : 12 composants récupèrent leur préfixe d'entité depuis `flowio/config` au lieu d'un `entity_prefix` local : Filtration, Traitement, Équipements/Modes, Équipements du bassin, Alarmes, Gestion des alarmes, Panneau firmware, Sondes, Sonde individuelle, État système, Forçage et Graphique. Les anciennes configurations avec `entity_prefix`, `mqtt_topic`, `tank_slots` ou `runtime_slots` sont rejetées.
 - Cartes intégrées : `cards/` est une copie, faite par le propriétaire, du commit `9977463e00e550703907d3ce7c8a380fcea31ad8` du dépôt des cartes (MIT). Le propriétaire l'a ensuite nettoyée (commit `91428a2`) : plus de `hacs.json`, de `CHANGELOG.md`, de `.github/`, de `scripts/`, de `docs/releases/`, de `docs/RELEASE.md`, `docs/HACS.md`, `docs/HACS-TROUBLESHOOTING.md` ni de `.DS_Store`. Restés : `src`, `tests`, `e2e`, `demo`, `examples`, `docs` (captures et fiches de fonctionnement), `package.json`, `package-lock.json`, `LICENSE`.
@@ -53,4 +54,4 @@ Intégration Home Assistant (HACS) pour le contrôleur de piscine Flow.io (firmw
 - Dossier `custom_components/flowio/brand/` déposé par le propriétaire : `icon.png`, `icon@2x.png`, `logo.png`, `logo@2x.png`. Les fichiers `dark_icon*.png` ne sont pas déposés : facultatifs.
 - La nouvelle carte Tableau de bord (`custom:flowio-pool-dashboard-card`) est compacte : qualité à gauche, équipements et traitement à droite aux largeurs intermédiaires ; modes et horaires sont repliés par défaut ; « Valeurs et télémétrie » est masquée par défaut mais reste disponible dans l’éditeur. Mesurée à 767 px dans la démo locale, sans test dans un vrai Home Assistant.
 - Les notifications persistantes reprennent aussi lorsqu’un équipement revient de `unavailable` à `on`, en plus de la reprise au rechargement/redémarrage de l’intégration.
-- Le README, le CHANGELOG, `strings.json` et les traductions couvrent la release publiée 0.4.1 et la préparation 0.4.2.
+- Le README, le CHANGELOG, `strings.json` et les traductions couvrent la préparation 0.5.0.

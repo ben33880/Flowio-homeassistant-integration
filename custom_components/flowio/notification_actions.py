@@ -1,7 +1,7 @@
 from homeassistant.core import callback
 from homeassistant.exceptions import HomeAssistantError
 
-from .const import ALERTS, DOMAIN
+from .const import ALERTS, DOMAIN, DOSING_ALERTS
 from .quality import as_float
 from .runtime import REFILL_ALERTS, FlowioRuntime
 from .localization import alert_name, localize
@@ -9,7 +9,7 @@ from .localization import alert_name, localize
 EVENT = "mobile_app_notification_action"
 SNOOZE_HOURS = 24
 
-_NAMES = {a.key: a.name for a in ALERTS}
+_NAMES = {a.key: a.name for a in [*ALERTS, *DOSING_ALERTS]}
 _TANK_SOURCES = {"ph": "sensor.{p}_data_{ph_pct}", "disinfection": "sensor.{p}_data_{dis_pct}"}
 
 

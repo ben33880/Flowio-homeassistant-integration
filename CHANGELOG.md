@@ -4,6 +4,12 @@ Les versions antérieures sont dans l'historique Git. Dates au format JJ/MM/AAAA
 
 Les versions publiées depuis 0.3.0 comportent un tag et une release GitHub. Les tags `v0.3.7` et `v0.3.8` ont eux aussi produit un `flowio.zip` depuis le workflow de release intégré.
 
+## 0.5.0 — 21/11/2026
+
+- Nouvelle alerte « Filtration non démarrée » : prévient quand la filtration reste arrêtée alors que la plage prévue par le firmware est en cours. Délai réglable (15 min par défaut) par une nouvelle entité `number`.
+- Nouvelles alertes « Dosage pH anormal » et « Dosage désinfectant anormal » : le volume injecté du jour dépasse un facteur (2 par défaut, réglable) de la moyenne des jours précédents, après 3 jours observés. Détecte une fuite, un siphonnage ou une sonde défaillante sans limite côté firmware.
+- Nouveaux capteurs « Tendance pH (24 h) » et « Tendance ORP (24 h) » : dérive sur 24 h, dérive sur 7 jours et stabilité en attributs, calculées sur les mesures filtration en marche.
+
 ## 0.4.2 — 21/11/2026
 
 - Notifications persistantes : après un redémarrage de Home Assistant pendant la marche, le suivi de filtration reprend dès que l’interrupteur repasse de indisponible à en marche (auparavant ce retour était ignoré, la carte n’apparaissait qu’au cycle suivant).

@@ -10,8 +10,8 @@ Résumé du code dans `custom_components/flowio/`. En cas de doute, relire le fi
 | `const.py` | Clés de configuration, seuils par défaut (`THRESHOLDS`), définition des alertes (`ALERTS`). |
 | `config_flow.py` | Formulaire d'ajout et d'options, sélecteur d'appareils mobiles, normalisation et validation du préfixe et de la racine MQTT, liste des équipements à notifier, options de notification. |
 | `runtime.py` | Objet par installation : configuration fusionnée, résolution des noms d'entités, résolution des téléphones, report d'alertes, envoi de notifications par plateforme, récapitulatif, plage de filtration, suivi en direct. |
-| `sensor.py` | Qualité pH/ORP/eau, volumes injectés, autonomie des cuves, compteur de redémarrages. |
-| `binary_sensor.py` | Une entité par alerte, plus la fiabilité des mesures (filtration arrêtée). |
+| `sensor.py` | Qualité pH/ORP/eau, volumes injectés, autonomie des cuves, tendance pH/ORP (moyennes horaires sur 7 jours, filtration en marche seulement, restaurées par `extra_restore_state_data`), compteur de redémarrages. |
+| `binary_sensor.py` | Une entité par alerte (`ALERTS` et `DOSING_ALERTS`), plus la fiabilité des mesures (filtration arrêtée). « Filtration non démarrée » compare l'heure à la plage `pl_flt_*` et se réévalue chaque minute. Les alertes de dosage lisent `rt.pumps[...]` (volume du jour et historique de 7 jours) et réagissent au signal `signal_dosing` envoyé par `InjectedSensor`. |
 | `number.py` | Seuils réglables. |
 | `health.py` | Vérifie les entités attendues, les téléphones injoignables et les redémarrages fréquents ; crée des réparations (non corrigeables depuis la 0.3.0). Supprime l'ancienne réparation `notify_service_missing_*`. |
 | `device_notifications.py` | Notifications on/off des équipements choisis, durée, auteur, suivi en direct de la filtration. |

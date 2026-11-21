@@ -90,6 +90,12 @@ Capteurs : `Qualité pH`, `Qualité ORP` et `Qualité de l'eau` (le pire des deu
 
 > **Mesures peu fiables pompe arrêtée.** Quand la filtration est arrêtée, l'eau stagne autour des sondes : le pH et l'ORP peuvent être erronés. Les capteurs de qualité portent alors un attribut `warning`, et le capteur « Mesures pH/ORP peu fiables (filtration arrêtée) » est activé. Les notifications ajoutent aussi une ligne d'avertissement dans le récapitulatif.
 
+### Tendance du pH et de l'ORP
+
+Les capteurs `Tendance pH (24 h)` (en pH/24 h) et `Tendance ORP (24 h)` (en mV/24 h) donnent la dérive de la mesure : pente des moyennes horaires sur les dernières 24 h, exprimée par 24 h. Une valeur positive indique une hausse. Seules les mesures prises filtration en marche sont retenues, et les moyennes horaires sont gardées 7 jours, y compris après un redémarrage de Home Assistant.
+
+Attributs : `slope_7d_per_day` (dérive par jour sur 7 jours, après au moins 24 h de données), `std_24h` (écart-type, mesure de stabilité), `hours_with_data_24h` et `hours_with_data_7d`. L'état est inconnu tant que les données couvrent moins de 6 h (4 heures de mesures au minimum). Un pH qui dérive régulièrement, ou une sonde qui devient lente, se voit ici avant l'alerte de qualité.
+
 ## Volumes injectés et autonomie
 
 Les capteurs `pH injecté` et `Désinfectant injecté` donnent le volume du jour en mL. Leur attribut `value_source` indique l'origine :
@@ -116,6 +122,10 @@ Chaque alerte est un `binary_sensor` de classe problème. Les seuils sont des en
 | Cuve pH basse | niveau sous 15 % | immédiat | non |
 | Cuve désinfectant basse | niveau sous 15 % | immédiat | non |
 | Contrôleur hors ligne | données indisponibles | 10 min (réglable) | non |
+| Dosage pH / désinfectant anormal | volume injecté du jour supérieur à 2 × la moyenne des jours précédents (facteur réglable, 3 jours observés minimum) | immédiat | non |
+| Filtration non démarrée | filtration arrêtée pendant la plage prévue par le firmware (`pl_flt_start` / `pl_flt_stop`) | 15 min (réglable) | non |
+
+L'alerte « Filtration non démarrée » ne fonctionne que si le firmware publie une plage ; elle est inactive en filtration continue ou si la plage est inconnue. Elle se résout dès que la filtration démarre, ou à la fin de la plage.
 
 Les alertes « à surveiller » ne notifient que si l'option correspondante est activée. Quand la filtration est arrêtée, les alertes pH et ORP sont mises en pause (attribut `paused`) : leur état est conservé, rien n'est notifié et le compte à rebours est annulé.
 

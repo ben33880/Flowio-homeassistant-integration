@@ -23,6 +23,7 @@ from .const import (
     DEFAULT_IOS_LEVEL,
     DEFAULT_PH_SLOT,
     DOMAIN,
+    SIGNAL_DOSING,
     SIGNAL_PUMPS,
     SIGNAL_UPDATE,
     THRESHOLDS,
@@ -109,6 +110,7 @@ class FlowioRuntime:
         self.loaded_at = dt_util.utcnow()  # début de l'observation : avant, les durées ne sont pas fiables
         self.signal = SIGNAL_UPDATE.format(entry_id=entry.entry_id)
         self.signal_pumps = SIGNAL_PUMPS.format(entry_id=entry.entry_id)
+        self.signal_dosing = SIGNAL_DOSING.format(entry_id=entry.entry_id)
         self.health = HealthMonitor(self)
 
     @property

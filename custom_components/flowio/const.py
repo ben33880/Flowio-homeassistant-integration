@@ -6,6 +6,7 @@ JS_FILE = "flowio-home-assistant-cards.js"
 PLATFORMS = ["number", "binary_sensor", "sensor"]
 SIGNAL_UPDATE = "flowio_update_{entry_id}"
 SIGNAL_PUMPS = "flowio_pumps_{entry_id}"
+SIGNAL_DOSING = "flowio_dosing_{entry_id}"
 
 CONF_PREFIX = "entity_prefix"
 CONF_MOBILE_DEVICES = "mobile_devices"  # appareils (registre) de l'application mobile à notifier
@@ -54,6 +55,8 @@ THRESHOLDS = [
     Threshold("temp_max", "Eau chaude – seuil", 32, 20, 40, 0.5, "°C", "mdi:thermometer-high"),
     Threshold("tank_min", "Niveau cuve minimum", 15, 0, 50, 1, "%", "mdi:cup-water"),
     Threshold("offline_min", "Délai hors ligne", 10, 1, 120, 1, "min", "mdi:timer-alert"),
+    Threshold("dose_factor", "Dosage anormal – facteur de la moyenne", 2, 1.2, 10, 0.1, "×", "mdi:beaker-alert"),
+    Threshold("flt_start_min", "Délai filtration non démarrée", 15, 5, 120, 5, "min", "mdi:timer-alert"),
 ]
 
 
@@ -63,12 +66,13 @@ class Alert:
     name: str
     icon: str
     source: str
-    op: str  # "<", ">", "unavailable", "q_bad", "q_medium"
+    op: str  # "<", ">", "unavailable", "not_started", "dose_high", "q_bad", "q_medium"
     threshold: str  # clé de THRESHOLDS, ou préfixe de bande (ph/orp) pour q_*
     delay_min: float  # -1 : délai pris dans le seuil (offline_min)
     unit: str = ""
     require_on: str | None = None  # alerte en pause tant que cette entité n'est pas « on »
     soft: bool = False  # notifié seulement si l'option « notify_medium » est active
+    pump: str | None = None  # "ph" ou "dis" : alerte calculée sur le volume injecté de cette pompe
 
 
 # pH et ORP : mesures peu fiables pompe arrêtée, donc alertes seulement filtration en marche.
@@ -87,4 +91,15 @@ ALERTS = [
     Alert("ph_tank_low", "Cuve pH basse", "mdi:cup-water", "sensor.{p}_data_{ph_pct}", "<", "tank_min", 0, "%"),
     Alert("dis_tank_low", "Cuve désinfectant basse", "mdi:cup-water", "sensor.{p}_data_{dis_pct}", "<", "tank_min", 0, "%"),
     Alert("offline", "Contrôleur hors ligne", "mdi:lan-disconnect", "sensor.{p}_io_wat_tmp", "unavailable", "offline_min", -1),
+    Alert("filtration_not_started", "Filtration non démarrée", "mdi:pump-off", "switch.{p}_io_flt_pmp",
+          "not_started", "flt_start_min", -1),
+]
+
+
+# Volume injecté du jour comparé à la moyenne des jours précédents : pas d'entité source du firmware.
+DOSING_ALERTS = [
+    Alert("ph_dosing_high", "Dosage pH anormal", "mdi:beaker-alert", "", "dose_high", "dose_factor", 0, "mL",
+          pump="ph"),
+    Alert("dis_dosing_high", "Dosage désinfectant anormal", "mdi:beaker-alert", "", "dose_high", "dose_factor", 0,
+          "mL", pump="dis"),
 ]

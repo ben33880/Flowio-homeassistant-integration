@@ -31,6 +31,25 @@ Choix validés ou refusés par le propriétaire. À respecter.
 - **Version, changelog ou notes de release propres aux cartes** (14/11/2026) : refusés par le propriétaire. Ne pas les réintroduire.
 - **Chiffres inventés** : pas de pourcentage de progression sans durée prévue connue ; la barre de la filtration vient de la plage publiée par le firmware.
 
+## À faire (retenu le 21/11/2026)
+
+Les trois fonctionnalités choisies par le propriétaire sont codées (21/11/2026, version 0.5.0 préparée). Testées seulement avec un Home Assistant 2025.1.4 de test, pas sur les appareils du propriétaire. Elles réutilisent des données déjà lues. Respecter les décisions ci-dessus (pas de boutons d'action, pas de chiffres inventés).
+
+1. **Tendance et stabilité du pH/ORP** : capteur de dérive sur 24 h et 7 jours, pour prévenir avant le passage en « mauvais » et repérer une sonde qui vieillit.
+2. **Dosage anormal** : alerte si le volume injecté du jour dépasse nettement la moyenne des 7 derniers jours (fuite, siphonnage, sonde défaillante). Ne demande pas de limite du firmware.
+3. **Filtration non démarrée** : alerte si la plage prévue (`pl_flt_start`) a commencé depuis plus de 15 min et que `switch.<p>_io_flt_pmp` est arrêté.
+
+## À prévoir (idées, non validées)
+
+- Alerte « sonde figée ou aberrante » (valeur immobile X heures, ou hors plage physique).
+- Durée de filtration réalisée dans la journée face à la durée recommandée (règle température ÷ 2, à laisser réglable car ce n'est pas une valeur du firmware).
+- Alerte « cuve basse » prédictive : autonomie sous 7 jours.
+- Rapport quotidien ou hebdomadaire planifié (réutilise le récapitulatif).
+- Journal des interventions (contre-lavage, nettoyage du filtre) et alerte de pression (`io_psi`).
+- Indice de qualité global (baignable / à surveiller / non baignable).
+- Mode saison / hivernage : garde seulement gel et hors ligne.
+- Blueprints, événements HA (`flowio_alert`), suivi d'énergie (à vérifier dans le firmware), capteur « dernière alerte ».
+
 ## Questions ouvertes
 
 - Un contrôleur configuré sans préfixe : les cartes l'acceptent, l'intégration le refuse. Pas de demande à ce jour.

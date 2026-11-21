@@ -176,7 +176,10 @@
       "target": "target {minimum}–{maximum}",
       "delay": "delay {minutes} min",
       "threshold": "threshold {value}",
-      "data_unavailable": "Data unavailable"
+      "data_unavailable": "Data unavailable",
+      "not_started": "Filtration stopped during the scheduled window {window}",
+      "dosing": "{today} mL today, average {average} mL/day",
+      "factor": "{value} × the daily average"
     },
     "alert_names": {
       "ph_bad": "Bad pH",
@@ -187,7 +190,10 @@
       "water_hot": "Water too hot",
       "ph_tank_low": "pH tank low",
       "dis_tank_low": "Disinfectant tank low",
-      "offline": "Controller offline"
+      "offline": "Controller offline",
+      "filtration_not_started": "Filtration not started",
+      "ph_dosing_high": "Abnormal pH dosing",
+      "dis_dosing_high": "Abnormal disinfectant dosing"
     }
   },
   "issues": {

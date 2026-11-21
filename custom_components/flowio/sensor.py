@@ -1,6 +1,7 @@
 import json
 import logging
 import math
+import statistics
 
 from homeassistant.components import mqtt
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
@@ -9,7 +10,7 @@ from homeassistant.core import callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.dispatcher import async_dispatcher_connect, async_dispatcher_send
 from homeassistant.helpers.event import async_track_state_change_event
-from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.helpers.restore_state import RestoredExtraData, RestoreEntity
 from homeassistant.util import dt as dt_util
 
 from .const import CONF_MQTT_ROOT, DOMAIN, HISTORY_DAYS
@@ -26,6 +27,9 @@ UNRELIABLE_WARNING = (
 _TIME = {"s": 1, "sec": 1, "min": 60, "mn": 60, "h": 3600}
 _FLOW = {"l/h": 1.0, "ml/h": 0.001}
 MAX_RESTARTS_KEPT = 20
+TREND_KEEP_HOURS = 7 * 24
+TREND_MIN_POINTS = 4
+TREND_MIN_SPAN_H = 6
 
 
 def _unit(state, default: str) -> str:
@@ -50,6 +54,9 @@ async def async_setup_entry(hass, entry, async_add_entities):
             AutonomySensor(rt, "ph_autonomy", "Autonomie cuve pH", "ph", "sensor.{p}_data_{ph_vol}"),
             AutonomySensor(rt, "dis_autonomy", "Autonomie cuve désinfectant", "dis",
                            "sensor.{p}_data_{dis_vol}"),
+            TrendSensor(rt, "ph_trend", "Tendance pH (24 h)", "mdi:trending-up", "sensor.{p}_io_ph", "pH/24 h", 3),
+            TrendSensor(rt, "orp_trend", "Tendance ORP (24 h)", "mdi:trending-up", "sensor.{p}_io_orp",
+                        "mV/24 h", 1),
             RestartSensor(rt),
         ]
     )
@@ -210,8 +217,11 @@ class InjectedSensor(RestoreEntity, _Base):
             if m.last_ml and ml < 0.5 * m.last_ml:
                 m.history = (m.history + [m.last_ml])[-HISTORY_DAYS:]
                 async_dispatcher_send(self.hass, self._rt.signal_pumps)
+            changed = m.last_ml != ml
             m.last_ml = ml
             self._attr_native_value = ml
+            if changed:
+                async_dispatcher_send(self.hass, self._rt.signal_dosing)
         self._attr_extra_state_attributes = {
             "value_source": origin,
             "firmware_day_ml": self._fw_ml,
@@ -256,6 +266,90 @@ class AutonomySensor(_Base):
             "tank_l": litres,
             "average_daily_ml": round(avg),
             "days_observed": len(hist),
+        }
+
+
+def _slope(points: list[tuple[int, float]], min_span: int) -> float | None:
+    """Pente des moindres carrés (unité par heure), ou None si les points sont trop peu nombreux ou groupés."""
+    if len(points) < TREND_MIN_POINTS:
+        return None
+    hours = [h for h, _ in points]
+    if max(hours) - min(hours) < min_span:
+        return None
+    mean_h = statistics.fmean(hours)
+    mean_v = statistics.fmean(v for _, v in points)
+    denominator = sum((h - mean_h) ** 2 for h in hours)
+    return sum((h - mean_h) * (v - mean_v) for h, v in points) / denominator
+
+
+class TrendSensor(RestoreEntity, _Base):
+    """Dérive du pH ou de l'ORP : pente sur 24 h, exprimée par 24 h.
+
+    Seules les mesures prises filtration en marche sont retenues (sinon elles sont peu fiables), en moyennes
+    horaires gardées 7 jours. L'attribut slope_7d_per_day donne la dérive à plus long terme ; std_24h mesure
+    la stabilité. Sans assez de données, l'état est inconnu.
+    """
+
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(self, rt, key, name, icon, source, unit, decimals):
+        self._src = rt.resolve(source)
+        self._flt = rt.resolve(FILTRATION)
+        self._decimals = decimals
+        self._buckets: dict[int, list[float]] = {}  # heure (époque / 3600) -> [somme, nombre]
+        self._attr_native_unit_of_measurement = unit
+        super().__init__(rt, key, name, icon, [self._src, self._flt])
+
+    @property
+    def extra_restore_state_data(self):
+        return RestoredExtraData({"buckets": {str(h): v for h, v in self._buckets.items()}})
+
+    async def async_added_to_hass(self):
+        extra = await self.async_get_last_extra_data()
+        if extra:
+            try:
+                self._buckets = {
+                    int(h): [float(v[0]), float(v[1])] for h, v in extra.as_dict().get("buckets", {}).items()
+                }
+            except (TypeError, ValueError, IndexError, AttributeError):
+                self._buckets = {}
+        await super().async_added_to_hass()
+
+    @staticmethod
+    def _now_hour() -> int:
+        return int(dt_util.utcnow().timestamp() // 3600)
+
+    @callback
+    def _changed(self, event):
+        if event.data["entity_id"] == self._src:
+            self._sample()
+        self._refresh()
+
+    def _sample(self):
+        flt = self.hass.states.get(self._flt)
+        value = as_float(self.hass.states.get(self._src))
+        if value is None or flt is None or flt.state != "on":
+            return
+        bucket = self._buckets.setdefault(self._now_hour(), [0.0, 0])
+        bucket[0] += value
+        bucket[1] += 1
+
+    def _points(self, hours: int) -> list[tuple[int, float]]:
+        now = self._now_hour()
+        return [(h, s / n) for h, (s, n) in self._buckets.items() if now - hours <= h <= now and n]
+
+    def _compute(self):
+        now = self._now_hour()
+        self._buckets = {h: v for h, v in self._buckets.items() if h >= now - TREND_KEEP_HOURS}
+        day = self._points(24)
+        slope_day = _slope(day, TREND_MIN_SPAN_H)
+        slope_week = _slope(self._points(TREND_KEEP_HOURS), 24)
+        self._attr_native_value = round(slope_day * 24, self._decimals) if slope_day is not None else None
+        self._attr_extra_state_attributes = {
+            "slope_7d_per_day": round(slope_week * 24, self._decimals) if slope_week is not None else None,
+            "std_24h": round(statistics.pstdev(v for _, v in day), self._decimals + 1) if len(day) >= 2 else None,
+            "hours_with_data_24h": len(day),
+            "hours_with_data_7d": len(self._points(TREND_KEEP_HOURS)),
         }
 
 

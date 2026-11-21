@@ -3,11 +3,19 @@ from datetime import timedelta
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass, BinarySensorEntity
 from homeassistant.core import callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
-from homeassistant.helpers.event import async_call_later, async_track_state_change_event
+from homeassistant.helpers.event import (
+    async_call_later,
+    async_track_state_change_event,
+    async_track_time_interval,
+)
+from homeassistant.util import dt as dt_util
 
-from .const import ALERTS, CONF_NOTIFY_MEDIUM, DOMAIN
+from .const import ALERTS, CONF_NOTIFY_MEDIUM, DOMAIN, DOSING_ALERTS
 from .localization import alert_name, localize
 from .quality import BAD, MEDIUM, as_float, grade
+from .runtime import fmt_hour
+
+MIN_DOSING_DAYS = 3
 
 UNRELIABLE_NOTE = (
     "Quand la pompe est arrêtée, l'eau stagne autour des sondes : le pH et l'ORP peuvent être erronés. "
@@ -17,7 +25,7 @@ UNRELIABLE_NOTE = (
 
 async def async_setup_entry(hass, entry, async_add_entities):
     rt = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities([*(AlertSensor(rt, a) for a in ALERTS), ReliabilitySensor(rt)])
+    async_add_entities([*(AlertSensor(rt, a) for a in [*ALERTS, *DOSING_ALERTS]), ReliabilitySensor(rt)])
 
 
 class ReliabilitySensor(BinarySensorEntity):
@@ -60,7 +68,7 @@ class AlertSensor(BinarySensorEntity):
 
     def __init__(self, rt, alert):
         self._rt, self._a = rt, alert
-        self._source = rt.resolve(alert.source)
+        self._source = rt.resolve(alert.source) if alert.source else None
         self._require = rt.resolve(alert.require_on) if alert.require_on else None
         self._attr_unique_id = f"{rt.prefix}_alert_{alert.key}"
         self._attr_name, self._attr_icon = alert.name, alert.icon
@@ -71,8 +79,17 @@ class AlertSensor(BinarySensorEntity):
         self._paused = False
 
     async def async_added_to_hass(self):
-        ids = [self._source] + ([self._require] if self._require else [])
-        self.async_on_remove(async_track_state_change_event(self.hass, ids, self._changed))
+        ids = [i for i in (self._source, self._require) if i]
+        if self._a.op == "dose_high":
+            self.async_on_remove(async_dispatcher_connect(self.hass, self._rt.signal_dosing, self._reevaluate))
+        if self._a.op == "not_started":
+            # La condition dépend de l'heure : réévaluée chaque minute et quand la plage change.
+            ids += [self._rt.resolve("sensor.{p}_pl_flt_start"), self._rt.resolve("sensor.{p}_pl_flt_stop")]
+            self.async_on_remove(
+                async_track_time_interval(self.hass, lambda _now: self._reevaluate(), timedelta(minutes=1))
+            )
+        if ids:
+            self.async_on_remove(async_track_state_change_event(self.hass, ids, self._changed))
         self.async_on_remove(async_dispatcher_connect(self.hass, self._rt.signal, self._reevaluate))
         self.async_on_remove(self._cancel_timer)
         self._reevaluate()
@@ -105,7 +122,9 @@ class AlertSensor(BinarySensorEntity):
                 minimum=f"{v[a.threshold + '_good_min']:g}",
                 maximum=f"{v[a.threshold + '_good_max']:g}",
             )
-        if a.op == "unavailable":
+        if a.op == "dose_high":
+            return localize(self.hass, "notifications.alerts.factor", value=f"{float(v[a.threshold]):g}")
+        if a.op in ("unavailable", "not_started"):
             return localize(
                 self.hass, "notifications.alerts.delay", minutes=f"{float(v[a.threshold]):g}"
             )
@@ -117,10 +136,14 @@ class AlertSensor(BinarySensorEntity):
         """True/False = condition d'alerte ; None = alerte en pause (filtration arrêtée)."""
         a = self._a
         self._paused = False
+        if a.op == "dose_high":
+            return self._dose_high()
         s = self.hass.states.get(self._source)
         if a.op == "unavailable":
             self._detail = localize(self.hass, "notifications.alerts.data_unavailable")
             return s is None or s.state == "unavailable"
+        if a.op == "not_started":
+            return self._not_started(s)
         if self._require:
             r = self.hass.states.get(self._require)
             if r is None or r.state != "on":
@@ -136,6 +159,39 @@ class AlertSensor(BinarySensorEntity):
             return grade(self._rt.values, a.threshold, value) == MEDIUM
         thr = float(self._rt.values[a.threshold])
         return value < thr if a.op == "<" else value > thr
+
+    def _dose_high(self) -> bool:
+        """Volume injecté du jour très supérieur à la moyenne des jours déjà observés (3 jours minimum)."""
+        pump = self._rt.pumps[self._a.pump]
+        history = pump.history
+        if pump.last_ml is None or len(history) < MIN_DOSING_DAYS:
+            return False
+        average = sum(history) / len(history)
+        if average <= 0:
+            return False
+        factor = float(self._rt.values[self._a.threshold])
+        self._detail = localize(
+            self.hass,
+            "notifications.alerts.dosing",
+            today=f"{pump.last_ml:g}",
+            average=f"{average:.0f}",
+        )
+        return pump.last_ml > factor * average
+
+    def _not_started(self, state) -> bool:
+        """Filtration à l'arrêt alors que la plage publiée par le firmware est en cours."""
+        window = self._rt.filtration_window()
+        if window is None or state is None or state.state != "off":
+            return False
+        start, stop, begin, end = window
+        if not begin <= dt_util.now() < end:
+            return False
+        self._detail = localize(
+            self.hass,
+            "notifications.alerts.not_started",
+            window=f"{fmt_hour(start)}–{fmt_hour(stop)}",
+        )
+        return True
 
     def _delay(self) -> float:
         a = self._a
