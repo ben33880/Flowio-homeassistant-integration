@@ -131,9 +131,13 @@ class FlowioPoolDashboardCard extends FlowioPoolCard {
             ` : nothing}
           </div>
           ${modes.length ? html`
-            <section class="modes-strip">
+            <details class="modes-strip compact-section">
+              <summary>
+                <ha-icon icon="mdi:toggle-switch-outline" aria-hidden="true"></ha-icon>
+                <span>Modes · ${modes.length}</span>
+              </summary>
               <flowio-modes .hass=${h} .prefix=${prefix} .items=${modes} .first=${true} .compact=${true}></flowio-modes>
-            </section>
+            </details>
           ` : nothing}
           ${effectiveOperations.length ? html`
             <flowio-firmware-panel
@@ -145,11 +149,16 @@ class FlowioPoolDashboardCard extends FlowioPoolCard {
             </flowio-firmware-panel>
           ` : nothing}
           ${pumpTimes.length ? html`
-            <section class="timing-panel" data-group="overview">
+            <details class="timing-panel compact-section" data-group="overview">
+              <summary>
+                <ha-icon icon="mdi:clock-outline" aria-hidden="true"></ha-icon>
+                <span>Horaires & durées</span>
+              </summary>
               <flowio-timing
                 .hass=${h}
                 .items=${pumpTimes}
                 .prefix=${prefix}
+                .compact=${true}
                 .slots=${{
                   filtration: installation.filtration_slot,
                   ph: installation.ph_slot,
@@ -165,7 +174,7 @@ class FlowioPoolDashboardCard extends FlowioPoolCard {
                 @flowio-operation=${(event: Event) => this.runScheduledOperation(event)}
                 @flowio-open-override=${() => this.openTimedOverride()}>
               </flowio-timing>
-            </section>
+            </details>
           ` : nothing}
           ${valuesTelemetry ? html`
             <flowio-firmware-panel
@@ -251,24 +260,36 @@ class FlowioPoolDashboardCard extends FlowioPoolCard {
       .modes-strip{padding:10px 14px}
       .modes-strip flowio-modes{display:block}
       .timing-panel{padding:12px 16px 16px}
+      .compact-section summary{display:flex;align-items:center;gap:8px;min-height:34px;cursor:pointer;font-size:calc(.95rem * var(--fio-font-scale,1.32));font-weight:650;list-style:none}
+      .compact-section summary::-webkit-details-marker{display:none}
+      .compact-section summary::after{content:'›';margin-inline-start:auto;font-size:1.35rem;line-height:1;transform:rotate(90deg);transition:transform .15s}
+      .compact-section[open] summary::after{transform:rotate(-90deg)}
+      .compact-section summary ha-icon{color:var(--fio-water,var(--primary-color))}
+      .compact-section[open] summary{margin-bottom:8px}
       .values-telemetry-panel{border-radius:18px}
       .dashboard-error{margin:0 0 12px}
       .dashboard-diagnostics{margin-top:12px}
       @container(max-width:1100px){
+        :host{--dashboard-gap:12px}
         .dashboard-columns{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
         .quality-panel{grid-column:1;grid-row:1/span 2}
         .equipment-panel{grid-column:2;grid-row:1}
         .treatment-panel{grid-column:2;grid-row:2}
         .dashboard-tanks{max-width:none;margin:0}
         .quality-panel .quality-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-        .quality-panel .quality-stack .measure{min-height:190px;padding:6px}
-        .quality-panel .quality-stack flowio-gauge{max-width:170px}
+        .quality-panel .quality-stack .measure{min-height:150px;padding:4px}
+        .quality-panel .quality-stack flowio-gauge{max-width:135px}
         .quality-panel .measures-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-        .quality-panel .measures-primary .measure,.quality-panel .measures-temps .measure{min-height:70px}
-        .dashboard-panel{padding:12px}
-        .dashboard-equipment .control{min-height:50px}
-        .dashboard-tanks .measure{min-height:190px}
-        .dashboard-tanks flowio-gauge{max-width:170px}
+        .quality-panel .measures-primary .measure,.quality-panel .measures-temps .measure{min-height:54px}
+        .dashboard-panel{padding:10px}
+        .dashboard-panel>.section-heading{margin-bottom:8px}
+        .dashboard-equipment .control{min-height:42px;padding:3px 0}
+        .dashboard-equipment .details{min-height:36px}
+        .dashboard-tanks .measure{min-height:140px;padding:5px}
+        .dashboard-tanks flowio-gauge{max-width:135px}
+        .dashboard-tanks .tank-action-footer{min-height:34px;margin-top:0}
+        .modes-strip{padding:6px 8px}
+        .timing-panel{padding:8px 10px 10px}
       }
       @container(max-width:700px){
         .dashboard-columns{grid-template-columns:minmax(0,1fr)}

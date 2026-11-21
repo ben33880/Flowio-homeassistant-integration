@@ -22,7 +22,11 @@ test('tableau de bord moderne : même contenu dans trois colonnes', async ({ pag
   await expect(card.locator('.quality-panel [data-role=pressure]')).toBeVisible();
   await expect(card.locator('.dashboard-equipment [data-equipment]')).toHaveCount(5);
   await expect(card.locator('.treatment-panel [data-role$=_tank_percent]')).toHaveCount(2);
+  await expect(card.locator('.modes-strip flowio-modes')).toBeHidden();
+  await card.locator('.modes-strip summary').click();
   await expect(card.locator('.modes-strip flowio-modes')).toBeVisible();
+  await expect(card.locator('.timing-panel flowio-timing')).toBeHidden();
+  await card.locator('.timing-panel summary').click();
   await expect(card.locator('.timing-panel flowio-timing')).toBeVisible();
   await expect(card.locator('[data-tank-action=ph]')).toBeVisible();
   await expect(card.locator('[data-tank-action=disinfection]')).toBeVisible();
