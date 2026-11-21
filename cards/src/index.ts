@@ -10,6 +10,7 @@ import './flowio-status-card';
 import './flowio-override-card';
 import './flowio-graph-card';
 import './flowio-pool-card';
+import './flowio-pool-dashboard-card';
 import './flowio-history-card';
 import './flowio-state-history-card';
 import './flowio-actuator-card';

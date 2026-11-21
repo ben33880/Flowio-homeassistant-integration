@@ -7,6 +7,7 @@ Les versions publiées depuis 0.3.0 comportent un tag et une release GitHub. Les
 ## Non publié après 0.4.0
 
 - Configuration : options regroupées en trois écrans guidés — contrôleur, notifications et équipements surveillés — avec les réglages existants conservés entre les étapes.
+- Cartes : nouvelle `custom:flowio-pool-dashboard-card`, utilisant les mêmes données, options, commandes et éditeur que la carte Piscine, avec une présentation trois colonnes plus aérée.
 
 ## 0.4.0 — 21/11/2026
 
