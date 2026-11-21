@@ -21,6 +21,7 @@ from .const import (
     DOMAIN,
 )
 from .runtime import COLOR_OFF, COLOR_OK, format_duration
+from .localization import firmware_name, localize
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -28,7 +29,6 @@ _LOGGER = logging.getLogger(__name__)
 # l'intégration (enregistrer les options recharge l'intégration mais ne réimporte pas le module).
 PROCESS_START = dt_util.utcnow()
 
-DEVICE_CHANNEL = "Flow.io équipements"
 COMMAND_WINDOW = 120  # secondes : délai max entre une commande Home Assistant et le changement d'état
 RELIABLE_AFTER = 120  # secondes : une durée n'est fiable que si le démarrage a eu lieu après ce délai de démarrage
 # Suivi en direct (filtration seulement) : la carte n'est créée qu'après ce délai de marche, car iOS limite
@@ -54,9 +54,9 @@ def _icon(hass, state) -> str | None:
 async def _who(hass, context) -> str:
     if context.user_id:
         user = await hass.auth.async_get_user(context.user_id)
-        return user.name if user and user.name else "un utilisateur"
+        return user.name if user and user.name else localize(hass, "notifications.equipment.user")
     if context.parent_id:
-        return "une automatisation ou un script"
+        return localize(hass, "notifications.equipment.automation")
     return "Home Assistant"
 
 
@@ -161,19 +161,24 @@ def async_setup_device_notifications(rt):
         pending[entity_id] = async_call_later(hass, LIVE_START_DELAY, _fire)
 
     async def _notify(old, new, running: bool, context) -> None:
-        name = new.attributes.get("friendly_name") or new.entity_id
-        who = await _who(hass, context) if context else "le contrôleur"
+        name = firmware_name(hass, new.entity_id, new.attributes.get("friendly_name") or new.entity_id)
+        who = await _who(hass, context) if context else localize(hass, "notifications.equipment.controller")
         at = dt_util.as_local(new.last_changed).strftime("%H:%M")
         # Première ligne (titre) : équipement, action, heure, auteur, et durée à l'arrêt seulement.
-        title = f"{name} : {'démarrage' if running else 'arrêt'} à {at} par {who}"
+        key = "notifications.equipment.start" if running else "notifications.equipment.stop"
+        title = localize(hass, key, name=name, time=at, author=who)
         if not running:
             # Durée fiable seulement si le démarrage a eu lieu bien après le démarrage de Home Assistant
             # (au démarrage, l'état restauré ou retenu par MQTT porte l'heure du démarrage, pas celle de la marche).
             reliable = (old.last_changed - PROCESS_START).total_seconds() > RELIABLE_AFTER
             if reliable:
-                title += f", durée {format_duration(new.last_changed - old.last_changed)}"
+                title += ", " + localize(
+                    hass,
+                    "notifications.equipment.duration",
+                    duration=format_duration(new.last_changed - old.last_changed, hass),
+                )
             else:
-                title += ", durée inconnue"
+                title += ", " + localize(hass, "notifications.equipment.duration_unknown")
         _LOGGER.debug("Notification %s : %s", new.entity_id, title)
         tag = _tag(new.entity_id)
         icon = _icon(hass, new)
@@ -193,7 +198,7 @@ def async_setup_device_notifications(rt):
             color=COLOR_OK if running else COLOR_OFF,
             icon=icon,
             url=url,
-            channel=DEVICE_CHANNEL,
+            channel=localize(hass, "notifications.channels.equipment"),
             recap=True,
         )
 

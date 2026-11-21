@@ -109,6 +109,70 @@
       "pool_water_level_low": "Pool water level low"
     }
   },
+  "notifications": {
+    "channels": {
+      "alerts": "Flow.io alerts",
+      "equipment": "Flow.io equipment"
+    },
+    "duration": {
+      "seconds": "{value} s",
+      "minutes": "{value} min",
+      "hours": "{hours} h {minutes:02d}",
+      "days": "{days} d {hours} h"
+    },
+    "actions": {
+      "snooze": "Snooze for 24 h",
+      "refill": "Tank refilled"
+    },
+    "summary": {
+      "water": "Water",
+      "air": "Air",
+      "pressure": "Pressure",
+      "ph_tank": "pH tank",
+      "disinfection_tank": "Disinfectant tank",
+      "filtration_warning": "Filtration stopped: pH and ORP are unreliable"
+    },
+    "equipment": {
+      "controller": "the controller",
+      "user": "a user",
+      "automation": "an automation or script",
+      "start": "{name}: started at {time} by {author}",
+      "stop": "{name}: stopped at {time} by {author}",
+      "duration": "duration {duration}",
+      "duration_unknown": "duration unknown"
+    },
+    "live": {
+      "running": "Running",
+      "window": "Window {start}–{stop}",
+      "finished": "{window} finished",
+      "remaining": "{window} · {duration} remaining"
+    },
+    "responses": {
+      "snoozed": "Notifications snoozed for {hours} h.",
+      "tank_not_low": "The level is not low: no action sent.",
+      "failure": "Failed: {error}",
+      "refilled": "Refill reported to the firmware."
+    },
+    "alerts": {
+      "resolved": "resolved",
+      "normal": "Back to normal.",
+      "target": "target {minimum}–{maximum}",
+      "delay": "delay {minutes} min",
+      "threshold": "threshold {value}",
+      "data_unavailable": "Data unavailable"
+    },
+    "alert_names": {
+      "ph_bad": "Bad pH",
+      "ph_medium": "pH to watch",
+      "orp_bad": "Bad ORP",
+      "orp_medium": "ORP to watch",
+      "frost": "Frost risk",
+      "water_hot": "Water too hot",
+      "ph_tank_low": "pH tank low",
+      "dis_tank_low": "Disinfectant tank low",
+      "offline": "Controller offline"
+    }
+  },
   "issues": {
     "missing_entities": {
       "title": "Flow.io: expected entities not found",

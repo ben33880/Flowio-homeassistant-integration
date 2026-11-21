@@ -28,6 +28,7 @@ from .const import (
     THRESHOLDS,
 )
 from .health import HealthMonitor
+from .localization import localize
 from .quality import BAD, GOOD, MEDIUM, as_float, grade
 
 _LOGGER = logging.getLogger(__name__)
@@ -50,9 +51,6 @@ IOS_GLYPH_COLOR = "#FFFFFF"
 GRADE_COLORS = {GOOD: "#4CAF50", MEDIUM: COLOR_WARN, BAD: "#F44336"}
 GRADE_DOTS = {GOOD: "🟢", MEDIUM: "🟠", BAD: "🔴"}
 
-ALERT_CHANNEL = "Flow.io alertes"
-
-
 def fmt(value: float, decimals: int) -> str:
     """Nombre à la française (virgule décimale)."""
     return f"{value:.{decimals}f}".replace(".", ",")
@@ -65,18 +63,20 @@ def fmt_hour(hours: float) -> str:
     return f"{whole}h{minutes:02d}" if minutes else f"{whole}h"
 
 
-def format_duration(delta: timedelta) -> str:
+def format_duration(delta: timedelta, hass=None) -> str:
     seconds = max(int(delta.total_seconds()), 0)
     if seconds < 60:
-        return f"{seconds} s"
+        return localize(hass, "notifications.duration.seconds", value=seconds)
     minutes = seconds // 60
     if minutes < 60:
-        return f"{minutes} min"
+        return localize(hass, "notifications.duration.minutes", value=minutes)
     hours, minutes = divmod(minutes, 60)
     if hours < 24:
-        return f"{hours} h {minutes:02d}"
+        return localize(
+            hass, "notifications.duration.hours", hours=hours, minutes=minutes
+        )
     days, hours = divmod(hours, 24)
-    return f"{days} j {hours} h"
+    return localize(hass, "notifications.duration.days", days=days, hours=hours)
 
 
 @dataclass
@@ -171,9 +171,9 @@ class FlowioRuntime:
     def _actions(self, key: str) -> list[dict]:
         # Boutons : Android et iPhone (actions intégrées à la notification, iOS 2021.5 ou plus récent).
         head = f"flowio_{self.prefix}_"
-        actions = [{"action": f"{head}snooze_{key}", "title": "Reporter 24 h"}]
+        actions = [{"action": f"{head}snooze_{key}", "title": localize(self.hass, "notifications.actions.snooze")}]
         if key in REFILL_ALERTS:
-            actions.insert(0, {"action": f"{head}refill_{key}", "title": "Cuve remplie"})
+            actions.insert(0, {"action": f"{head}refill_{key}", "title": localize(self.hass, "notifications.actions.refill")})
         return actions
 
     def _reading(
@@ -237,16 +237,16 @@ class FlowioRuntime:
             (
                 "🌡️",
                 [
-                    self._reading("sensor.{p}_io_wat_tmp", "Eau", 1, "°C", html=html),
-                    self._reading("sensor.{p}_io_air_tmp", "Air", 1, "°C", html=html),
+                    self._reading("sensor.{p}_io_wat_tmp", localize(self.hass, "notifications.summary.water"), 1, "°C", html=html),
+                    self._reading("sensor.{p}_io_air_tmp", localize(self.hass, "notifications.summary.air"), 1, "°C", html=html),
                 ],
             ),
-            ("📊", [self._reading("sensor.{p}_io_psi", "Pression", 1, html=html)]),
+            ("📊", [self._reading("sensor.{p}_io_psi", localize(self.hass, "notifications.summary.pressure"), 1, html=html)]),
             (
                 "🧴",
                 [
-                    self._tank("Cuve pH", "sensor.{p}_data_{ph_vol}", "sensor.{p}_data_{ph_pct}", html),
-                    self._tank("Cuve désinf.", "sensor.{p}_data_{dis_vol}", "sensor.{p}_data_{dis_pct}", html),
+                    self._tank(localize(self.hass, "notifications.summary.ph_tank"), "sensor.{p}_data_{ph_vol}", "sensor.{p}_data_{ph_pct}", html),
+                    self._tank(localize(self.hass, "notifications.summary.disinfection_tank"), "sensor.{p}_data_{dis_vol}", "sensor.{p}_data_{dis_pct}", html),
                 ],
             ),
         ]
@@ -256,7 +256,7 @@ class FlowioRuntime:
             lines.extend(f"{icon} {item}" for item in parts)
         flt = self.hass.states.get(self.resolve("switch.{p}_io_flt_pmp"))
         if flt is not None and flt.state == "off":
-            note = "⚠️ Filtration arrêtée : pH et ORP peu fiables"
+            note = "⚠️ " + localize(self.hass, "notifications.summary.filtration_warning")
             if lines:
                 lines.append("")
             lines.append(f'<i><span style="color: {COLOR_WARN}">{note}</span></i>' if html else note)
@@ -293,10 +293,15 @@ class FlowioRuntime:
         start, stop, begin, end = window
         now = dt_util.now()
         percent = int(min(max((now - begin) / (end - begin), 0), 1) * 100)
-        span = f"Plage {fmt_hour(start)}–{fmt_hour(stop)}"
+        span = localize(self.hass, "notifications.live.window", start=fmt_hour(start), stop=fmt_hour(stop))
         if now >= end:
-            return percent, f"⏳ {span} terminée"
-        return percent, f"⏳ {span} · reste {format_duration(end - now)}"
+            return percent, "⏳ " + localize(self.hass, "notifications.live.finished", window=span)
+        return percent, "⏳ " + localize(
+            self.hass,
+            "notifications.live.remaining",
+            window=span,
+            duration=format_duration(end - now, self.hass),
+        )
 
     async def async_notify(self, title: str, message: str, tag: str, alert_on: bool | None = None) -> None:
         """Notification d'alerte : supprimée si l'alerte est reportée ; boutons seulement au déclenchement."""
@@ -310,7 +315,7 @@ class FlowioRuntime:
                 self._actions(tag),
                 color=COLOR_ALERT,
                 icon="mdi:alert-circle",
-                channel=ALERT_CHANNEL,
+                channel=localize(self.hass, "notifications.channels.alerts"),
                 urgent=True,
                 level=self.conf.get(CONF_IOS_LEVEL, DEFAULT_IOS_LEVEL),
                 recap=True,
@@ -322,7 +327,7 @@ class FlowioRuntime:
                 tag,
                 color=COLOR_OK,
                 icon="mdi:check-circle",
-                channel=ALERT_CHANNEL,
+                channel=localize(self.hass, "notifications.channels.alerts"),
                 level="passive",
                 recap=True,
             )
@@ -425,10 +430,10 @@ class FlowioRuntime:
                     "chronometer": True,
                     "when": int(started.timestamp()),
                     "when_relative": False,
-                    "critical_text": "En marche",
+                    "critical_text": localize(self.hass, "notifications.live.running"),
                 }
             )
-            message = recap or "En marche"
+            message = recap or localize(self.hass, "notifications.live.running")
         if color:
             data["color"] = color
             data["notification_icon_color"] = color

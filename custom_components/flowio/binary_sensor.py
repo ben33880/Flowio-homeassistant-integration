@@ -6,6 +6,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.event import async_call_later, async_track_state_change_event
 
 from .const import ALERTS, CONF_NOTIFY_MEDIUM, DOMAIN
+from .localization import alert_name, localize
 from .quality import BAD, MEDIUM, as_float, grade
 
 UNRELIABLE_NOTE = (
@@ -98,10 +99,19 @@ class AlertSensor(BinarySensorEntity):
     def _limit_text(self) -> str:
         a, v = self._a, self._rt.values
         if a.op.startswith("q_"):
-            return f"cible {v[a.threshold + '_good_min']:g}–{v[a.threshold + '_good_max']:g}"
+            return localize(
+                self.hass,
+                "notifications.alerts.target",
+                minimum=f"{v[a.threshold + '_good_min']:g}",
+                maximum=f"{v[a.threshold + '_good_max']:g}",
+            )
         if a.op == "unavailable":
-            return f"délai {float(v[a.threshold]):g} min"
-        return f"seuil {float(v[a.threshold]):g}"
+            return localize(
+                self.hass, "notifications.alerts.delay", minutes=f"{float(v[a.threshold]):g}"
+            )
+        return localize(
+            self.hass, "notifications.alerts.threshold", value=f"{float(v[a.threshold]):g}"
+        )
 
     def _condition(self) -> bool | None:
         """True/False = condition d'alerte ; None = alerte en pause (filtration arrêtée)."""
@@ -109,7 +119,7 @@ class AlertSensor(BinarySensorEntity):
         self._paused = False
         s = self.hass.states.get(self._source)
         if a.op == "unavailable":
-            self._detail = "Données indisponibles"
+            self._detail = localize(self.hass, "notifications.alerts.data_unavailable")
             return s is None or s.state == "unavailable"
         if self._require:
             r = self.hass.states.get(self._require)
@@ -171,8 +181,10 @@ class AlertSensor(BinarySensorEntity):
         a = self._a
         if a.soft and not self._rt.conf.get(CONF_NOTIFY_MEDIUM):
             return
+        name = alert_name(self.hass, a.key, a.name)
         if on:
-            title, msg = f"⚠️ {a.name}", f"{self._detail} ({self._limit_text()})"
+            title, msg = f"⚠️ {name}", f"{self._detail} ({self._limit_text()})"
         else:
-            title, msg = f"✅ {a.name} : résolu", "Retour à la normale."
+            title = f"✅ {name} : {localize(self.hass, 'notifications.alerts.resolved')}"
+            msg = localize(self.hass, "notifications.alerts.normal")
         self.hass.async_create_task(self._rt.async_notify(title, msg, a.key, alert_on=on))

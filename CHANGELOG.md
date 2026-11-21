@@ -11,7 +11,7 @@ Les versions publiées depuis 0.3.0 comportent un tag et une release GitHub. Les
 - Carte Piscine : l’état réel de la pompe désinfectant reste visible même si le type de traitement est absent, indisponible ou désactivé ; sa commande reste bloquée tant que la cible ne peut pas être déterminée.
 - Traduction : les noms anglais publiés par le firmware pour les équipements, modes et alarmes sont rendus en français dans les cartes ; les noms personnalisés distincts restent intacts.
 - CI : tests Playwright et audit des dépendances de production ajoutés aux workflows de contrôle et de release.
-- Notifications : présentation plus aérée, avec une valeur par ligne, couleurs/icônes conservées et même récapitulatif dans les notifications persistantes.
+- Notifications : présentation plus aérée, avec une valeur par ligne, couleurs/icônes conservées et même récapitulatif dans les notifications persistantes ; tous les textes suivent la langue Home Assistant via les fichiers de traduction.
 - Outillage : version racine du `package-lock.json` synchronisée avec `cards/package.json`.
 
 ## 0.3.8 — 15/11/2026

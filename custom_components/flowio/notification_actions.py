@@ -4,6 +4,7 @@ from homeassistant.exceptions import HomeAssistantError
 from .const import ALERTS, DOMAIN
 from .quality import as_float
 from .runtime import REFILL_ALERTS, FlowioRuntime
+from .localization import alert_name, localize
 
 EVENT = "mobile_app_notification_action"
 SNOOZE_HOURS = 24
@@ -19,7 +20,11 @@ def async_setup_actions(rt: FlowioRuntime):
 
     async def snooze(key: str) -> None:
         rt.snooze(key, SNOOZE_HOURS)
-        await rt.async_send(f"🔕 {_NAMES[key]}", f"Notifications reportées de {SNOOZE_HOURS} h.", key)
+        await rt.async_send(
+            f"🔕 {alert_name(hass, key, _NAMES[key])}",
+            localize(hass, "notifications.responses.snoozed", hours=SNOOZE_HOURS),
+            key,
+        )
 
     async def refill(key: str) -> None:
         tank = REFILL_ALERTS[key]
@@ -27,7 +32,9 @@ def async_setup_actions(rt: FlowioRuntime):
         # Garde-fou : un appui accidentel ne réinitialise pas une cuve dont le niveau n'est pas bas.
         if level is None or level >= float(rt.values["tank_min"]):
             await rt.async_send(
-                f"ℹ️ {_NAMES[key]}", "Le niveau n'est pas bas : aucune action envoyée.", key
+                f"ℹ️ {alert_name(hass, key, _NAMES[key])}",
+                localize(hass, "notifications.responses.tank_not_low"),
+                key,
             )
             return
         try:
@@ -38,9 +45,17 @@ def async_setup_actions(rt: FlowioRuntime):
                 blocking=True,
             )
         except HomeAssistantError as err:
-            await rt.async_send(f"⚠️ {_NAMES[key]}", f"Échec : {err}", key)
+            await rt.async_send(
+                f"⚠️ {alert_name(hass, key, _NAMES[key])}",
+                localize(hass, "notifications.responses.failure", error=err),
+                key,
+            )
             return
-        await rt.async_send(f"✅ {_NAMES[key]}", "Remplissage signalé au firmware.", key)
+        await rt.async_send(
+            f"✅ {alert_name(hass, key, _NAMES[key])}",
+            localize(hass, "notifications.responses.refilled"),
+            key,
+        )
 
     @callback
     def handle(event) -> None:
