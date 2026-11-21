@@ -147,10 +147,15 @@ Exemple à l'arrêt :
 
 ```text
 Filtration : arrêt à 22:07 par le contrôleur, durée 12 min
-🧪 pH 7,21 🟢 · ORP 720 mV 🟢
-🌡️ Eau 24,5 °C · Air 18,0 °C
+
+🧪 pH 7,21 🟢
+🧪 ORP 720 mV 🟢
+🌡️ Eau 24,5 °C
+🌡️ Air 18,0 °C
 📊 Pression 1,2 bar
-🧴 Cuve pH 12,4 L (62 %) 🟢 · Cuve désinf. 8,0 L (40 %) 🟠
+🧴 Cuve pH 12,4 L (62 %) 🟢
+🧴 Cuve désinf. 8,0 L (40 %) 🟠
+
 ⚠️ Filtration arrêtée : pH et ORP peu fiables
 ```
 
@@ -165,7 +170,7 @@ Au démarrage, la première ligne est par exemple « Filtration : démarrage à 
 
 ### Récapitulatif
 
-Sous chaque notification d'alerte ou d'équipement (option désactivable) : 🧪 pH et ORP, 🌡️ températures de l'eau et de l'air, 📊 pression, 🧴 cuves en litres et en pourcentage. Une ligne est omise si ses mesures sont indisponibles. Les unités sont celles publiées par le firmware ; sans unité, le volume d'une cuve est en litres.
+Sous chaque notification d'alerte ou d'équipement (option désactivable), chaque valeur occupe sa propre ligne : 🧪 pH et ORP, 🌡️ températures de l'eau et de l'air, 📊 pression, 🧴 cuves en litres et en pourcentage. Une ligne est omise si sa mesure est indisponible. L'avertissement de filtration arrêtée est séparé du reste par une ligne vide. Le même récapitulatif est conservé dans le suivi en direct. Les unités sont celles publiées par le firmware ; sans unité, le volume d'une cuve est en litres.
 
 Les pastilles 🟢🟠🔴 du pH et de l'ORP suivent les plages de la section Qualité de l'eau. Celles des cuves passent au rouge sous le seuil d'alerte de cuve, à l'orange sous le double de ce seuil. Quand la filtration est arrêtée, une ligne ⚠️ prévient que le pH et l'ORP sont peu fiables. Les couleurs peuvent mal s'afficher en mode sombre sur Android.
 

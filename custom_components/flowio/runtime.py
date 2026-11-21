@@ -220,7 +220,7 @@ class FlowioRuntime:
         return f"<b>{label}</b> {escape(value)}{dot}" if html else f"{label} {value}{dot}"
 
     def context_line(self, html: bool = False) -> str:
-        """Récapitulatif : une ligne par groupe, chacune avec son emoji.
+        """Récapitulatif aéré : une ligne par valeur, chacune avec son emoji.
 
         🧪 pH et ORP (pastille de qualité), 🌡️ eau et air, 📊 pression, 🧴 cuves (litres et pourcentage).
         Filtration arrêtée : une ligne ⚠️ prévient que le pH et l'ORP sont peu fiables. En HTML (Android) :
@@ -253,11 +253,12 @@ class FlowioRuntime:
         lines = []
         for icon, items in groups:
             parts = [item for item in items if item]
-            if parts:
-                lines.append(f"{icon} " + " · ".join(parts))
+            lines.extend(f"{icon} {item}" for item in parts)
         flt = self.hass.states.get(self.resolve("switch.{p}_io_flt_pmp"))
         if flt is not None and flt.state == "off":
             note = "⚠️ Filtration arrêtée : pH et ORP peu fiables"
+            if lines:
+                lines.append("")
             lines.append(f'<i><span style="color: {COLOR_WARN}">{note}</span></i>' if html else note)
         return ("<br>" if html else "\n").join(lines)
 
@@ -362,7 +363,7 @@ class FlowioRuntime:
             if icon or color:
                 data["notification_icon"] = icon or DEFAULT_ICON
             if target.android:
-                body, extra, sep = escape(message), rich, "<br>"
+                body, extra, sep = escape(message), rich, "<br><br>"
                 if body and color:
                     body = f'<b><span style="color: {color}">{body}</span></b>'
                 if channel:
@@ -372,7 +373,7 @@ class FlowioRuntime:
                 if url:
                     data["clickAction"] = url
             else:
-                body, extra, sep = message, plain, "\n"
+                body, extra, sep = message, plain, "\n\n"
                 if color:
                     data["notification_icon_color"] = IOS_GLYPH_COLOR
                 if url:
@@ -417,7 +418,7 @@ class FlowioRuntime:
             data.update({"progress": percent, "progress_max": 100, "critical_text": f"{percent} %"})
             if update:
                 data["alert_once"] = True
-            message = "\n".join(part for part in (text, recap) if part)
+            message = "\n\n".join(part for part in (text, recap) if part)
         else:
             data.update(
                 {

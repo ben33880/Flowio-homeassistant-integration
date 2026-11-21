@@ -73,7 +73,7 @@ Clés : `entity_prefix`, `mobile_devices` (liste d'identifiants du registre d'ap
 - `FlowioRuntime.resolve_targets` : transforme `mobile_devices` en cibles. Pour chaque appareil, trouve l'entrée `mobile_app` du registre, nom du service = `notify.mobile_app_<slug du device_name>`, plateforme = `os_name == "Android"` ou non. Renvoie aussi les appareils injoignables (supprimés, ou sans service `notify`), utilisés par la réparation.
 - `FlowioRuntime.async_send` : envoi à chaque cible avec son format. Android : HTML, `channel`, `importance`/`priority`/`ttl` pour l'urgent, `clickAction`. iPhone : texte simple, `url`, `push.interruption-level`, `notification_icon_color` blanc. Commun : `tag`, `group`, `color`, `notification_icon` (icône de secours `mdi:pool` si une couleur est donnée), `actions`. Un échec sur une cible est journalisé et n'arrête pas les autres.
 - `FlowioRuntime.async_notify` : alertes, avec report et boutons ; message préfixé 🚨 ou ✅.
-- `FlowioRuntime.context_line` : récapitulatif (🧪 🌡️ 📊 🧴, ligne ⚠️ si la filtration est arrêtée), en HTML pour Android.
+- `FlowioRuntime.context_line` : récapitulatif aéré (une valeur par ligne, 🧪 🌡️ 📊 🧴, ligne ⚠️ séparée si la filtration est arrêtée), en HTML pour Android.
 - `FlowioRuntime.filtration_window`, `filtration_progress` : plage et pourcentage d'avancement de la filtration.
 - `FlowioRuntime.async_send_live`, `async_clear_live` : Live Activity / Live Update, tag `flowio_<préfixe>_live_<clé>` (64 caractères max). Avec progression : `progress`, `progress_max`, `critical_text`, `alert_once` pour les mises à jour. Sans : `chronometer`, `when`, `when_relative: false`.
 - Tag : `flowio_<préfixe>_<clé>`. Groupe : `flowio_<préfixe>`.
