@@ -443,7 +443,11 @@ class FlowioRuntime:
         if url:
             data["url"] = url
         for target in targets:
-            await self._deliver(target, title, message, dict(data))
+            target_data = dict(data)
+            if target.android:
+                # Sans « sticky », toucher la carte pour ouvrir la fiche de l'équipement la ferme.
+                target_data["sticky"] = True
+            await self._deliver(target, title, message, target_data)
 
     async def async_clear_live(self, tag: str) -> None:
         """Termine le suivi en direct et retire la notification correspondante."""

@@ -192,6 +192,7 @@ Option **Suivre la filtration en direct** (désactivée par défaut). La filtrat
 - Si le firmware publie une plage de filtration (`pl_flt_start`, `pl_flt_stop`), la carte affiche une barre de progression de cette plage et le temps restant, rafraîchis toutes les 15 minutes. Sinon, elle affiche un chronomètre depuis le démarrage. Les deux ne se combinent pas.
 - Pas de barre pour une filtration continue (1 440 minutes) ou quand le début égale la fin. La plage peut franchir minuit.
 - La carte est retirée à l'arrêt, quand l'équipement devient indisponible, et quand il revient arrêté après un redémarrage de Home Assistant. Elle est suivie de la notification d'arrêt habituelle.
+- Sur Android, la carte reste affichée quand on la touche (`sticky`) ; elle est retirée par l'intégration à l'arrêt ou à l'indisponibilité.
 - Les autres équipements gardent leurs notifications normales, sans délai.
 - Exigences (documentation de l'application) : iOS 17.2 ou plus récent, Android 16 ou plus récent, Home Assistant 2026.7 ou plus récent. Un téléphone non compatible affiche une notification normale. iOS termine une Live Activity au bout de 8 heures, et Apple et Google limitent le nombre d'envois, d'où le rafraîchissement toutes les 15 minutes.
 - Un rapport de bug de l'application Android signale que la barre de progression ne s'affiche pas toujours avec `live_update`.

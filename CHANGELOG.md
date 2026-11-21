@@ -8,6 +8,7 @@ Les versions publiées depuis 0.3.0 comportent un tag et une release GitHub. Les
 
 - Nouvelle alerte « Filtration non démarrée » : prévient quand la filtration reste arrêtée alors que la plage prévue par le firmware est en cours. Délai réglable (15 min par défaut) par une nouvelle entité `number`.
 - Nouvelles alertes « Dosage pH anormal » et « Dosage désinfectant anormal » : le volume injecté du jour dépasse un facteur (2 par défaut, réglable) de la moyenne des jours précédents, après 3 jours observés. Détecte une fuite, un siphonnage ou une sonde défaillante sans limite côté firmware.
+- Suivi en direct de la filtration : sur Android, la carte reste affichée quand on la touche (`sticky`) ; auparavant ce geste pouvait la fermer alors que la filtration tournait toujours.
 - Nouveaux capteurs « Tendance pH (24 h) » et « Tendance ORP (24 h) » : dérive sur 24 h, dérive sur 7 jours et stabilité en attributs, calculées sur les mesures filtration en marche.
 
 ## 0.4.2 — 21/11/2026
