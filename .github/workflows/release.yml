@@ -31,7 +31,10 @@ jobs:
         working-directory: cards
         run: |
           npm ci
+          npm audit --omit=dev --audit-level=high
           npm test
+          npx playwright install --with-deps chromium
+          npm run test:e2e
           npm run build
 
       - name: Mentions de licences des cartes
