@@ -4,15 +4,16 @@ Les versions antérieures sont dans l'historique Git. Dates au format JJ/MM/AAAA
 
 Les versions publiées depuis 0.3.0 comportent un tag et une release GitHub. Les tags `v0.3.7` et `v0.3.8` ont eux aussi produit un `flowio.zip` depuis le workflow de release intégré.
 
-## Non publié
+## 0.4.2 — 21/11/2026
 
 - Notifications persistantes : après un redémarrage de Home Assistant pendant la marche, le suivi de filtration reprend dès que l’interrupteur repasse de indisponible à en marche (auparavant ce retour était ignoré, la carte n’apparaissait qu’au cycle suivant).
+- Carte Tableau de bord : mise en page compacte adaptée aux largeurs Home Assistant, panneaux hauteur minimale, modes et horaires repliés par défaut, et télémétrie détaillée masquée par défaut mais toujours activable dans l’éditeur.
 
 ## 0.4.1 — 21/11/2026
 
 - Notifications persistantes : le suivi de filtration est désormais reprogrammé si Home Assistant ou l’intégration redémarre pendant la marche, et reste compatible lorsque les notifications de démarrage ordinaires sont désactivées.
 - Configuration : options regroupées en trois écrans guidés — contrôleur, notifications et équipements surveillés — avec les réglages existants conservés entre les étapes.
-- Cartes : nouvelle `custom:flowio-pool-dashboard-card`, utilisant les mêmes données, options, commandes et éditeur que la carte Piscine, avec une présentation compacte adaptée aux largeurs Home Assistant ; la télémétrie détaillée est masquée par défaut et reste activable.
+- Cartes : nouvelle `custom:flowio-pool-dashboard-card`, utilisant les mêmes données, options, commandes et éditeur que la carte Piscine, avec une présentation trois colonnes plus aérée.
 
 ## 0.4.0 — 21/11/2026
 
