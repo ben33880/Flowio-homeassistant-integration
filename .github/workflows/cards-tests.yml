@@ -26,3 +26,15 @@ jobs:
           npm ci
           npm run check
           npm test
+
+      - name: Audit des dépendances de production
+        working-directory: cards
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Installer Chromium
+        working-directory: cards
+        run: npx playwright install --with-deps chromium
+
+      - name: Tests navigateur
+        working-directory: cards
+        run: npm run test:e2e
