@@ -15,7 +15,7 @@ Choix validés ou refusés par le propriétaire. À respecter.
 - **Durée** : affichée seulement si elle est fiable ; « durée inconnue » plutôt qu'une durée trompeuse, quand l'équipement a démarré dans les 2 minutes qui suivent le démarrage de Home Assistant.
 - **Récapitulatif** : désactivable, avec emojis (🧪 🌡️ 📊 🧴) et pastilles 🟢🟠🔴. Une ligne ⚠️ prévient que le pH et l'ORP sont peu fiables quand la filtration est arrêtée.
 - **Alertes** : message précédé de 🚨 (déclenchement) ou ✅ (retour à la normale). Niveau d'interruption iPhone réglable, « urgent » par défaut.
-- **Suivi en direct** : option désactivée par défaut, limitée à la filtration, après 60 secondes de marche, avec barre de progression de la plage prévue rafraîchie toutes les 15 minutes, sinon chronomètre. Les autres équipements gardent leurs notifications immédiates.
+- **Suivi en direct** : option désactivée par défaut, limitée à la filtration, après 60 secondes de marche, avec barre de progression de la plage prévue rafraîchie à un intervalle réglable dans Configurer (`notify_live_refresh`, 15 minutes par défaut, demandé le 21/11/2026), sinon chronomètre. Les autres équipements gardent leurs notifications immédiates.
 - **Alertes pH/ORP** : seulement filtration en marche, car l'eau stagne autour des sondes pompe arrêtée.
 - **Seuils par défaut** : pH bon 7,0–7,4 et moyen 6,8–7,6. ORP bon 650–750 mV ; les bornes « moyen » 600–800 mV sont un choix par défaut réglable.
 - **Tags de notification** : contiennent le préfixe, pour que deux installations ne s'écrasent pas.

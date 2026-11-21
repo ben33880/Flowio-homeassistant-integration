@@ -14,6 +14,7 @@ from .const import (
     CONF_MQTT_ROOT,
     CONF_NOTIFY_DEVICES,
     CONF_NOTIFY_LIVE,
+    CONF_NOTIFY_LIVE_REFRESH,
     CONF_NOTIFY_MEDIUM,
     CONF_NOTIFY_ON_START,
     CONF_NOTIFY_ON_STOP,
@@ -23,6 +24,7 @@ from .const import (
     DEFAULT_DIS_SLOT,
     DEFAULT_FILTRATION_SLOT,
     DEFAULT_IOS_LEVEL,
+    DEFAULT_LIVE_REFRESH,
     DEFAULT_PH_SLOT,
     DOMAIN,
 )
@@ -30,6 +32,13 @@ from .const import (
 # Zone de saisie (et non un curseur) pour les slots 0 à 15.
 _SLOT = selector.NumberSelector(
     selector.NumberSelectorConfig(min=0, max=15, step=1, mode=selector.NumberSelectorMode.BOX)
+)
+
+# Minutes entre deux envois de la barre de progression du suivi en direct.
+_LIVE_REFRESH = selector.NumberSelector(
+    selector.NumberSelectorConfig(
+        min=1, max=60, step=1, mode=selector.NumberSelectorMode.BOX, unit_of_measurement="min"
+    )
 )
 
 # Appareils de l'application mobile Home Assistant (plusieurs possibles).
@@ -61,6 +70,9 @@ def _notification_schema(d: dict) -> vol.Schema:
         vol.Required(CONF_NOTIFY_ON_STOP, default=d.get(CONF_NOTIFY_ON_STOP, True)): bool,
         vol.Required(CONF_NOTIFY_RECAP, default=d.get(CONF_NOTIFY_RECAP, True)): bool,
         vol.Required(CONF_NOTIFY_LIVE, default=d.get(CONF_NOTIFY_LIVE, False)): bool,
+        vol.Required(
+            CONF_NOTIFY_LIVE_REFRESH, default=d.get(CONF_NOTIFY_LIVE_REFRESH, DEFAULT_LIVE_REFRESH)
+        ): _LIVE_REFRESH,
         vol.Required(CONF_IOS_LEVEL, default=d.get(CONF_IOS_LEVEL, DEFAULT_IOS_LEVEL)): selector.SelectSelector(
             selector.SelectSelectorConfig(
                 options=IOS_LEVELS,
@@ -175,7 +187,9 @@ class FlowioOptionsFlow(config_entries.OptionsFlow):
 
     async def async_step_notifications(self, user_input=None):
         if user_input is not None:
-            self._current().update(user_input)
+            data = dict(user_input)
+            data[CONF_NOTIFY_LIVE_REFRESH] = int(data[CONF_NOTIFY_LIVE_REFRESH])
+            self._current().update(data)
             return await self.async_step_equipment()
         return self.async_show_form(
             step_id="notifications", data_schema=_notification_schema(self._current())

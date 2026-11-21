@@ -189,12 +189,12 @@ Les pastilles 🟢🟠🔴 du pH et de l'ORP suivent les plages de la section Qu
 Option **Suivre la filtration en direct** (désactivée par défaut). La filtration doit être cochée dans les équipements à notifier.
 
 - Elle remplace la notification de démarrage de la filtration, envoyée seulement si elle tourne encore après 1 minute, par une carte en direct sur l'écran verrouillé (Live Activity sur iPhone, Live Update sur Android).
-- Si le firmware publie une plage de filtration (`pl_flt_start`, `pl_flt_stop`), la carte affiche une barre de progression de cette plage et le temps restant, rafraîchis toutes les 15 minutes. Sinon, elle affiche un chronomètre depuis le démarrage. Les deux ne se combinent pas.
+- Si le firmware publie une plage de filtration (`pl_flt_start`, `pl_flt_stop`), la carte affiche une barre de progression de cette plage et le temps restant, rafraîchis à l'intervalle choisi dans l'option **Intervalle de rafraîchissement du suivi en direct** (de 1 à 60 minutes, 15 par défaut). Sinon, elle affiche un chronomètre depuis le démarrage. Les deux ne se combinent pas.
 - Pas de barre pour une filtration continue (1 440 minutes) ou quand le début égale la fin. La plage peut franchir minuit.
 - La carte est retirée à l'arrêt, quand l'équipement devient indisponible, et quand il revient arrêté après un redémarrage de Home Assistant. Elle est suivie de la notification d'arrêt habituelle.
 - Sur Android, la carte reste affichée quand on la touche (`sticky`) ; elle est retirée par l'intégration à l'arrêt ou à l'indisponibilité.
 - Les autres équipements gardent leurs notifications normales, sans délai.
-- Exigences (documentation de l'application) : iOS 17.2 ou plus récent, Android 16 ou plus récent, Home Assistant 2026.7 ou plus récent. Un téléphone non compatible affiche une notification normale. iOS termine une Live Activity au bout de 8 heures, et Apple et Google limitent le nombre d'envois, d'où le rafraîchissement toutes les 15 minutes.
+- Exigences (documentation de l'application) : iOS 17.2 ou plus récent, Android 16 ou plus récent, Home Assistant 2026.7 ou plus récent. Un téléphone non compatible affiche une notification normale. iOS termine une Live Activity au bout de 8 heures, et Apple et Google limitent le nombre d'envois, d'où un intervalle de 15 minutes par défaut : en dessous de quelques minutes, iOS peut retarder ou abandonner des mises à jour. Sans plage publiée, le chronomètre tourne sur le téléphone sans aucun envoi, donc l'intervalle ne s'applique pas.
 - Un rapport de bug de l'application Android signale que la barre de progression ne s'affiche pas toujours avec `live_update`.
 
 ### Boutons (Android et iPhone)

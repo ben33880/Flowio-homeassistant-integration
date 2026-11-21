@@ -66,7 +66,7 @@ La racine MQTT complète est donc de la forme `flowio/ESP32-XXXXXX`.
 
 ## Configuration
 
-Clés : `entity_prefix`, `mobile_devices` (liste d'identifiants du registre d'appareils, appareils de l'application mobile), `mqtt_root`, `ph_slot`, `disinfection_slot`, `notify_medium`. Dans Configurer seulement : `notify_devices` (équipements), `notify_on_start`, `notify_on_stop`, `notify_recap`, `notify_live`, `ios_alert_level` (`passive`, `active`, `time-sensitive`). Le `unique_id` de l'entrée de configuration est le préfixe. Version de l'entrée : 2 ; la migration supprime `notify_service`.
+Clés : `entity_prefix`, `mobile_devices` (liste d'identifiants du registre d'appareils, appareils de l'application mobile), `mqtt_root`, `ph_slot`, `disinfection_slot`, `notify_medium`. Dans Configurer seulement : `notify_devices` (équipements), `notify_on_start`, `notify_on_stop`, `notify_recap`, `notify_live`, `notify_live_refresh` (minutes, 1 à 60), `ios_alert_level` (`passive`, `active`, `time-sensitive`). Le `unique_id` de l'entrée de configuration est le préfixe. Version de l'entrée : 2 ; la migration supprime `notify_service`.
 
 ## Notifications
 
@@ -77,4 +77,4 @@ Clés : `entity_prefix`, `mobile_devices` (liste d'identifiants du registre d'ap
 - `FlowioRuntime.filtration_window`, `filtration_progress` : plage et pourcentage d'avancement de la filtration.
 - `FlowioRuntime.async_send_live`, `async_clear_live` : Live Activity / Live Update, tag `flowio_<préfixe>_live_<clé>` (64 caractères max). Avec progression : `progress`, `progress_max`, `critical_text`, `alert_once` pour les mises à jour. Sans : `chronometer`, `when`, `when_relative: false`.
 - Tag : `flowio_<préfixe>_<clé>`. Groupe : `flowio_<préfixe>`.
-- `device_notifications.py` : durée fiable si `old.last_changed - PROCESS_START > 120 s` (`PROCESS_START` = import du module, donc démarrage de Home Assistant). Suivi en direct de la filtration seulement, démarré après 60 s (`async_call_later`), rafraîchi toutes les 15 min (`async_track_time_interval`), retiré à l'arrêt, à l'indisponibilité et au retour à `off` après une indisponibilité.
+- `device_notifications.py` : durée fiable si `old.last_changed - PROCESS_START > 120 s` (`PROCESS_START` = import du module, donc démarrage de Home Assistant). Suivi en direct de la filtration seulement, démarré après 60 s (`async_call_later`), rafraîchi à l'intervalle de l'option `notify_live_refresh` (15 min par défaut, `async_track_time_interval`), retiré à l'arrêt, à l'indisponibilité et au retour à `off` après une indisponibilité.

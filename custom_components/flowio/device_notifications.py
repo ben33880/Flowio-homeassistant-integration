@@ -16,8 +16,10 @@ from homeassistant.util import dt as dt_util
 from .const import (
     CONF_NOTIFY_DEVICES,
     CONF_NOTIFY_LIVE,
+    CONF_NOTIFY_LIVE_REFRESH,
     CONF_NOTIFY_ON_START,
     CONF_NOTIFY_ON_STOP,
+    DEFAULT_LIVE_REFRESH,
     DOMAIN,
 )
 from .runtime import COLOR_OFF, COLOR_OK, format_duration
@@ -34,8 +36,6 @@ RELIABLE_AFTER = 120  # secondes : une durée n'est fiable que si le démarrage 
 # Suivi en direct (filtration seulement) : la carte n'est créée qu'après ce délai de marche, car iOS limite
 # les démarrages d'activités par notification.
 LIVE_START_DELAY = 60
-# Barre de progression de la filtration : rafraîchie rarement, Apple et Google limitent les envois.
-LIVE_REFRESH = timedelta(minutes=15)
 # Services de l'intégration qui pilotent un équipement (refill_tank et reset_uptime n'en pilotent aucun).
 EQUIPMENT_SERVICES = {"force_equipment", "release_override"}
 
@@ -71,6 +71,11 @@ def async_setup_device_notifications(rt):
     filtration = rt.resolve("switch.{p}_io_flt_pmp")
     # Le suivi en direct ne concerne que la filtration ; les autres équipements gardent leurs notifications.
     live_on = bool(rt.conf.get(CONF_NOTIFY_LIVE, False)) and filtration in watched
+    # Barre de progression de la filtration : intervalle réglable, Apple et Google limitent les envois.
+    try:
+        refresh = timedelta(minutes=max(1, int(rt.conf.get(CONF_NOTIFY_LIVE_REFRESH, DEFAULT_LIVE_REFRESH))))
+    except (TypeError, ValueError):
+        refresh = timedelta(minutes=DEFAULT_LIVE_REFRESH)
     pending: dict = {}  # entité -> annulation du démarrage différé du suivi en direct
     refreshing: dict = {}  # entité -> annulation du rafraîchissement de la barre de progression
     # Commandes du forçage du firmware : elles agissent sur n'importe quel équipement.
@@ -156,7 +161,7 @@ def async_setup_device_notifications(rt):
             progress = rt.filtration_progress()
             await _send(progress, False)
             if progress is not None:
-                refreshing[entity_id] = async_track_time_interval(hass, _tick, LIVE_REFRESH)
+                refreshing[entity_id] = async_track_time_interval(hass, _tick, refresh)
 
         _LOGGER.debug(
             "Suivi en direct programmé pour %s dans %s secondes", entity_id, LIVE_START_DELAY

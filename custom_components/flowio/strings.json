@@ -49,11 +49,13 @@
           "notify_on_stop": "Notify when equipment stops",
           "notify_recap": "Add the pH, ORP, temperature and pressure summary",
           "notify_live": "Follow the filtration live (Live Activities / Live Updates)",
+          "notify_live_refresh": "Live tracking refresh interval (minutes)",
           "ios_alert_level": "iPhone interruption level for alerts"
         },
         "data_description": {
           "mobile_devices": "Android phones and iPhones each get a layout suited to their platform. Leave empty to receive no notification.",
           "notify_live": "Filtration must be selected in Equipment to monitor. Replaces its start notification, sent after 1 minute of running, with a live card on the lock screen: progress bar of the scheduled window, or a timer if the window is unknown. Removed at stop. Other equipment keeps its normal notifications. Needs iOS 17.2 or later or Android 16 or later, and Home Assistant 2026.7 or later. An unsupported phone shows a normal notification instead. iOS ends a Live Activity after 8 hours.",
+          "notify_live_refresh": "Interval between two progress bar updates (15 by default). Apple and Google limit how often updates can be sent: below a few minutes, iOS may delay or drop updates. Without a published filtration window, a timer runs on the phone with no updates at all.",
           "ios_alert_level": "Time sensitive can break through Focus modes if allowed in the app's iPhone settings. Passive delivers without waking the screen."
         }
       },
