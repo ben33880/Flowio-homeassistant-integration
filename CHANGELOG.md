@@ -4,6 +4,10 @@ Les versions antérieures sont dans l'historique Git. Dates au format JJ/MM/AAAA
 
 Les versions publiées depuis 0.3.0 comportent un tag et une release GitHub. Les tags `v0.3.7` et `v0.3.8` ont eux aussi produit un `flowio.zip` depuis le workflow de release intégré.
 
+## Non publié après 0.4.0
+
+- Configuration : options regroupées en trois écrans guidés — contrôleur, notifications et équipements surveillés — avec les réglages existants conservés entre les étapes.
+
 ## 0.4.0 — 21/11/2026
 
 - Cartes : démos, tests E2E, exemples et documentation alignés sur la configuration partagée `flowio/config` ; les anciens champs `entity_prefix`, `mqtt_topic`, `tank_slots` et `runtime_slots` sont rejetés et retirés des configurations livrées.
@@ -12,7 +16,6 @@ Les versions publiées depuis 0.3.0 comportent un tag et une release GitHub. Les
 - Traduction : les noms anglais publiés par le firmware pour les équipements, modes et alarmes sont rendus en français dans les cartes ; les noms personnalisés distincts restent intacts.
 - CI : tests Playwright et audit des dépendances de production ajoutés aux workflows de contrôle et de release.
 - Notifications : présentation plus aérée, avec une valeur par ligne, couleurs/icônes conservées et même récapitulatif dans les notifications persistantes ; tous les textes suivent la langue Home Assistant via les fichiers de traduction.
-- Configuration : options regroupées en trois écrans guidés — contrôleur, notifications et équipements surveillés — avec les réglages existants conservés entre les étapes.
 - Outillage : version racine du `package-lock.json` synchronisée avec `cards/package.json`.
 
 ## 0.3.8 — 15/11/2026

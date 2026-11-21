@@ -37,7 +37,7 @@ Intégration Home Assistant (HACS) pour le contrôleur de piscine Flow.io (firmw
 
 ## État au 21/11/2026
 
-- Version préparée dans le code : 0.4.0. Tags publiés présents jusqu'à `v0.3.8`. Aucun tag `v0.4.0` ne doit être créé par l'assistant.
+- Version publiée : 0.4.0, tag `v0.4.0` sur `c2f2ef6`. `main` local peut contenir des commits postérieurs non publiés ; ne jamais les attribuer à 0.4.0.
 - Le propriétaire a indiqué le 14/11/2026 que tout fonctionnait avec la 0.3.6, sans détail par appareil. L'assistant n'a jamais exécuté l'intégration dans un vrai Home Assistant.
 - Configuration unifiée fusionnée dans `main` : 12 composants récupèrent leur préfixe d'entité depuis `flowio/config` au lieu d'un `entity_prefix` local : Filtration, Traitement, Équipements/Modes, Équipements du bassin, Alarmes, Gestion des alarmes, Panneau firmware, Sondes, Sonde individuelle, État système, Forçage et Graphique. Les anciennes configurations avec `entity_prefix`, `mqtt_topic`, `tank_slots` ou `runtime_slots` sont rejetées.
 - Cartes intégrées : `cards/` est une copie, faite par le propriétaire, du commit `9977463e00e550703907d3ce7c8a380fcea31ad8` du dépôt des cartes (MIT). Le propriétaire l'a ensuite nettoyée (commit `91428a2`) : plus de `hacs.json`, de `CHANGELOG.md`, de `.github/`, de `scripts/`, de `docs/releases/`, de `docs/RELEASE.md`, `docs/HACS.md`, `docs/HACS-TROUBLESHOOTING.md` ni de `.DS_Store`. Restés : `src`, `tests`, `e2e`, `demo`, `examples`, `docs` (captures et fiches de fonctionnement), `package.json`, `package-lock.json`, `LICENSE`.
@@ -51,4 +51,4 @@ Intégration Home Assistant (HACS) pour le contrôleur de piscine Flow.io (firmw
 - Erreur de journal `value_json.tank.remaining_ml` (14/11/2026) : elle ne vient pas de l'intégration. Les capteurs `pd_ph_tnk_rem` et `pd_chl_tnk_rem` viennent de l'ancien firmware (`christophebelmont/flow.io`) ; le firmware Waveshare actuel ne les crée plus et publie les cuves en valeurs `data_*`. Le propriétaire possède `sensor.fio_pd_ph_tnk_rem`. Suppression de l'entité et de sa configuration retenue sur le broker : non confirmée.
 - `notification_actions.py` : relu le 14/11/2026 sur `config-unifiee`. Ses réponses appellent `rt.async_send(titre, message, clé)`, compatible avec la signature actuelle ; le tag et le groupe sont les mêmes que ceux de l'alerte, donc la réponse remplace bien la notification. Aucune modification de code nécessaire.
 - Dossier `custom_components/flowio/brand/` déposé par le propriétaire : `icon.png`, `icon@2x.png`, `logo.png`, `logo@2x.png`. Les fichiers `dark_icon*.png` ne sont pas déposés : facultatifs.
-- Le README, le CHANGELOG, `strings.json` et les traductions décrivent la préparation 0.4.0. Le propriétaire crée le tag `v0.4.0`, puis publie la release brouillon.
+- Le README, le CHANGELOG, `strings.json` et les traductions décrivent la release publiée 0.4.0. Les changements postérieurs restent sous « Non publié après 0.4.0 ».
