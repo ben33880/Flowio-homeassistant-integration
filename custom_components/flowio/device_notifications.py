@@ -158,27 +158,42 @@ def async_setup_device_notifications(rt):
             if progress is not None:
                 refreshing[entity_id] = async_track_time_interval(hass, _tick, LIVE_REFRESH)
 
+        _LOGGER.debug(
+            "Suivi en direct programmé pour %s dans %s secondes", entity_id, LIVE_START_DELAY
+        )
         pending[entity_id] = async_call_later(hass, LIVE_START_DELAY, _fire)
 
-    async def _notify(old, new, running: bool, context) -> None:
-        name = firmware_name(hass, new.entity_id, new.attributes.get("friendly_name") or new.entity_id)
-        who = await _who(hass, context) if context else localize(hass, "notifications.equipment.controller")
-        at = dt_util.as_local(new.last_changed).strftime("%H:%M")
-        # Première ligne (titre) : équipement, action, heure, auteur, et durée à l'arrêt seulement.
+    def _equipment_title(entity_id: str, state, running: bool, author: str, duration_start=None) -> str:
+        name = firmware_name(
+            hass, entity_id, state.attributes.get("friendly_name") or entity_id
+        )
+        at = dt_util.as_local(state.last_changed).strftime("%H:%M")
         key = "notifications.equipment.start" if running else "notifications.equipment.stop"
-        title = localize(hass, key, name=name, time=at, author=who)
+        title = localize(hass, key, name=name, time=at, author=author)
         if not running:
-            # Durée fiable seulement si le démarrage a eu lieu bien après le démarrage de Home Assistant
-            # (au démarrage, l'état restauré ou retenu par MQTT porte l'heure du démarrage, pas celle de la marche).
-            reliable = (old.last_changed - PROCESS_START).total_seconds() > RELIABLE_AFTER
-            if reliable:
+            if duration_start is None:
+                title += ", " + localize(
+                    hass, "notifications.equipment.duration_unknown"
+                )
+            else:
                 title += ", " + localize(
                     hass,
                     "notifications.equipment.duration",
-                    duration=format_duration(new.last_changed - old.last_changed, hass),
+                    duration=format_duration(state.last_changed - duration_start, hass),
                 )
-            else:
-                title += ", " + localize(hass, "notifications.equipment.duration_unknown")
+        return title
+
+    async def _notify(old, new, running: bool, context) -> None:
+        who = await _who(hass, context) if context else localize(hass, "notifications.equipment.controller")
+        # Durée fiable seulement si le démarrage a eu lieu bien après le démarrage de Home Assistant.
+        reliable = (old.last_changed - PROCESS_START).total_seconds() > RELIABLE_AFTER
+        title = _equipment_title(
+            new.entity_id,
+            new,
+            running,
+            who,
+            old.last_changed if reliable else None,
+        )
         _LOGGER.debug("Notification %s : %s", new.entity_id, title)
         tag = _tag(new.entity_id)
         icon = _icon(hass, new)
@@ -222,7 +237,10 @@ def async_setup_device_notifications(rt):
                 _clear_live(new.entity_id)
             return
         running = new.state == "on"
-        if not rt.conf.get(CONF_NOTIFY_ON_START if running else CONF_NOTIFY_ON_STOP, True):
+        live = _is_live(new.entity_id)
+        if not rt.conf.get(CONF_NOTIFY_ON_START if running else CONF_NOTIFY_ON_STOP, True) and not (
+            running and live
+        ):
             # Suivi en direct actif mais arrêts non notifiés : on retire quand même la carte.
             if not running:
                 _clear_live(new.entity_id)
@@ -233,6 +251,24 @@ def async_setup_device_notifications(rt):
         async_track_state_change_event(hass, entities, _changed),
         hass.bus.async_listen(EVENT_CALL_SERVICE, _on_call),
     ]
+
+    # Une reprise après redémarrage/rechargement ne produit pas de transition off -> on.
+    # Reprogrammer explicitement le suivi si la filtration était déjà en marche.
+    current = hass.states.get(filtration)
+    if current is not None and current.state == "on" and live_on:
+        title = _equipment_title(
+            filtration,
+            current,
+            True,
+            localize(hass, "notifications.equipment.controller"),
+        )
+        _schedule_live(
+            current,
+            title,
+            _tag(filtration),
+            _icon(hass, current),
+            f"/?more-info-entity-id={filtration}",
+        )
 
     def _unsub() -> None:
         for unsub in unsubs:
