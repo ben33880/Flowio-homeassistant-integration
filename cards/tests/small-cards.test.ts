@@ -40,10 +40,11 @@ it('détecte le préfixe majoritaire malgré des noms hétérogènes', () => {
 
 it('retire le préfixe de nom partagé', () => {
   expect(entityName('sensor.x', state('1', { friendly_name: 'Flow.io Waveshare pH' }))).toBe('Flow.io Waveshare pH');
-  expect(entityName('switch.fio_io_ph_pmp', state('off', { friendly_name: 'Flow.io Waveshare pH Pump' }))).toBe('Flow.io Waveshare Pompe pH');
-  expect(entityName('binary_sensor.fio_alm_3_active', state('on', { friendly_name: 'pH tank low' }))).toBe('Cuve pH basse');
-  expect(entityName('binary_sensor.fio_alm_3_active', state('on', { friendly_name: 'Flow.io Waveshare pH tank low' }))).toBe('Flow.io Waveshare Cuve pH basse');
-  expect(entityName('switch.fio_io_ph_pmp', state('off', { friendly_name: 'Pompe secondaire personnalisée' }))).toBe('Pompe secondaire personnalisée');
+  expect(entityName('switch.fio_io_ph_pmp', state('off', { friendly_name: 'Flow.io Waveshare pH Pump' }), 'en')).toBe('Flow.io Waveshare pH Pump');
+  expect(entityName('switch.fio_io_ph_pmp', state('off', { friendly_name: 'Flow.io Waveshare pH Pump' }), { language: 'fr-FR' })).toBe('Flow.io Waveshare Pompe pH');
+  expect(entityName('binary_sensor.fio_alm_3_active', state('on', { friendly_name: 'pH tank low' }), { locale: { language: 'fr' } })).toBe('Cuve pH basse');
+  expect(entityName('binary_sensor.fio_alm_3_active', state('on', { friendly_name: 'Flow.io Waveshare pH tank low' }), 'fr')).toBe('Flow.io Waveshare Cuve pH basse');
+  expect(entityName('switch.fio_io_ph_pmp', state('off', { friendly_name: 'Pompe secondaire personnalisée' }), 'fr')).toBe('Pompe secondaire personnalisée');
   expect(entityName('sensor.x', state('1', {}))).toBe('sensor.x');
   expect(commonNamePrefix(['Flow.io Waveshare pH', 'Flow.io Waveshare ORP'])).toBe('Flow.io Waveshare ');
   expect(commonNamePrefix(['pH', 'ORP'])).toBe('');

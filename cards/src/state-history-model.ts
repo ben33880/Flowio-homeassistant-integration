@@ -29,7 +29,7 @@ export function normalizeStateHistoryConfig(input:unknown):StateHistoryConfig {
  if(raw.items!==undefined)for(const [id,value] of Object.entries(objectValue(raw.items)))items[id]=stateItemOverride(value);
  return {type:'custom:flowio-state-history-card',title,name_prefix,entities:[...new Set(supplied)] as string[],items,...(grid_options?{grid_options:grid_options as Record<string,unknown>}:{})};
 }
-export function stateLabel(config:StateHistoryConfig,id:string,state:EntityState|undefined,prefix:string):string {return config.items[id]?.name||displayName(entityName(id,state),prefix);}
+export function stateLabel(config:StateHistoryConfig,id:string,state:EntityState|undefined,prefix:string,source?:{language?:string;locale?:{language?:string}}):string {return config.items[id]?.name||displayName(entityName(id,state,source),prefix);}
 export function stateActiveColor(config:StateHistoryConfig,id:string):string{return config.items[id]?.color??'';}
 export function stateHistoryIds(hass:Hass|undefined,prefix:string):string[]{if(!hass)return [];const stem=prefix?`${prefix}_`:'';return Object.keys(hass.states).filter(id=>id.startsWith(`switch.${stem}`)||id.startsWith(`binary_sensor.${stem}`)).sort();}
 export function stateIcon(id:string,state?:EntityState):string{

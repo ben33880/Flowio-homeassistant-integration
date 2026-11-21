@@ -22,8 +22,8 @@ export function mergeOrder(previous: readonly string[], selected: readonly strin
   return [...kept, ...added];
 }
 
-export function orderItems(ids: readonly string[], states: Record<string, EntityState> | undefined, prefix: string): OrderItem[] {
-  return ids.map(id => ({ value: id, label: displayName(entityName(id, states?.[id]), prefix) }));
+export function orderItems(ids: readonly string[], states: Record<string, EntityState> | undefined, prefix: string, source?: { language?: string; locale?: { language?: string } }): OrderItem[] {
+  return ids.map(id => ({ value: id, label: displayName(entityName(id, states?.[id], source), prefix) }));
 }
 
 const GRIP = html`<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><path d="M6 8h5M13 8h5M6 12h5M13 12h5M6 16h5M13 16h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"></path></svg>`;

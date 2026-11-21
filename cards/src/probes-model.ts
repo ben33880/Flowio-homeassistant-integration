@@ -89,10 +89,10 @@ export function probeValue(state?: EntityState): number | undefined {
   return numericValue(available(state) ? state.state : undefined);
 }
 export function probeMode(config: ProbesConfig, id: string): ProbeMode { return config.items[id]?.mode ?? 'line'; }
-export function probeLabel(config: ProbesConfig, id: string, state: EntityState | undefined, prefix: string): string {
+export function probeLabel(config: ProbesConfig, id: string, state: EntityState | undefined, prefix: string, source?: { language?: string; locale?: { language?: string } }): string {
   const name = config.items[id]?.name;
   if (name) return name;
-  return displayName(entityName(id, state), prefix);
+  return displayName(entityName(id, state, source), prefix);
 }
 export function probeTone(id: string, state?: EntityState): ProbeTone {
   if (id.endsWith('_io_ph')) return 'ph';

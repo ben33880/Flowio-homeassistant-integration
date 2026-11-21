@@ -28,7 +28,7 @@ export function alarmEntries(hass: Hass | undefined, prefix: string): AlarmEntry
     if (!entityId.startsWith(start) || !entityId.endsWith('_active')) return [];
     const id = entityId.slice(start.length, -7);
     if (!/^[0-9]+$/.test(id)) return [];
-    const title = entityName(entityId, state);
+    const title = entityName(entityId, state, hass);
     return [{ id, entityId, title, resetEntity: `button.${stem}alm_${id}_reset`, active: state.state === 'on' }];
   }).sort((a, b) => Number(a.id) - Number(b.id));
 }

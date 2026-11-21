@@ -129,7 +129,7 @@ export abstract class FlowioTileGridCard extends LitElement {
       this.slots = [];
       this.overlays = [];
       this.tiles = config.entities.map(entity => {
-        const raw = entityName(entity, this.hass?.states[entity]);
+        const raw = entityName(entity, this.hass?.states[entity], this.hass);
         const tileConfig: Record<string, unknown> = { type: 'tile', entity, hide_state: false, icon_tap_action: { action: 'toggle' }, tap_action: { action: 'more-info' } };
         const stripped = displayName(raw, prefix);
         if (stripped !== raw) tileConfig.name = stripped;
@@ -210,7 +210,7 @@ export abstract class FlowioTileGridEditor extends LitElement {
     if (!this.hass) return [];
     const ids = Object.keys(this.hass.states).filter(id => id.startsWith('switch.')).sort();
     const prefix = this.config?.name_prefix || commonEntityPrefix(ids, this.hass.states);
-    return ids.map(id => ({ value: id, label: `${displayName(entityName(id, this.hass!.states[id]), prefix)} · ${id}` }));
+    return ids.map(id => ({ value: id, label: `${displayName(entityName(id, this.hass!.states[id], this.hass), prefix)} · ${id}` }));
   }
   render() {
     if (!this.config || !this.hass) return nothing;
@@ -222,7 +222,7 @@ export abstract class FlowioTileGridEditor extends LitElement {
     const entitySchema = [{ name: 'entities', selector: { select: { multiple: true, mode: 'list', options: this.options() } } }];
     const labels: Record<string, string> = { title: 'Nom', columns: 'Colonnes', name_prefix: 'Texte à retirer devant les noms (vide = automatique)', entities: 'Entités' };
     const prefix = this.config.name_prefix || commonEntityPrefix(this.config.entities, this.hass.states);
-    const items = orderItems(this.config.entities, this.hass.states, prefix);
+    const items = orderItems(this.config.entities, this.hass.states, prefix, this.hass);
     const computeLabel = (field: { name: string }) => labels[field.name] ?? field.name;
     return html`<p>Le préfixe est fourni par l’intégration Flow.io. Tuiles standard Home Assistant : cliquer sur l’icône bascule l’entité, cliquer ailleurs ouvre l’entité.</p>${this.error ? html`<p role=alert>${this.error}</p>` : nothing}<ha-form .hass=${this.hass} .data=${this.config} .schema=${schema} .computeLabel=${computeLabel} @value-changed=${this.changed}></ha-form><flowio-order-list .items=${items} @order-changed=${(event: CustomEvent) => this.reorder(event.detail.order)}></flowio-order-list><ha-form .hass=${this.hass} .data=${this.config} .schema=${entitySchema} .computeLabel=${computeLabel} @value-changed=${this.changed}></ha-form>`;
   }

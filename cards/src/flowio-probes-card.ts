@@ -26,7 +26,7 @@ class FlowioProbesCard extends LitElement {
   }
   private probe(id: string, prefix: string) {
     const config = this.config!, state = this.hass!.states[id];
-    const label = probeLabel(config, id, state, prefix);
+    const label = probeLabel(config, id, state, prefix, this.hass);
     const unit = typeof state?.attributes.unit_of_measurement === 'string' ? state.attributes.unit_of_measurement : '';
     const value = probeValue(state);
     const scale = attributeScale(state?.attributes);
@@ -140,7 +140,7 @@ class FlowioProbesCardEditor extends LitElement {
   }
   private item(id: string, prefix: string) {
     const item = this.config!.items[id] ?? {};
-    const label = probeLabel(this.config!, id, this.hass!.states[id], prefix);
+    const label = probeLabel(this.config!, id, this.hass!.states[id], prefix, this.hass);
     const selected = item.color ?? '';
     return html`<details class=item>
       <summary>${label}</summary>
@@ -164,7 +164,7 @@ class FlowioProbesCardEditor extends LitElement {
     ];
     const entitySchema = [{ name: 'entities', selector: { select: { multiple: true, mode: 'list', options: this.options() } } }];
     const computeLabel = (field: { name: string }) => labels[field.name] ?? field.name;
-    const items = orderItems(ids, this.hass.states, prefix);
+    const items = orderItems(ids, this.hass.states, prefix, this.hass);
     return html`<p>Le préfixe est fourni par l’intégration Flow.io. Les extrémités des échelles viennent des attributs min/max publiés par le firmware ; les zones colorées pH/ORP viennent du paramétrage de l’intégration. Chaque sonde conserve son nom, sa couleur de base et son mode personnalisables.</p>${this.error ? html`<p role=alert>${this.error}</p>` : nothing}<ha-form .hass=${this.hass} .data=${this.config} .schema=${schema} .computeLabel=${computeLabel} @value-changed=${this.changed}></ha-form><flowio-order-list .items=${items} @order-changed=${(event: CustomEvent) => this.reorder(event.detail.order)}></flowio-order-list><ha-form .hass=${this.hass} .data=${this.config} .schema=${entitySchema} .computeLabel=${computeLabel} @value-changed=${this.changed}></ha-form>${ids.length ? html`<div class=items><h4>Sondes</h4>${ids.map(id => this.item(id, prefix))}</div>` : nothing}`;
   }
   static styles = css`

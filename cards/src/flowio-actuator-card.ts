@@ -52,7 +52,7 @@ class FlowioActuatorCard extends LitElement {
   }
   private row(id: string, prefix: string, entityPrefix: string) {
     const config = this.config!, hass = this.hass!, state = hass.states[id];
-    const name = displayName(entityName(id, state), prefix);
+    const name = displayName(entityName(id, state, hass), prefix);
     const role = actuatorRole(entityPrefix, id);
     const icon = stateIcon(id, state);
     const tone = role ? toneFor(role) : 'water';
@@ -162,7 +162,7 @@ class FlowioActuatorCardEditor extends LitElement {
     if (!this.hass || !this.config) return [];
     const ids = Object.keys(this.hass.states).filter(id => id.startsWith('switch.')).sort();
     const prefix = this.config.name_prefix || commonEntityPrefix(ids, this.hass.states);
-    return ids.map(id => ({ value: id, label: `${displayName(entityName(id, this.hass!.states[id]), prefix)} · ${id}` }));
+    return ids.map(id => ({ value: id, label: `${displayName(entityName(id, this.hass!.states[id], this.hass), prefix)} · ${id}` }));
   }
   render() {
     if (!this.config || !this.hass) return nothing;
@@ -175,7 +175,7 @@ class FlowioActuatorCardEditor extends LitElement {
     const labels: Record<string, string> = { title: 'Titre', subtitle: 'Sous-titre', name_prefix: 'Texte à retirer devant les noms (vide = automatique)', entities: 'Actionneurs affichés' };
     const computeLabel = (field: { name: string }) => labels[field.name] ?? field.name;
     const prefix = this.config.name_prefix || commonEntityPrefix(this.config.entities, this.hass.states);
-    const items = orderItems(this.config.entities, this.hass.states, prefix);
+    const items = orderItems(this.config.entities, this.hass.states, prefix, this.hass);
     return html`<p>Le préfixe est fourni par l’intégration Flow.io. Durées de fonctionnement lues dans les attributs de chaque entité (<code>${Object.values(this.config.runtime_keys).join(', ')}</code>). Le bouton de remise à zéro cible <code>button.&lt;préfixe&gt;_pd_reset_upt_*</code> ; l’ordre se règle par glisser-déposer.</p>${this.error ? html`<p role=alert>${this.error}</p>` : nothing}<ha-form .hass=${this.hass} .data=${this.config} .schema=${schema} .computeLabel=${computeLabel} @value-changed=${this.changed}></ha-form><flowio-order-list .items=${items} @order-changed=${(event: CustomEvent) => this.reorder(event.detail.order)}></flowio-order-list><ha-form .hass=${this.hass} .data=${this.config} .schema=${entitySchema} .computeLabel=${computeLabel} @value-changed=${this.changed}></ha-form>`;
   }
   static styles = css`:host{display:block}p{color:var(--secondary-text-color);line-height:1.5}p[role=alert]{color:var(--error-color)}code{font-size:calc(.85em * var(--fio-font-scale, 1.32))}`;

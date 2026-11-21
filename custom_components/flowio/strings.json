@@ -76,6 +76,39 @@
       }
     }
   },
+  "card": {
+    "firmware_entity_names": {
+      "io_flt_pmp": "Filtration Pump",
+      "io_ph_pmp": "pH Pump",
+      "io_chl_pmp": "Chlorine Pump",
+      "io_fill_pmp": "Fill Pump",
+      "io_chl_gen": "Chlorine Generator",
+      "io_lights": "Lights",
+      "io_wat_htr": "Water Heater",
+      "io_wat_tmp": "Water Temperature",
+      "io_air_tmp": "Air Temperature",
+      "io_psi": "PSI",
+      "pl_modes_auto": "Pool Auto-regulation",
+      "pl_modes_winter": "Winter Mode",
+      "pl_ph_auto_mode": "pH Auto-regulation",
+      "pl_dis_auto": "Orp Auto-regulation",
+      "pl_heat_auto": "Heater Auto-regulation",
+      "pl_ph_dose_plus": "pH Dosing uses pH+",
+      "pl_o2_temp_comp": "O2 Temperature Compensation",
+      "pl_modes_dis": "Disinfection Type",
+      "pl_swg_ctrl": "SWG Control Mode",
+      "pl_o2_hour": "O2 Dosing Hour"
+    },
+    "firmware_alarm_names": {
+      "low_pressure": "Low pressure",
+      "high_pressure": "High pressure",
+      "ph_tank_low": "pH tank low",
+      "chlorine_tank_low": "Chlorine tank low",
+      "ph_pump_max_uptime": "pH pump max uptime reached",
+      "chlorine_pump_max_uptime": "Chlorine pump max uptime reached",
+      "pool_water_level_low": "Pool water level low"
+    }
+  },
   "issues": {
     "missing_entities": {
       "title": "Flow.io: expected entities not found",

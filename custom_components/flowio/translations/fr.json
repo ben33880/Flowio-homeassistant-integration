@@ -76,6 +76,39 @@
       }
     }
   },
+  "card": {
+    "firmware_entity_names": {
+      "io_flt_pmp": "Filtration",
+      "io_ph_pmp": "Pompe pH",
+      "io_chl_pmp": "Pompe désinfectant",
+      "io_fill_pmp": "Remplissage",
+      "io_chl_gen": "Électrolyseur",
+      "io_lights": "Éclairage",
+      "io_wat_htr": "Chauffage",
+      "io_wat_tmp": "Eau",
+      "io_air_tmp": "Air",
+      "io_psi": "Pression",
+      "pl_modes_auto": "Régulation automatique",
+      "pl_modes_winter": "Hivernage",
+      "pl_ph_auto_mode": "Régulation pH",
+      "pl_dis_auto": "Régulation désinfection",
+      "pl_heat_auto": "Régulation chauffage",
+      "pl_ph_dose_plus": "Utiliser pH+",
+      "pl_o2_temp_comp": "Compensation température O₂",
+      "pl_modes_dis": "Type de désinfection",
+      "pl_swg_ctrl": "Pilotage électrolyseur",
+      "pl_o2_hour": "Heure de dosage O₂"
+    },
+    "firmware_alarm_names": {
+      "low_pressure": "Pression basse",
+      "high_pressure": "Pression haute",
+      "ph_tank_low": "Cuve pH basse",
+      "chlorine_tank_low": "Cuve désinfectant basse",
+      "ph_pump_max_uptime": "Durée maximale de la pompe pH atteinte",
+      "chlorine_pump_max_uptime": "Durée maximale de la pompe désinfectant atteinte",
+      "pool_water_level_low": "Niveau d’eau du bassin bas"
+    }
+  },
   "issues": {
     "missing_entities": {
       "title": "Flow.io : entités attendues introuvables",

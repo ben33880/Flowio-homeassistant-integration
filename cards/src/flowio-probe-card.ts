@@ -25,7 +25,7 @@ class FlowioProbeCard extends LitElement {
   }
   private probe(id: string, prefix: string) {
     const config = this.config!, state = this.hass!.states[id];
-    const label = probeLabel(config, state, prefix) || probeDisplayName(rawProbeName(id, state), prefix);
+    const label = probeLabel(config, state, prefix, this.hass) || probeDisplayName(rawProbeName(id, state, this.hass), prefix);
     const unit = typeof state?.attributes.unit_of_measurement === 'string' ? state.attributes.unit_of_measurement : '';
     const value = probeValue(state);
     const scale = attributeScale(state?.attributes);
@@ -54,7 +54,7 @@ class FlowioProbeCard extends LitElement {
     const id = config.entity;
     const state = id ? hass.states[id] : undefined;
     const prefix = probeNamePrefix(config, hass.states);
-    const label = id ? probeLabel(config, state, prefix) : '';
+    const label = id ? probeLabel(config, state, prefix, this.hass) : '';
     return html`<ha-card><div class=body>
       ${id ? html`${label ? html`<h3 class=title>${label}</h3>` : nothing}<div class=probes>${this.probe(id, prefix)}</div>` : html`<p class=empty>Aucune entité sélectionnée.</p>`}
     </div></ha-card>`;
@@ -126,7 +126,7 @@ class FlowioProbeCardEditor extends LitElement {
   }
   private item() {
     const config = this.config!, id = config.entity, item = config.item;
-    const label = probeLabel(config, this.hass!.states[id], probeNamePrefix(config, this.hass!.states));
+    const label = probeLabel(config, this.hass!.states[id], probeNamePrefix(config, this.hass!.states), this.hass);
     const selected = item.color ?? '';
     return html`<div class=items>
       <label class=field><span>Nom convivial</span><input type=text .value=${item.name ?? ''} placeholder=${label} @change=${(event: Event) => this.setItem({ name: (event.target as HTMLInputElement).value })}></label>

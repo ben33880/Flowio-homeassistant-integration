@@ -48,9 +48,9 @@ function asProbes(config: ProbeConfig): ProbesConfig {
     name_prefix: config.name_prefix, columns: 1, items: config.entity ? { [config.entity]: config.item } : {}
   };
 }
-export function probeLabel(config: ProbeConfig, state: EntityState | undefined, prefix: string): string {
+export function probeLabel(config: ProbeConfig, state: EntityState | undefined, prefix: string, source?: { language?: string; locale?: { language?: string } }): string {
   if (config.item.name !== undefined) return config.item.name;
-  return multiLabel(asProbes(config), config.entity, state, prefix);
+  return multiLabel(asProbes(config), config.entity, state, prefix, source);
 }
 export function probeMode(config: ProbeConfig): ProbeMode { return multiMode(asProbes(config), config.entity); }
 export function probeScale(config: ProbeConfig, state?: EntityState): ProbeScale | undefined { return multiScale(asProbes(config), config.entity, state); }

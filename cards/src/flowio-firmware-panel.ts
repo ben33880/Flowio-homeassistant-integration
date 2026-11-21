@@ -290,7 +290,7 @@ class FlowioFirmwarePanel extends LitElement {
   private valueTile(entityId: string, label: string) {
     const state = this.hass?.states[entityId];
     const unit = typeof state?.attributes.unit_of_measurement === 'string' ? state.attributes.unit_of_measurement : '';
-    const name = state ? entityName(entityId, state) : label;
+    const name = state ? entityName(entityId, state, this.hass) : label;
     return html`<button type="button" class="value-tile" data-entity=${entityId}
       data-available=${available(state) ? 'true' : 'false'} ?disabled=${!state}
       @click=${() => this.more(entityId)}>

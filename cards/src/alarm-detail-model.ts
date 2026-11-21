@@ -78,7 +78,7 @@ export function alarmDetailEntries(hass: Hass | undefined, config: AlarmDetailCo
     const resetEntity = alarmResetEntity(prefix, entityId);
     const resetState = hass?.states[resetEntity];
     const resettable = alarmResettable(state);
-    const name = state ? entityName(entityId, state) : `Alarme ${alarmId(entityId)}`;
+    const name = state ? entityName(entityId, state, hass) : `Alarme ${alarmId(entityId)}`;
     return {
       id: alarmId(entityId), entityId, resetEntity, name,
       active: state?.state === 'on', condition: alarmCondition(state), present: !!state,
@@ -101,7 +101,7 @@ export function alarmNamePrefix(config: AlarmDetailConfig, hass: Hass | undefine
   const list = [...ids];
   const detected = commonEntityPrefix(list, hass?.states);
   if (!detected) return '';
-  const names = list.map(id => entityName(id, hass?.states[id])).filter((name): name is string => !!name);
+  const names = list.map(id => entityName(id, hass?.states[id], hass)).filter((name): name is string => !!name);
   const matching = names.filter(name => name.startsWith(detected)).length;
   return names.length && matching > names.length / 2 ? detected : '';
 }

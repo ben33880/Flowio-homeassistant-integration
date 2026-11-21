@@ -145,7 +145,7 @@ class FlowioAlarmDetailCardEditor extends LitElement {
     if (!installation) return [];
     const ids = detectedAlarmIds(this.hass, installation.prefix);
     const prefix = alarmNamePrefix(this.config, this.hass, ids);
-    return ids.map(id => ({ value: id, label: `${displayName(entityName(id, this.hass!.states[id]), prefix)} · ${id}` }));
+    return ids.map(id => ({ value: id, label: `${displayName(entityName(id, this.hass!.states[id], this.hass), prefix)} · ${id}` }));
   }
   render() {
     if (!this.config || !this.hass) return nothing;
@@ -157,7 +157,7 @@ class FlowioAlarmDetailCardEditor extends LitElement {
     const labels: Record<string, string> = { title: 'Titre', name_prefix: 'Texte à retirer devant les noms (vide = automatique)', alarms: 'Alarmes affichées' };
     const computeLabel = (field: { name: string }) => labels[field.name] ?? field.name;
     const prefix = alarmNamePrefix(this.config, this.hass, this.config.alarms);
-    const items = orderItems(this.config.alarms, this.hass.states, prefix);
+    const items = orderItems(this.config.alarms, this.hass.states, prefix, this.hass);
     return html`<p>Le préfixe est fourni par l’intégration Flow.io. Les alarmes sont détectées depuis les entités <code>binary_sensor.&lt;préfixe&gt;_alm_*_active</code>. L’acquittement cible <code>button.&lt;préfixe&gt;_alm_*_reset</code> ; l’ordre se règle par glisser-déposer.</p>${this.error ? html`<p role=alert>${this.error}</p>` : nothing}<ha-form .hass=${this.hass} .data=${this.config} .schema=${schema} .computeLabel=${computeLabel} @value-changed=${this.changed}></ha-form><flowio-order-list .items=${items} @order-changed=${(event: CustomEvent) => this.reorder(event.detail.order)}></flowio-order-list><ha-form .hass=${this.hass} .data=${this.config} .schema=${alarmSchema} .computeLabel=${computeLabel} @value-changed=${this.changed}></ha-form>`;
   }
   static styles = css`:host{display:block}p{color:var(--secondary-text-color);line-height:1.5}p[role=alert]{color:var(--error-color)}code{font-size:calc(.85em * var(--fio-font-scale, 1.32))}`;
