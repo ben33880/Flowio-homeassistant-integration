@@ -86,7 +86,7 @@ class AlertSensor(BinarySensorEntity):
             # La condition dépend de l'heure : réévaluée chaque minute et quand la plage change.
             ids += [self._rt.resolve("sensor.{p}_pl_flt_start"), self._rt.resolve("sensor.{p}_pl_flt_stop")]
             self.async_on_remove(
-                async_track_time_interval(self.hass, lambda _now: self._reevaluate(), timedelta(minutes=1))
+                async_track_time_interval(self.hass, self._reevaluate, timedelta(minutes=1))
             )
         if ids:
             self.async_on_remove(async_track_state_change_event(self.hass, ids, self._changed))

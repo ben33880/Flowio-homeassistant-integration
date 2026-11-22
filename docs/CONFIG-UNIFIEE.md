@@ -4,7 +4,7 @@
 
 Supprimer les préfixes d'entités configurés localement dans les cartes Lovelace Flow.io. Le préfixe vient désormais de la configuration de l'intégration, via le contrôleur commun `InstallationController`.
 
-Branche de travail : `config-unifiee`. La branche `main` reste inchangée.
+Branche de travail `config-unifiee`, fusionnée dans `main`.
 
 ## Règle commune
 
@@ -70,4 +70,4 @@ Les 12 cartes listées dans ce document ont été migrées. Le code a été relu
 
 ## Rappel
 
-Aucun changement n'a encore été testé dans Home Assistant. Aucune release n'a été créée.
+La configuration unifiée est fusionnée dans `main` et publiée (voir `CHANGELOG.md`). Le propriétaire a testé sur ses appareils le 22/11/2026 : tout fonctionne.

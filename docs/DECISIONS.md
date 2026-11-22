@@ -20,6 +20,7 @@ Choix validés ou refusés par le propriétaire. À respecter.
 - **Seuils par défaut** : pH bon 7,0–7,4 et moyen 6,8–7,6. ORP bon 650–750 mV ; les bornes « moyen » 600–800 mV sont un choix par défaut réglable.
 - **Tags de notification** : contiennent le préfixe, pour que deux installations ne s'écrasent pas.
 - **Réparations** : elles signalent, sans correction guidée ; l'utilisateur corrige dans Configurer.
+- **Minuteurs et sécurité des threads** (22/11/2026, 0.5.3) : tout rappel passé à `async_track_time_interval` ou `async_call_later` est une méthode `@callback` passée directement, jamais une `lambda` ni une fonction ordinaire (exécutée dans un thread, ce qui fait échouer `async_write_ha_state`). Les erreurs `notify.mobile_app_… not found` du journal ne viennent pas de l'intégration (service vérifié avant envoi, erreur attrapée) : elles viennent d'une automatisation ou d'un script du propriétaire.
 
 ## Refusé
 
@@ -33,7 +34,7 @@ Choix validés ou refusés par le propriétaire. À respecter.
 
 ## À faire (retenu le 21/11/2026)
 
-Les trois fonctionnalités choisies par le propriétaire sont codées (21/11/2026, version 0.5.0 préparée). Testées seulement avec un Home Assistant 2025.1.4 de test, pas sur les appareils du propriétaire. Elles réutilisent des données déjà lues. Respecter les décisions ci-dessus (pas de boutons d'action, pas de chiffres inventés).
+Les trois fonctionnalités choisies par le propriétaire sont codées (21/11/2026, version 0.5.0 préparée). Testées par le propriétaire sur ses appareils le 22/11/2026 (tout fonctionne). Elles réutilisent des données déjà lues. Respecter les décisions ci-dessus (pas de boutons d'action, pas de chiffres inventés).
 
 1. **Tendance et stabilité du pH/ORP** : capteur de dérive sur 24 h et 7 jours, pour prévenir avant le passage en « mauvais » et repérer une sonde qui vieillit.
 2. **Dosage anormal** : alerte si le volume injecté du jour dépasse nettement la moyenne des 7 derniers jours (fuite, siphonnage, sonde défaillante). Ne demande pas de limite du firmware.
@@ -57,4 +58,3 @@ Les trois fonctionnalités choisies par le propriétaire sont codées (21/11/202
 - Progression des pompes doseuses (volume injecté face à une limite journalière) : non fait, à demander au propriétaire si une limite existe dans le firmware.
 - Barre de progression sur Android : un rapport de bug de l'application signale qu'elle ne s'affiche pas toujours avec `live_update`. À revérifier sur l'appareil du propriétaire.
 - Les tests des cartes (`npm test`) ne tournent qu'à la release : faut-il un workflow de tests au push ? Pas de demande à ce jour.
-- Les fiches `cards/docs/DESIGN.md`, `DEVELOPMENT.md`, `DISPLAY.md`, `INJECTIONS.md`, `MAINTENANCE.md` et `TIMING.md` n'ont pas été relues : elles peuvent encore parler de versions ou de release séparées.

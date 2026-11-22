@@ -4,6 +4,10 @@ Les versions antérieures sont dans l'historique Git. Dates au format JJ/MM/AAAA
 
 Les versions publiées depuis 0.3.0 comportent un tag et une release GitHub. Les tags `v0.3.7` et `v0.3.8` ont eux aussi produit un `flowio.zip` depuis le workflow de release intégré.
 
+## 0.5.3 — 22/11/2026
+
+- Alerte « Filtration non démarrée » : la réévaluation de chaque minute s'exécutait hors de la boucle d'événements de Home Assistant, ce qui levait l'erreur « async_write_ha_state from a thread other than the event loop » dans le journal ; elle s'exécute maintenant dans la boucle.
+
 ## 0.5.2 — 22/11/2026
 
 - Documentation : README remis en cohérence pour l'affichage dans HACS. La note « Passage à la 0.3 » est retirée, le nom d'installation est « Flow.io », la liste des cartes renvoie à leur catalogue. Aucun changement de code.
