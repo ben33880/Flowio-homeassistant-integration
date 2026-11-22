@@ -4,6 +4,10 @@ Les versions antérieures sont dans l'historique Git. Dates au format JJ/MM/AAAA
 
 Les versions publiées depuis 0.3.0 comportent un tag et une release GitHub. Les tags `v0.3.7` et `v0.3.8` ont eux aussi produit un `flowio.zip` depuis le workflow de release intégré.
 
+## 0.5.2 — 22/11/2026
+
+- Documentation : README remis en cohérence pour l'affichage dans HACS. La note « Passage à la 0.3 » est retirée, le nom d'installation est « Flow.io », la liste des cartes renvoie à leur catalogue. Aucun changement de code.
+
 ## 0.5.1 — 21/11/2026
 
 - Notifications persistantes : la notification de démarrage de la filtration est envoyée tout de suite, puis remplacée par la carte en direct après 1 minute de marche (auparavant, rien pendant cette minute, et aucune notification de démarrage si la filtration s'arrêtait avant).
