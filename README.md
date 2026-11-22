@@ -6,7 +6,7 @@ Elle ne pilote jamais le dosage. Les services ne font que déclencher des comman
 
 ## Ce que l'intégration ajoute
 
-- Les cartes Lovelace Flow.io, dont le code source est dans le dossier [`cards/`](cards/) de ce dépôt (index de leur documentation : [docs/CARTES.md](docs/CARTES.md)). Elles sont embarquées dans la release et servies automatiquement.
+- Une vingtaine de cartes Lovelace `custom:flowio-*` (piscine, tableau de bord, sondes, filtration, traitement, équipements, alarmes, historique…), embarquées dans la release et servies automatiquement. Catalogue et exemples YAML : [cards/README.md](cards/README.md) ; index de la documentation : [docs/CARTES.md](docs/CARTES.md).
 - Des capteurs : qualité du pH, de l'ORP et de l'eau, volumes injectés du jour, autonomie des cuves, redémarrages du contrôleur.
 - Des alertes (`binary_sensor`) avec notifications, boutons d'action et seuils réglables (`number`).
 - Des notifications de marche et d'arrêt des équipements que tu choisis, adaptées à Android et à iPhone, avec un suivi en direct facultatif de la filtration.
@@ -16,20 +16,16 @@ Elle ne pilote jamais le dosage. Les services ne font que déclencher des comman
 ## Installation (HACS)
 
 1. Dans HACS, ajoute ce dépôt comme dépôt personnalisé, catégorie **Intégration**.
-2. Installe **Flow.io Piscine**, puis redémarre Home Assistant.
+2. Installe **Flow.io**, puis redémarre Home Assistant.
 3. Va dans Paramètres → Appareils et services → Ajouter une intégration → **Flow.io**.
 
 Prérequis : l'intégration MQTT de Home Assistant, et le contrôleur Flow.io qui publie ses entités par découverte MQTT. Pour les notifications : l'application mobile Home Assistant sur au moins un téléphone.
 
-Mise à jour : HACS propose chaque version publiée. Après une mise à jour, redémarre Home Assistant.
+Mise à jour : HACS propose chaque version publiée (voir le [CHANGELOG](CHANGELOG.md)). Après une mise à jour, redémarre Home Assistant.
 
 Les cartes sont incluses dans l'intégration : il ne faut pas les ajouter en plus comme dépôt HACS ou comme ressource Dashboard, sinon elles seraient chargées deux fois.
 
 L'icône et le logo Flow.io viennent du dossier `custom_components/flowio/brand/`, pris en compte par Home Assistant 2026.3 ou plus récent.
-
-### Passage à la 0.3
-
-La 0.3 remplace le champ « Service de notification » (`notify_service`) par une liste de téléphones. À la mise à jour, l'ancienne valeur est supprimée de la configuration (le service `notify.*` lui-même n'est pas touché) et **aucun téléphone n'est choisi** : va dans Configurer et coche les téléphones à notifier, sinon aucune notification n'est envoyée.
 
 ## Configuration
 
@@ -38,7 +34,7 @@ Les réglages se font à l'ajout, puis dans Appareils et services → Flow.io �
 | Réglage | Rôle | Défaut |
 |---|---|---|
 | Préfixe des entités | Doit correspondre au préfixe d'entité Home Assistant réglé dans le firmware | `fio` |
-| Téléphones à notifier | Appareils de l'application mobile Home Assistant, plusieurs possibles. Aucun : aucune notification | aucun |
+| Téléphones à notifier | Appareils de l'application mobile Home Assistant, plusieurs possibles. Aucun coché : aucune notification | aucun |
 | Racine MQTT du contrôleur | Facultative, de la forme `flowio/ESP32-XXXXXX`. Renseignée, l'intégration lit le volume réellement injecté, mesuré par le firmware. Vide, elle utilise l'estimation | vide |
 | Slot de la pompe pH | Sert aux cuves, au topic des volumes et aux compteurs de marche | 1 |
 | Slot de la pompe désinfectant | Idem | 2 |
@@ -248,7 +244,7 @@ Pour dépanner, utilise Appareils et services → Flow.io → Télécharger les 
 |---|---|
 | Réparation « entités attendues introuvables » | Vérifie le préfixe, les slots et que les valeurs `data_*` sont activées dans le firmware |
 | Le volume injecté reste en `estimation` | La racine MQTT est vide ou fausse, ou le topic n'est pas publié ; vérifie `flowio/ESP32-XXXXXX` avec un explorateur MQTT |
-| Aucune notification | Vérifie qu'un téléphone est coché dans Configurer (après la 0.3, aucun ne l'est), la réparation « téléphone injoignable » et, sur Android, le canal du téléphone ; sur iPhone, les réglages de notifications de l'application |
+| Aucune notification | Vérifie qu'un téléphone est coché dans Configurer (aucun n'est coché par défaut), la réparation « téléphone injoignable » et, sur Android, le canal du téléphone ; sur iPhone, les réglages de notifications de l'application |
 | Pas de notification d'équipement | Vérifie que l'équipement est coché, que « démarre » et « s'arrête » sont cochés, et active le niveau debug pour voir les changements d'état reçus |
 | Pas de carte en direct au démarrage de la filtration | Avec le suivi en direct activé, la carte remplace la notification de démarrage après 1 minute de marche, seulement si la filtration tourne toujours |
 | Pas de couleur sur iPhone | La couleur est le fond de l'icône d'une notification de communication ; elle exige une icône et un titre. Le texte lui-même n'est jamais coloré sur iPhone |
